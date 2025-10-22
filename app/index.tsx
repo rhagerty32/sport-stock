@@ -1,98 +1,311 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
+import Chart from '@/components/chart';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useHaptics } from '@/hooks/useHaptics';
+import { liveGames, newsItems, portfolio } from '@/lib/dummy-data';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
-    return (
-        <ParallaxScrollView
-            headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-            headerImage={
-                <Image
-                    source={require('@/assets/images/partial-react-logo.png')}
-                    style={styles.reactLogo}
-                />
-            }>
-            <ThemedView style={styles.titleContainer}>
-                <ThemedText type="title">Welcome!</ThemedText>
-                <HelloWave />
-            </ThemedView>
-            <ThemedView style={styles.stepContainer}>
-                <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-                <ThemedText>
-                    Edit <ThemedText type="defaultSemiBold">app/index.tsx</ThemedText> to see changes.
-                    Press{' '}
-                    <ThemedText type="defaultSemiBold">
-                        {Platform.select({
-                            ios: 'cmd + d',
-                            android: 'cmd + m',
-                            web: 'F12',
-                        })}
-                    </ThemedText>{' '}
-                    to open developer tools.
-                </ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.stepContainer}>
-                <Link href="/modal">
-                    <Link.Trigger>
-                        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-                    </Link.Trigger>
-                    <Link.Preview />
-                    <Link.Menu>
-                        <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-                        <Link.MenuAction
-                            title="Share"
-                            icon="square.and.arrow.up"
-                            onPress={() => alert('Share pressed')}
-                        />
-                        <Link.Menu title="More" icon="ellipsis">
-                            <Link.MenuAction
-                                title="Delete"
-                                icon="trash"
-                                destructive
-                                onPress={() => alert('Delete pressed')}
-                            />
-                        </Link.Menu>
-                    </Link.Menu>
-                </Link>
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const { lightImpact } = useHaptics();
 
-                <ThemedText>
-                    {`Tap the Explore tab to learn more about what's included in this starter app.`}
-                </ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.stepContainer}>
-                <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-                <ThemedText>
-                    {`When you're ready, run `}
-                    <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-                    <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-                    <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-                    <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-                </ThemedText>
-            </ThemedView>
-        </ParallaxScrollView>
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(amount);
+    };
+
+    const formatPercentage = (percentage: number) => {
+        const sign = percentage >= 0 ? '+' : '';
+        return `${sign}${percentage.toFixed(2)}%`;
+    };
+
+    return (
+        <ThemedView style={styles.container}>
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerTop}>
+                        <Text style={[styles.logo, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            SportStock
+                        </Text>
+                        <Text style={[styles.balance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            {formatCurrency(120.00)}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Portfolio Summary Card */}
+                <View style={styles.cardContainer}>
+                    <GlassCard
+                        style={styles.portfolioCard}
+                        standard={false}
+                        padding={0}
+                        border={false}
+                    >
+                        <View style={styles.portfolioContent}>
+                            <Text style={[styles.portfolioTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                Portfolio Value
+                            </Text>
+
+                            <Text style={[styles.portfolioValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                {formatCurrency(portfolio.totalValue)}
+                            </Text>
+
+                            <View style={styles.portfolioStats}>
+                                <Text
+                                    style={[
+                                        styles.portfolioGainLoss,
+                                        { color: portfolio.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                    ]}
+                                >
+                                    {formatCurrency(portfolio.totalGainLoss)}
+                                </Text>
+                                <Text
+                                    style={[
+                                        styles.portfolioGainLoss,
+                                        { color: portfolio.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                    ]}
+                                >
+                                    ({formatPercentage(portfolio.totalGainLossPercentage)})
+                                </Text>
+                                <Text style={[styles.portfolioToday, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Today
+                                </Text>
+                            </View>
+
+                            <Chart stockId={1} color="#00C853" />
+                        </View>
+                    </GlassCard>
+                </View>
+
+                {/* Live Games */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        Live Games
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                        {liveGames.map((game) => (
+                            <GlassCard key={game.id} style={styles.gameCard}>
+                                <View style={styles.gameContent}>
+                                    <Text style={[styles.gameLeague, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        {game.league}
+                                    </Text>
+                                    <Text style={[styles.gameTeams, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        {game.awayTeam} @ {game.homeTeam}
+                                    </Text>
+                                    <View style={styles.gameScoreContainer}>
+                                        <Text style={[styles.gameScore, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            {game.awayScore} - {game.homeScore}
+                                        </Text>
+                                        <View style={[
+                                            styles.statusBadge,
+                                            { backgroundColor: game.status === 'live' ? '#217C0A' : game.status === 'upcoming' ? '#6B7280' : '#9CA3AF' }
+                                        ]}>
+                                            <Text style={styles.statusText}>
+                                                {game.status.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </GlassCard>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* News Feed */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        Latest News
+                    </Text>
+                    {newsItems.slice(0, 3).map((news) => (
+                        <GlassCard key={news.id} style={styles.newsCard}>
+                            <View style={styles.newsContent}>
+                                <Text style={[styles.newsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    {news.title}
+                                </Text>
+                                <Text style={[styles.newsDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    {news.content}
+                                </Text>
+                                <View style={styles.newsMeta}>
+                                    <Text style={[styles.newsSource, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        {news.source}
+                                    </Text>
+                                    <Text style={[styles.newsSeparator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        •
+                                    </Text>
+                                    <Text style={[styles.newsDate, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        {news.createdAt.toLocaleDateString()}
+                                    </Text>
+                                </View>
+                            </View>
+                        </GlassCard>
+                    ))}
+                </View>
+
+                {/* Bottom Spacing */}
+                <View style={styles.bottomSpacing} />
+            </ScrollView>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    titleContainer: {
+    container: {
+        flex: 1,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    header: {
+        paddingTop: 60,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    logo: {
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
+    balance: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    cardContainer: {
+        marginBottom: 24,
+    },
+    portfolioCard: {
+        minHeight: 200,
+    },
+    portfolioContent: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    portfolioTitle: {
+        fontSize: 24,
+        fontWeight: '600',
+        marginBottom: 16,
+    },
+    portfolioValue: {
+        fontSize: 48,
+        fontWeight: 'bold',
+        marginBottom: 16,
+    },
+    portfolioStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    portfolioGainLoss: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginRight: 8,
+    },
+    portfolioToday: {
+        fontSize: 14,
+        marginLeft: 8,
+    },
+    timePeriodContainer: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    timeButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    timeButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 16,
+        paddingHorizontal: 20,
+    },
+    horizontalScroll: {
+        paddingLeft: 20,
+    },
+    gameCard: {
+        width: 200,
+        marginRight: 16,
+        marginBottom: 16,
+    },
+    gameContent: {
+        flex: 1,
+    },
+    gameLeague: {
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: 8,
+    },
+    gameTeams: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    gameScoreContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
     },
-    stepContainer: {
-        gap: 8,
+    gameScore: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    newsCard: {
+        marginHorizontal: 20,
+        marginBottom: 12,
+    },
+    newsContent: {
+        flex: 1,
+    },
+    newsTitle: {
+        fontSize: 16,
+        fontWeight: '600',
         marginBottom: 8,
     },
-    reactLogo: {
-        height: 178,
-        width: 290,
-        bottom: 0,
-        left: 0,
-        position: 'absolute',
+    newsDescription: {
+        fontSize: 14,
+        marginBottom: 8,
+    },
+    newsMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    newsSource: {
+        fontSize: 12,
+    },
+    newsSeparator: {
+        fontSize: 12,
+    },
+    newsDate: {
+        fontSize: 12,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    statusText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    bottomSpacing: {
+        height: 100,
     },
 });
