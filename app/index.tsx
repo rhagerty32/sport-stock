@@ -3,14 +3,18 @@ import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { liveGames, newsItems, portfolio } from '@/lib/dummy-data';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { portfolio } from '@/lib/dummy-data';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const { lightImpact } = useHaptics();
+    const router = useRouter();
+    const [activePage, setActivePage] = useState(0);
+    const pageCount = Math.ceil(portfolio.positions.length / 3);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -22,6 +26,31 @@ export default function HomeScreen() {
     const formatPercentage = (percentage: number) => {
         const sign = percentage >= 0 ? '+' : '';
         return `${sign}${percentage.toFixed(2)}%`;
+    };
+
+    const handlePageChange = (page: number) => {
+        setActivePage(Math.round(page / (styles.stockPage.width + (styles.stockPage.marginRight / 2))));
+    };
+
+    const handleStockPress = (stockId: number) => {
+        console.log('Stock pressed:', stockId);
+        console.log('Navigating to modal with stockId:', stockId);
+        try {
+            // Try multiple navigation methods
+            console.log('Attempting router.push...');
+            router.push(`/modal?stockId=${stockId}`);
+            console.log('router.push completed');
+        } catch (error) {
+            console.error('Navigation error:', error);
+            try {
+                console.log('Attempting router.navigate...');
+                router.navigate(`/modal?stockId=${stockId}`);
+                console.log('router.navigate completed');
+            } catch (navigateError) {
+                console.error('Navigate error:', navigateError);
+            }
+        }
+        lightImpact();
     };
 
     return (
@@ -83,68 +112,136 @@ export default function HomeScreen() {
                     </GlassCard>
                 </View>
 
-                {/* Live Games */}
+                {/* My Investments Card */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Live Games
-                    </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                        {liveGames.map((game) => (
-                            <GlassCard key={game.id} style={styles.gameCard}>
-                                <View style={styles.gameContent}>
-                                    <Text style={[styles.gameLeague, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        {game.league}
-                                    </Text>
-                                    <Text style={[styles.gameTeams, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {game.awayTeam} @ {game.homeTeam}
-                                    </Text>
-                                    <View style={styles.gameScoreContainer}>
-                                        <Text style={[styles.gameScore, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                            {game.awayScore} - {game.homeScore}
-                                        </Text>
-                                        <View style={[
-                                            styles.statusBadge,
-                                            { backgroundColor: game.status === 'live' ? '#217C0A' : game.status === 'upcoming' ? '#6B7280' : '#9CA3AF' }
-                                        ]}>
-                                            <Text style={styles.statusText}>
-                                                {game.status.toUpperCase()}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </GlassCard>
-                        ))}
-                    </ScrollView>
-                </View>
+                    <GlassCard style={styles.investmentsCard} padding={0}>
+                        <View style={styles.investmentsContent}>
+                            {/* My Investments Header */}
+                            <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                My Investments
+                            </Text>
 
-                {/* News Feed */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Latest News
-                    </Text>
-                    {newsItems.slice(0, 3).map((news) => (
-                        <GlassCard key={news.id} style={styles.newsCard}>
-                            <View style={styles.newsContent}>
-                                <Text style={[styles.newsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {news.title}
-                                </Text>
-                                <Text style={[styles.newsDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {news.content}
-                                </Text>
-                                <View style={styles.newsMeta}>
-                                    <Text style={[styles.newsSource, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        {news.source}
+                            {/* Investment Overview */}
+                            <View style={styles.investmentOverview}>
+                                <View style={styles.investmentLeft}>
+                                    <Text style={[styles.investmentAmount, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        {formatCurrency(portfolio.totalInvested)}
                                     </Text>
-                                    <Text style={[styles.newsSeparator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        •
+                                    <Text style={[styles.investmentLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        Invested
                                     </Text>
-                                    <Text style={[styles.newsDate, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        {news.createdAt.toLocaleDateString()}
+                                </View>
+                                <View style={styles.investmentRight}>
+                                    <Text style={[
+                                        styles.investmentAmount,
+                                        { color: portfolio.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                    ]}>
+                                        {formatCurrency(portfolio.totalGainLoss)}
+                                    </Text>
+                                    <Text style={[styles.investmentLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        Gain/Loss
                                     </Text>
                                 </View>
                             </View>
-                        </GlassCard>
-                    ))}
+
+                            {/* Divider */}
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+
+                            {/* Summary Details */}
+                            <View style={styles.summaryDetails}>
+                                <Text style={[styles.summaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Total Value $
+                                </Text>
+                                <Text style={[styles.summaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    {formatCurrency(portfolio.totalValue)}
+                                </Text>
+                            </View>
+                            <View style={styles.summaryDetails}>
+                                <Text style={[styles.summaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Total Gain %
+                                </Text>
+                                <Text style={[
+                                    styles.summaryValue,
+                                    { color: portfolio.totalGainLossPercentage >= 0 ? '#00C853' : '#FF1744' }
+                                ]}>
+                                    {formatPercentage(portfolio.totalGainLossPercentage)}
+                                </Text>
+                            </View>
+
+                            {/* Divider */}
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+
+                            {/* Stocks Owned Section */}
+                            <View style={styles.stocksOwnedHeader}>
+                                <View style={styles.stocksOwnedLeft}>
+                                    <Text style={[styles.stocksOwnedTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        Stocks Owned
+                                    </Text>
+                                    <Text style={[styles.stocksOwnedSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        My Total Investment Value
+                                    </Text>
+                                </View>
+                                <View style={[styles.sortButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                                    <Text style={[styles.sortButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        Sort by
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Stock List - Horizontal Scrollable */}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                pagingEnabled
+                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                snapToAlignment="center"
+                                decelerationRate="fast"
+                                onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
+                                style={styles.stockScrollView}
+                                contentContainerStyle={styles.stockScrollContent}
+                            >
+                                {Array.from({ length: Math.ceil(portfolio.positions.length / 3) }, (_, pageIndex) => (
+                                    <View key={pageIndex} style={styles.stockPage}>
+                                        {portfolio.positions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
+                                            <TouchableOpacity
+                                                key={position.stock.id}
+                                                style={styles.stockItem}
+                                                onPress={() => {
+                                                    console.log('TouchableOpacity pressed for stock:', position.stock.id);
+                                                    console.log('About to call handleStockPress...');
+                                                    handleStockPress(position.stock.id);
+                                                    console.log('handleStockPress called');
+                                                }}
+                                                activeOpacity={0.7}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                <View style={styles.stockIcon}>
+                                                    <Text style={styles.stockIconText}>
+                                                        {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                    </Text>
+                                                </View>
+                                                <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                    {position.stock.name}
+                                                </Text>
+                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                                                    <Text style={[styles.stockValueText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                        {formatCurrency(position.currentValue)}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                ))}
+                            </ScrollView>
+
+                            {/* Pagination Dots */}
+                            <View style={styles.paginationDots}>
+                                {Array.from({ length: pageCount }, (_, index) => (
+                                    <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? '#777' : '#ccc' }]} />
+                                ))}
+                            </View>
+                        </View>
+                    </GlassCard>
                 </View>
 
                 {/* Bottom Spacing */}
@@ -307,5 +404,147 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 100,
+    },
+    // Investments Card Styles
+    investmentsCard: {
+        marginHorizontal: 20,
+        marginBottom: 12,
+    },
+    investmentsContent: {
+        paddingVertical: 20,
+    },
+    investmentsTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        paddingHorizontal: 20,
+    },
+    investmentOverview: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        paddingHorizontal: 20,
+    },
+    investmentLeft: {
+        alignItems: 'flex-start',
+    },
+    investmentRight: {
+        alignItems: 'flex-end',
+    },
+    investmentAmount: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    investmentLabel: {
+        fontSize: 14,
+        fontWeight: '400',
+    },
+    divider: {
+        height: 1,
+        marginVertical: 16,
+        paddingHorizontal: 20,
+    },
+    summaryDetails: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+        paddingHorizontal: 20,
+    },
+    summaryLabel: {
+        fontSize: 14,
+        fontWeight: '400',
+    },
+    summaryValue: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    stocksOwnedHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+        paddingHorizontal: 20,
+    },
+    stocksOwnedLeft: {
+        flex: 1,
+    },
+    stocksOwnedTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    stocksOwnedSubtitle: {
+        fontSize: 12,
+        fontWeight: '400',
+    },
+    sortButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    sortButtonText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    stockScrollView: {
+        marginBottom: 16,
+    },
+    stockScrollContent: {
+        paddingHorizontal: 0,
+    },
+    stockPage: {
+        width: 360, // Width of each page (card width minus padding)
+        marginRight: 20,
+        paddingHorizontal: 20
+    },
+    stockItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        minHeight: 50,
+        paddingVertical: 8,
+    },
+    stockIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#3B82F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    stockIconText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    stockName: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    stockValue: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    stockValueText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    paginationDots: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    paginationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#6B7280',
+        marginHorizontal: 4,
     },
 });

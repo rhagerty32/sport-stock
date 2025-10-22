@@ -34,6 +34,7 @@ const teamColors: Record<string, string[]> = {
     NBA: ['#1D1160', '#C8102E', '#0E2240', '#CE1141', '#1D1160', '#C8102E', '#0E2240', '#CE1141', '#1D1160', '#C8102E'],
     MLB: ['#0C2340', '#C8102E', '#132448', '#CE1141', '#0C2340'],
     NHL: ['#003E7E', '#C8102E', '#0C2340', '#CE1141', '#003E7E'],
+    'NCAA Basketball': ['#9E1B32', '#0C2340', '#0033A0', '#FF8200', '#9D2235', '#0021A5', '#461D7C', '#76232F', '#002147', '#73000A', '#BA0C2F', '#866D4B', '#F1B82D', '#500000', '#001A57', '#7BAFD4', '#232D4B', '#AD0000', '#D44500', '#782F40', '#004C97', '#630031', '#CC0000', '#9E1B32', '#F66733', '#00263A', '#8B0000', '#003594', '#0C2340', '#18453B', '#00274C', '#BB0000', '#CEB888', '#13294B', '#C5050C', '#990000', '#000000', '#E03A3E', '#7A0019', '#E31C23', '#4E2A84', '#002E5C', '#CC0033', '#0051BA', '#BF5700', '#1B4D3E', '#841617', '#FF7300', '#CC0000', '#CC0000', '#512888', '#002855', '#4D1979', '#C8102E', '#E00122', '#002255', '#000000', '#2774AE', '#003366', '#154733', '#990000', '#8C1515', '#4B2E83', '#CFB53B', '#CC0000', '#8C1D40', '#D73F09', '#981E32', '#003262', '#00205B', '#000E2F', '#0033A0', '#0C2340', '#003087', '#1E3A8A', '#000000', '#C41E3A', '#003366', '#041E42', '#1B365D', '#041E42', '#003087', '#FFC72C', '#C41E3A', '#003366', '#8B0000', '#002255', '#FFB300', '#CC0000', '#8B0000'],
 };
 
 // Generate leagues
@@ -78,7 +79,18 @@ export const leagues: League[] = [
         createdAt: new Date('2020-01-01'),
         updatedAt: new Date(),
     },
+    {
+        id: 5,
+        name: 'NCAA Basketball',
+        marketCap: 2000000000,
+        volume: 300000000,
+        photoURL: 'https://via.placeholder.com/100x100/1E3A8A/FFFFFF?text=NCAA',
+        sport: 'Basketball',
+        createdAt: new Date('2020-01-01'),
+        updatedAt: new Date(),
+    },
 ];
+
 
 // Generate stocks (teams)
 export const stocks: Stock[] = [
@@ -119,6 +131,110 @@ export const stocks: Stock[] = [
     { id: 28, name: 'Boston Bruins', leagueID: 4, photoURL: 'https://via.placeholder.com/100x100/FFB81C/000000?text=BOS', price: 62.90, volume: 580000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
     { id: 29, name: 'New York Rangers', leagueID: 4, photoURL: 'https://via.placeholder.com/100x100/0038A8/FFFFFF?text=NYR', price: 59.75, volume: 560000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
     { id: 30, name: 'Chicago Blackhawks', leagueID: 4, photoURL: 'https://via.placeholder.com/100x100/CF0A2C/FFFFFF?text=CHI', price: 55.20, volume: 520000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // Mens College Basketball Teams
+    { id: 31, name: 'Alabama Crimson Tide', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/9E1B32/FFFFFF?text=ALA', price: 45.80, volume: 180000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 32, name: 'Auburn Tigers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0C2340/FFFFFF?text=AUB', price: 42.30, volume: 165000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 33, name: 'Kentucky Wildcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0033A0/FFFFFF?text=UK', price: 58.75, volume: 220000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 34, name: 'Tennessee Volunteers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/FF8200/FFFFFF?text=TENN', price: 38.90, volume: 150000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 35, name: 'Arkansas Razorbacks', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/9D2235/FFFFFF?text=ARK', price: 35.60, volume: 140000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 36, name: 'Florida Gators', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0021A5/FFFFFF?text=UF', price: 41.25, volume: 160000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 37, name: 'LSU Tigers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/461D7C/FFFFFF?text=LSU', price: 33.80, volume: 135000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 38, name: 'Mississippi State Bulldogs', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/76232F/FFFFFF?text=MSST', price: 28.45, volume: 120000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 39, name: 'Ole Miss Rebels', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/002147/FFFFFF?text=OM', price: 26.70, volume: 110000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 40, name: 'South Carolina Gamecocks', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/73000A/FFFFFF?text=SC', price: 24.85, volume: 105000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 41, name: 'Georgia Bulldogs', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/BA0C2F/FFFFFF?text=UGA', price: 22.30, volume: 95000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 42, name: 'Vanderbilt Commodores', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/866D4B/FFFFFF?text=VAN', price: 20.15, volume: 85000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 43, name: 'Missouri Tigers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/F1B82D/000000?text=MIZ', price: 18.90, volume: 80000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 44, name: 'Texas A&M Aggies', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/500000/FFFFFF?text=TAMU', price: 32.40, volume: 130000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // ACC Teams
+    { id: 45, name: 'Duke Blue Devils', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/001A57/FFFFFF?text=DUKE', price: 72.85, volume: 280000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 46, name: 'North Carolina Tar Heels', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/7BAFD4/FFFFFF?text=UNC', price: 68.50, volume: 260000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 47, name: 'Virginia Cavaliers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/232D4B/FFFFFF?text=UVA', price: 52.30, volume: 200000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 48, name: 'Louisville Cardinals', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/AD0000/FFFFFF?text=LOU', price: 38.75, volume: 155000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 49, name: 'Syracuse Orange', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/D44500/FFFFFF?text=SYR', price: 35.20, volume: 145000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 50, name: 'Florida State Seminoles', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/782F40/FFFFFF?text=FSU', price: 31.85, volume: 135000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 51, name: 'Miami Hurricanes', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/004C97/FFFFFF?text=MIA', price: 29.40, volume: 125000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 52, name: 'Virginia Tech Hokies', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/630031/FFFFFF?text=VT', price: 27.65, volume: 115000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 53, name: 'NC State Wolfpack', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CC0000/FFFFFF?text=NCST', price: 25.80, volume: 110000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 54, name: 'Wake Forest Demon Deacons', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/9E1B32/FFFFFF?text=WAKE', price: 23.45, volume: 100000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 55, name: 'Clemson Tigers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/F66733/FFFFFF?text=CLEM', price: 21.90, volume: 95000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 56, name: 'Georgia Tech Yellow Jackets', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/00263A/FFFFFF?text=GT', price: 20.35, volume: 90000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 57, name: 'Boston College Eagles', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/8B0000/FFFFFF?text=BC', price: 18.70, volume: 85000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 58, name: 'Pittsburgh Panthers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003594/FFFFFF?text=PITT', price: 17.25, volume: 80000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 59, name: 'Notre Dame Fighting Irish', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0C2340/FFFFFF?text=ND', price: 45.60, volume: 175000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // Big Ten Teams
+    { id: 60, name: 'Michigan State Spartans', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/18453B/FFFFFF?text=MSU', price: 55.40, volume: 210000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 61, name: 'Michigan Wolverines', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/00274C/FFFFFF?text=MICH', price: 48.75, volume: 190000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 62, name: 'Ohio State Buckeyes', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/BB0000/FFFFFF?text=OSU', price: 46.20, volume: 185000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 63, name: 'Purdue Boilermakers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CEB888/000000?text=PUR', price: 42.85, volume: 170000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 64, name: 'Illinois Fighting Illini', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/13294B/FFFFFF?text=ILL', price: 39.50, volume: 160000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 65, name: 'Wisconsin Badgers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/C5050C/FFFFFF?text=WISC', price: 36.80, volume: 150000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 66, name: 'Indiana Hoosiers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/990000/FFFFFF?text=IU', price: 34.25, volume: 145000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 67, name: 'Iowa Hawkeyes', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/000000/FFFFFF?text=IOWA', price: 31.90, volume: 135000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 68, name: 'Maryland Terrapins', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/E03A3E/FFFFFF?text=MD', price: 29.65, volume: 125000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 69, name: 'Minnesota Golden Gophers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/7A0019/FFFFFF?text=MINN', price: 27.40, volume: 115000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 70, name: 'Nebraska Cornhuskers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/E31C23/FFFFFF?text=NEB', price: 25.15, volume: 105000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 71, name: 'Northwestern Wildcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/4E2A84/FFFFFF?text=NU', price: 22.80, volume: 95000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 72, name: 'Penn State Nittany Lions', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/002E5C/FFFFFF?text=PSU', price: 20.45, volume: 85000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 73, name: 'Rutgers Scarlet Knights', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CC0033/FFFFFF?text=RUT', price: 18.20, volume: 80000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // Big 12 Teams
+    { id: 74, name: 'Kansas Jayhawks', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0051BA/FFFFFF?text=KU', price: 65.30, volume: 250000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 75, name: 'Texas Longhorns', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/BF5700/FFFFFF?text=TEX', price: 52.85, volume: 205000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 76, name: 'Baylor Bears', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/1B4D3E/FFFFFF?text=BAY', price: 48.40, volume: 190000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 77, name: 'Oklahoma Sooners', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/841617/FFFFFF?text=OU', price: 44.75, volume: 180000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 78, name: 'Oklahoma State Cowboys', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/FF7300/FFFFFF?text=OSU', price: 41.20, volume: 170000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 79, name: 'Iowa State Cyclones', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CC0000/FFFFFF?text=ISU', price: 37.85, volume: 155000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 80, name: 'Texas Tech Red Raiders', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CC0000/FFFFFF?text=TTU', price: 34.50, volume: 145000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 81, name: 'Kansas State Wildcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/512888/FFFFFF?text=KSU', price: 31.15, volume: 135000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 82, name: 'West Virginia Mountaineers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/002855/FFFFFF?text=WVU', price: 28.80, volume: 125000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 83, name: 'TCU Horned Frogs', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/4D1979/FFFFFF?text=TCU', price: 26.45, volume: 115000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 84, name: 'Houston Cougars', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/C8102E/FFFFFF?text=UH', price: 24.10, volume: 105000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 85, name: 'Cincinnati Bearcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/E00122/FFFFFF?text=CIN', price: 21.75, volume: 95000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 87, name: 'UCF Knights', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/000000/FFFFFF?text=UCF', price: 17.05, volume: 80000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // Pac-12 Teams
+    { id: 88, name: 'UCLA Bruins', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/2774AE/FFFFFF?text=UCLA', price: 58.90, volume: 225000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 89, name: 'Arizona Wildcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003366/FFFFFF?text=ARIZ', price: 55.25, volume: 215000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 90, name: 'Oregon Ducks', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/154733/FFFFFF?text=ORE', price: 51.80, volume: 200000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 91, name: 'USC Trojans', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/990000/FFFFFF?text=USC', price: 48.35, volume: 185000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 92, name: 'Stanford Cardinal', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/8C1515/FFFFFF?text=STAN', price: 44.90, volume: 175000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 93, name: 'Washington Huskies', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/4B2E83/FFFFFF?text=UW', price: 41.45, volume: 165000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 94, name: 'Colorado Buffaloes', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CFB53B/000000?text=COLO', price: 38.00, volume: 155000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 95, name: 'Utah Utes', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CC0000/FFFFFF?text=UTAH', price: 34.55, volume: 145000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 96, name: 'Arizona State Sun Devils', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/8C1D40/FFFFFF?text=ASU', price: 31.10, volume: 135000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 97, name: 'Oregon State Beavers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/D73F09/FFFFFF?text=OSU', price: 27.65, volume: 125000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 98, name: 'Washington State Cougars', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/981E32/FFFFFF?text=WSU', price: 24.20, volume: 115000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 99, name: 'California Golden Bears', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003262/FFFFFF?text=CAL', price: 20.75, volume: 105000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // Big East Teams
+    { id: 100, name: 'Villanova Wildcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/00205B/FFFFFF?text=NOVA', price: 62.40, volume: 240000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 101, name: 'Connecticut Huskies', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/000E2F/FFFFFF?text=UCONN', price: 59.85, volume: 230000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 102, name: 'Creighton Bluejays', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0033A0/FFFFFF?text=CREI', price: 46.30, volume: 180000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 103, name: 'Xavier Musketeers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/0C2340/FFFFFF?text=XAV', price: 42.75, volume: 170000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 104, name: 'Marquette Golden Eagles', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003087/FFFFFF?text=MARQ', price: 39.20, volume: 160000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 105, name: 'Seton Hall Pirates', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/1E3A8A/FFFFFF?text=SHU', price: 35.65, volume: 150000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 106, name: 'Providence Friars', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/000000/FFFFFF?text=PROV', price: 32.10, volume: 140000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 107, name: 'St. John\'s Red Storm', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/C41E3A/FFFFFF?text=SJU', price: 28.55, volume: 130000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 108, name: 'Butler Bulldogs', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003366/FFFFFF?text=BUT', price: 25.00, volume: 120000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 109, name: 'Georgetown Hoyas', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/041E42/FFFFFF?text=GU', price: 21.45, volume: 110000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 110, name: 'DePaul Blue Demons', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/1B365D/FFFFFF?text=DPU', price: 17.90, volume: 100000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
+    // Other Notable Teams
+    { id: 111, name: 'Gonzaga Bulldogs', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/041E42/FFFFFF?text=GONZ', price: 56.75, volume: 220000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 112, name: 'Memphis Tigers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003087/FFFFFF?text=MEM', price: 33.20, volume: 140000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 113, name: 'Wichita State Shockers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/FFC72C/000000?text=WSU', price: 29.85, volume: 130000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 114, name: 'Dayton Flyers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/C41E3A/FFFFFF?text=DAY', price: 26.50, volume: 120000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 115, name: 'Saint Mary\'s Gaels', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/003366/FFFFFF?text=SMC', price: 23.15, volume: 110000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 116, name: 'San Diego State Aztecs', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/8B0000/FFFFFF?text=SDSU', price: 19.80, volume: 100000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 117, name: 'BYU Cougars', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/002255/FFFFFF?text=BYU', price: 16.45, volume: 90000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 118, name: 'VCU Rams', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/FFB300/000000?text=VCU', price: 13.10, volume: 80000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 119, name: 'Davidson Wildcats', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/CC0000/FFFFFF?text=DAV', price: 9.75, volume: 70000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+    { id: 120, name: 'Loyola Chicago Ramblers', leagueID: 5, photoURL: 'https://via.placeholder.com/100x100/8B0000/FFFFFF?text=LUC', price: 6.40, volume: 60000, createdAt: new Date('2020-01-01'), updatedAt: new Date() },
+
 ];
 
 // Generate colors for teams

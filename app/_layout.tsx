@@ -65,11 +65,6 @@ export default function RootLayout() {
                     <Label>Home</Label>
                 </NativeTabs.Trigger>
 
-                <NativeTabs.Trigger name="search">
-                    <Icon sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }} />
-                    <Label>Search</Label>
-                </NativeTabs.Trigger>
-
                 <NativeTabs.Trigger name="investing">
                     <Icon sf={{ default: 'briefcase', selected: 'briefcase.fill' }} />
                     <Label>Investing</Label>
@@ -79,7 +74,14 @@ export default function RootLayout() {
                     <Icon sf={{ default: 'person', selected: 'person.fill' }} />
                     <Label>Profile</Label>
                 </NativeTabs.Trigger>
+
+                <NativeTabs.Trigger role='search' name="search">
+                    <Icon sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }} />
+                    <Label>Search</Label>
+                </NativeTabs.Trigger>
+
             </NativeTabs>
+
             <StatusBar style="auto" />
         </ThemeProvider>
     );

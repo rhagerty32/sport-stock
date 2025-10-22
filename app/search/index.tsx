@@ -1,17 +1,18 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useSearch } from '@/contexts/SearchContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { leagues, stocks } from '@/lib/dummy-data';
 import { Stock } from '@/types';
 import React, { useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SearchScreen() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const { lightImpact, selection } = useHaptics();
-    const [searchQuery, setSearchQuery] = useState('');
+    const { searchQuery, setSearchQuery } = useSearch();
     const [selectedLeague, setSelectedLeague] = useState<string>('All');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -124,35 +125,6 @@ export default function SearchScreen() {
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                         Search Teams
                     </Text>
-                </View>
-
-                {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                    <GlassCard style={styles.searchCard}>
-                        <View style={styles.searchContent}>
-                            <Text style={[styles.searchIcon, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                🔍
-                            </Text>
-                            <TextInput
-                                style={[styles.searchInput, { color: isDark ? '#FFFFFF' : '#000000' }]}
-                                placeholder="Search teams, leagues..."
-                                placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                returnKeyType="google"
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => {
-                                    setSearchQuery('');
-                                    lightImpact();
-                                }}>
-                                    <Text style={[styles.clearIcon, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        ✕
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </GlassCard>
                 </View>
 
                 {/* League Filter Pills */}

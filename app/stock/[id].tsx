@@ -5,12 +5,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
 import { TimePeriod } from '@/types';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function ModalScreen() {
-    const { stockId } = useLocalSearchParams<{ stockId: string }>();
+export default function StockDetailScreen() {
+    const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -18,10 +18,10 @@ export default function ModalScreen() {
 
     const [selectedTimeframe, setSelectedTimeframe] = useState<TimePeriod>('1D');
 
-    console.log('Modal loaded with stockId:', stockId);
+    console.log('Stock detail page loaded with id:', id);
 
     // Find the stock by ID
-    const stock = stocks.find(s => s.id === parseInt(stockId || '0'));
+    const stock = stocks.find(s => s.id === parseInt(id || '0'));
     const league = leagues.find(l => l.id === stock?.leagueID);
     const stockColor = colors.find(c => c.stockID === stock?.id.toString());
     const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
@@ -32,11 +32,6 @@ export default function ModalScreen() {
                 <Text style={[styles.errorText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                     Stock not found
                 </Text>
-                <Link href="/" dismissTo style={styles.link}>
-                    <Text style={[styles.linkText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Go back
-                    </Text>
-                </Link>
             </ThemedView>
         );
     }
@@ -79,6 +74,11 @@ export default function ModalScreen() {
         lightImpact();
     };
 
+    const handleBack = () => {
+        router.back();
+        lightImpact();
+    };
+
     const handleBuy = () => {
         // TODO: Implement buy functionality
         lightImpact();
@@ -94,9 +94,9 @@ export default function ModalScreen() {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={[styles.header, { backgroundColor: primaryColor }]}>
-                    <Link href="/" dismissTo style={styles.backButton}>
+                    <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                         <Text style={styles.backButtonText}>←</Text>
-                    </Link>
+                    </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <View style={styles.stockInfo}>
                             <View style={[styles.stockLogo, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -399,13 +399,5 @@ const styles = StyleSheet.create({
         fontSize: 18,
         textAlign: 'center',
         marginTop: 100,
-    },
-    link: {
-        marginTop: 15,
-        paddingVertical: 15,
-    },
-    linkText: {
-        fontSize: 16,
-        fontWeight: '500',
     },
 });
