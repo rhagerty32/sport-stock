@@ -3,13 +3,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PriceHistory, TimePeriod } from '@/types';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
     interpolate,
     useAnimatedStyle,
     useSharedValue,
-    withTiming,
+    withTiming
 } from 'react-native-reanimated';
-import Svg, { ClipPath, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CHART_WIDTH = screenWidth;
@@ -58,6 +59,71 @@ const Chart: React.FC<ChartProps> = ({
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('1D');
     const colorScheme = useColorScheme();
     const animationProgress = useSharedValue(0);
+
+    // Interactive chart state
+    const [isScrubbing, setIsScrubbing] = useState(false);
+    const [scrubPosition, setScrubPosition] = useState<{ x: number; y: number } | null>(null);
+    const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+    const [currentDate, setCurrentDate] = useState<string | null>(null);
+
+    // Animated values for crosshairs
+    const crosshairX = useSharedValue(0);
+    const crosshairY = useSharedValue(0);
+    const tooltipOpacity = useSharedValue(0);
+
+    // Helper function to get price at x position
+    const getPriceAtX = (x: number) => {
+        if (priceData.length < 2) return null;
+
+        const stepX = CHART_WIDTH / (priceData.length - 1);
+        const dataIndex = Math.round(x / stepX);
+        const clampedIndex = Math.max(0, Math.min(dataIndex, priceData.length - 1));
+
+        return {
+            price: priceData[clampedIndex].price,
+            date: priceData[clampedIndex].timestamp,
+            index: clampedIndex
+        };
+    };
+
+    // Helper function to get y position for a given price
+    const getYForPrice = (price: number) => {
+        if (priceData.length < 2) return 0;
+
+        const minPrice = Math.min(...priceData.map(d => d.price));
+        const maxPrice = Math.max(...priceData.map(d => d.price));
+        const priceRange = maxPrice - minPrice;
+        const padding = priceRange * 0.1;
+
+        return CHART_HEIGHT - ((price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
+    };
+
+    // Handle gesture events
+    const handleGestureEvent = (event: any) => {
+        const { x, y } = event.nativeEvent;
+        crosshairX.value = x;
+        crosshairY.value = y;
+
+        const priceData = getPriceAtX(x);
+        if (priceData) {
+            setCurrentPrice(priceData.price);
+            setCurrentDate(priceData.date.toLocaleDateString());
+            setScrubPosition({ x, y });
+        }
+    };
+
+    const handleGestureBegin = () => {
+        setIsScrubbing(true);
+        tooltipOpacity.value = withTiming(1, { duration: 200 });
+    };
+
+    const handleGestureEnd = () => {
+        setIsScrubbing(false);
+        tooltipOpacity.value = withTiming(0, { duration: 200 });
+        setScrubPosition(null);
+        setCurrentPrice(null);
+        setCurrentDate(null);
+    };
 
     // Get data points based on time period
     const getDataPoints = (period: TimePeriod) => {
@@ -153,53 +219,138 @@ const Chart: React.FC<ChartProps> = ({
         };
     });
 
+    const tooltipStyle = useAnimatedStyle(() => ({
+        position: 'absolute',
+        left: Math.max(10, Math.min(crosshairX.value - 40, CHART_WIDTH - 80)),
+        top: Math.max(10, crosshairY.value - 30),
+        opacity: tooltipOpacity.value,
+    }));
+
     return (
         <View style={{ width: '100%' }}>
             {/* Chart */}
             <View style={styles.chartContainer}>
-                <View style={styles.chart}>
-                    <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
-                        <Defs>
-                            <LinearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <Stop offset="0%" stopColor={color} stopOpacity="0.3" />
-                                <Stop offset="100%" stopColor={color} stopOpacity="0.05" />
-                            </LinearGradient>
-                            <ClipPath id="chartClip">
-                                <Rect
-                                    x="0"
-                                    y="0"
-                                    width={CHART_WIDTH}
-                                    height={CHART_HEIGHT}
+                <GestureHandlerRootView style={styles.chart}>
+                    <PanGestureHandler
+                        onGestureEvent={handleGestureEvent}
+                        onBegan={handleGestureBegin}
+                        onEnded={handleGestureEnd}
+                        onCancelled={handleGestureEnd}
+                    >
+                        <Animated.View style={styles.chart}>
+                            <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+                                <Defs>
+                                    <LinearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <Stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                                        <Stop offset="100%" stopColor={color} stopOpacity="0.05" />
+                                    </LinearGradient>
+                                    <ClipPath id="chartClip">
+                                        <Rect
+                                            x="0"
+                                            y="0"
+                                            width={CHART_WIDTH}
+                                            height={CHART_HEIGHT}
+                                        />
+                                    </ClipPath>
+                                </Defs>
+
+                                {/* Area under the line */}
+                                <Path
+                                    d={createAreaPath(priceData)}
+                                    fill="url(#gradient)"
                                 />
-                            </ClipPath>
-                        </Defs>
 
-                        {/* Area under the line */}
-                        <Path
-                            d={createAreaPath(priceData)}
-                            fill="url(#gradient)"
-                        />
+                                {/* Line */}
+                                <Path
+                                    d={createPath(priceData)}
+                                    stroke={color}
+                                    strokeWidth="2"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
 
-                        {/* Line */}
-                        <Path
-                            d={createPath(priceData)}
-                            stroke={color}
-                            strokeWidth="2"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    </Svg>
+                                {/* Crosshairs */}
+                                {isScrubbing && currentPrice && (
+                                    <>
+                                        {/* Vertical crosshair */}
+                                        <Line
+                                            x1={crosshairX.value}
+                                            y1={0}
+                                            x2={crosshairX.value}
+                                            y2={CHART_HEIGHT}
+                                            stroke={color}
+                                            strokeWidth={1}
+                                            strokeOpacity={0.6}
+                                        />
+                                        {/* Price point indicator */}
+                                        {currentPrice && (
+                                            <Circle
+                                                cx={crosshairX.value}
+                                                cy={getYForPrice(currentPrice)}
+                                                r={4}
+                                                fill={color}
+                                                stroke={backgroundColor || '#FFFFFF'}
+                                                strokeWidth={2}
+                                            />
+                                        )}
+                                    </>
+                                )}
+                            </Svg>
 
-                    {/* Animated mask that reveals the chart from left to right */}
-                    <Animated.View
-                        style={[
-                            styles.chartMask,
-                            { backgroundColor: backgroundColor || Colors[colorScheme || 'light'].background },
-                            animatedClipStyle
-                        ]}
-                    />
-                </View>
+                            {/* Price tooltip */}
+                            {isScrubbing && currentPrice && (
+                                <Animated.View style={[styles.tooltip, tooltipStyle]}>
+                                    <View
+                                        style={[
+                                            styles.tooltipContent,
+                                            {
+                                                backgroundColor:
+                                                    backgroundColor ||
+                                                    (colorScheme === 'dark'
+                                                        ? '#23272e'
+                                                        : '#FFFFFF'),
+                                                borderColor:
+                                                    colorScheme === 'dark'
+                                                        ? '#374151'
+                                                        : '#E5E7EB',
+                                                borderWidth: 1,
+                                            },
+                                        ]}
+                                    >
+                                        <Text style={[styles.tooltipPrice, { color: colorScheme === 'dark' ? '#fff' : color }]}>
+                                            ${currentPrice.toFixed(2)}
+                                        </Text>
+                                        {currentDate && (
+                                            <Text
+                                                style={[
+                                                    styles.tooltipDate,
+                                                    {
+                                                        color:
+                                                            colorScheme === 'dark'
+                                                                ? '#9CA3AF'
+                                                                : Colors.light.text,
+                                                    },
+                                                ]}
+                                            >
+                                                {currentDate}
+                                            </Text>
+                                        )}
+                                    </View>
+                                </Animated.View>
+                            )}
+
+                            {/* Animated mask that reveals the chart from left to right */}
+                            <Animated.View
+                                style={[
+                                    styles.chartMask,
+                                    { backgroundColor: backgroundColor || Colors[colorScheme || 'light'].background },
+                                    animatedClipStyle
+                                ]}
+                            />
+                        </Animated.View>
+                    </PanGestureHandler>
+                </GestureHandlerRootView>
             </View>
 
             {/* Time Period Selector */}
@@ -274,6 +425,32 @@ const styles = StyleSheet.create({
     },
     activeTimePeriodText: {
         color: 'white',
+    },
+    tooltip: {
+        position: 'absolute',
+        zIndex: 1000,
+        transform: [{ translateY: -50 }],
+    },
+    tooltipContent: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    tooltipPrice: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    tooltipDate: {
+        fontSize: 12,
+        marginTop: 2,
     },
 });
 
