@@ -119,13 +119,6 @@ export default function SearchScreen() {
     return (
         <ThemedView style={styles.container}>
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Search Teams
-                    </Text>
-                </View>
-
                 {/* League Filter Pills */}
                 <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
