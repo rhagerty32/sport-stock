@@ -1,7 +1,7 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useSearch } from '@/contexts/SearchContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { leagues, stocks } from '@/lib/dummy-data';
 import { Stock } from '@/types';
@@ -9,8 +9,7 @@ import React, { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SearchScreen() {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useTheme();
     const { lightImpact, selection } = useHaptics();
     const { searchQuery, setSearchQuery } = useSearch();
     const [selectedLeague, setSelectedLeague] = useState<string>('All');

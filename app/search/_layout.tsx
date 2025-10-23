@@ -11,7 +11,7 @@ function SearchLayoutContent() {
                 options={{
                     title: 'Search',
                     // Show the header to display the search bar
-                    headerShown: false,
+                    headerShown: true,
                     headerSearchBarOptions: {
                         placement: 'automatic',
                         placeholder: 'Search teams, leagues...',

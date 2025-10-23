@@ -1,7 +1,7 @@
 import Chart from '@/components/chart';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
@@ -10,8 +10,7 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const router = useRouter();
     const [activePage, setActivePage] = useState(0);

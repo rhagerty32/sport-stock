@@ -8,17 +8,21 @@ import { DynamicColorIOS, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import StockBottomSheet from './StockBottomSheet';
+import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
+import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
+import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
+import StockBottomSheet from './bottomSheets/StockBottomSheet';
 
 export default function RootLayout() {
-    const colorScheme = useColorScheme();
+    const { theme, isDark } = useTheme();
     const stockBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, setActiveStockId } = useStockStore();
-
-    console.log('activeStockId', activeStockId);
+    const buySellBottomSheetRef = useRef<BottomSheetModal>(null);
+    const profileBottomSheetRef = useRef<BottomSheetModal>(null);
+    const lightDarkBottomSheetRef = useRef<BottomSheetModal>(null);
+    const { activeStockId, profileBottomSheetOpen, lightDarkBottomSheetOpen } = useStockStore();
 
     useEffect(() => {
         if (activeStockId) {
@@ -27,6 +31,26 @@ export default function RootLayout() {
             stockBottomSheetRef.current?.dismiss();
         }
     }, [activeStockId]);
+
+    console.log(profileBottomSheetOpen)
+
+    useEffect(() => {
+        if (profileBottomSheetOpen) {
+            profileBottomSheetRef.current?.present();
+            lightDarkBottomSheetRef.current?.dismiss();
+        } else {
+            profileBottomSheetRef.current?.dismiss();
+        }
+    }, [profileBottomSheetOpen]);
+
+    useEffect(() => {
+        if (lightDarkBottomSheetOpen) {
+            lightDarkBottomSheetRef.current?.present();
+            profileBottomSheetRef.current?.dismiss();
+        } else {
+            lightDarkBottomSheetRef.current?.dismiss();
+        }
+    }, [lightDarkBottomSheetOpen]);
 
     useEffect(() => {
         // Load Ionicons font
@@ -69,7 +93,7 @@ export default function RootLayout() {
     }, []);
 
     return (
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <BottomSheetModalProvider>
                     <NativeTabs
@@ -99,7 +123,11 @@ export default function RootLayout() {
                         </NativeTabs.Trigger>
                     </NativeTabs>
 
+                    {/* Bottom Sheets */}
                     <StockBottomSheet stockBottomSheetRef={stockBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <ProfileBottomSheet profileBottomSheetRef={profileBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
 
                     <StatusBar style="auto" />
                 </BottomSheetModalProvider>

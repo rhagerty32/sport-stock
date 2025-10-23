@@ -1,4 +1,4 @@
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
 
@@ -19,8 +19,7 @@ export function GlassCard({
     material = 'thin',
     fullWidth = false,
 }: GlassCardProps) {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useTheme();
 
     const getMaterialStyle = () => {
         const baseStyle = {

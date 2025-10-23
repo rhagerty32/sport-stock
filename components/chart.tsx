@@ -1,5 +1,5 @@
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { PriceHistory, TimePeriod } from '@/types';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -57,7 +57,7 @@ const Chart: React.FC<ChartProps> = ({
 }) => {
     const [priceData, setPriceData] = useState<PriceHistory[]>([]);
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('1D');
-    const colorScheme = useColorScheme();
+    const { isDark } = useTheme();
     const animationProgress = useSharedValue(0);
 
     // Interactive chart state
@@ -307,18 +307,18 @@ const Chart: React.FC<ChartProps> = ({
                                             {
                                                 backgroundColor:
                                                     backgroundColor ||
-                                                    (colorScheme === 'dark'
+                                                    (isDark
                                                         ? '#23272e'
                                                         : '#FFFFFF'),
                                                 borderColor:
-                                                    colorScheme === 'dark'
+                                                    isDark
                                                         ? '#374151'
                                                         : '#E5E7EB',
                                                 borderWidth: 1,
                                             },
                                         ]}
                                     >
-                                        <Text style={[styles.tooltipPrice, { color: colorScheme === 'dark' ? '#fff' : color }]}>
+                                        <Text style={[styles.tooltipPrice, { color: isDark ? '#fff' : color }]}>
                                             ${currentPrice.toFixed(2)}
                                         </Text>
                                         {currentDate && (
@@ -327,7 +327,7 @@ const Chart: React.FC<ChartProps> = ({
                                                     styles.tooltipDate,
                                                     {
                                                         color:
-                                                            colorScheme === 'dark'
+                                                            isDark
                                                                 ? '#9CA3AF'
                                                                 : Colors.light.text,
                                                     },
@@ -344,7 +344,7 @@ const Chart: React.FC<ChartProps> = ({
                             <Animated.View
                                 style={[
                                     styles.chartMask,
-                                    { backgroundColor: backgroundColor || Colors[colorScheme || 'light'].background },
+                                    { backgroundColor: backgroundColor || Colors[isDark ? 'dark' : 'light'].background },
                                     animatedClipStyle
                                 ]}
                             />

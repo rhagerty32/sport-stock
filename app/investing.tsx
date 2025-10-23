@@ -3,6 +3,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, positions } from '@/lib/dummy-data';
+import { useStockStore } from '@/stores/stockStore';
 import { Position } from '@/types';
 import React, { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -12,6 +13,7 @@ export default function InvestingScreen() {
     const isDark = colorScheme === 'dark';
     const { selection } = useHaptics();
     const [sortBy, setSortBy] = useState<'value' | 'gainLoss' | 'alphabetical'>('value');
+    const { setActiveStockId } = useStockStore();
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -40,46 +42,48 @@ export default function InvestingScreen() {
 
     const renderPositionCard = ({ item: position }: { item: Position }) => {
         return (
-            <GlassCard style={styles.positionCard}>
-                <View style={styles.positionContent}>
-                    <View style={styles.positionHeader}>
-                        <View style={[styles.teamLogo, { backgroundColor: '#E5E7EB' }]}>
-                            <Text style={styles.logoText}>
-                                {position.stock.name.split(' ').map(word => word[0]).join('')}
-                            </Text>
-                        </View>
-                        <View style={styles.positionInfo}>
-                            <Text style={[styles.positionName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                {position.stock.name}
-                            </Text>
-                            <View style={styles.positionDetails}>
-                                <Text style={[styles.positionShares, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {position.shares.toString()} shares
-                                </Text>
-                                <Text style={[styles.positionSeparator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    •
-                                </Text>
-                                <Text style={[styles.positionAvgCost, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {formatCurrency(position.avgCostPerShare)} avg
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => setActiveStockId(position.stock.id)}>
+                <GlassCard style={styles.positionCard}>
+                    <View style={styles.positionContent}>
+                        <View style={styles.positionHeader}>
+                            <View style={[styles.teamLogo, { backgroundColor: '#E5E7EB' }]}>
+                                <Text style={styles.logoText}>
+                                    {position.stock.name.split(' ').map(word => word[0]).join('')}
                                 </Text>
                             </View>
-                            <View style={styles.positionValue}>
-                                <Text style={[styles.positionCurrentValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {formatCurrency(position.currentValue)}
+                            <View style={styles.positionInfo}>
+                                <Text style={[styles.positionName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    {position.stock.name}
                                 </Text>
-                                <Text
-                                    style={[
-                                        styles.positionGainLoss,
-                                        { color: position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626' }
-                                    ]}
-                                >
-                                    {formatPercentage(position.gainLossPercentage)}
-                                </Text>
+                                <View style={styles.positionDetails}>
+                                    <Text style={[styles.positionShares, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        {position.shares.toString()} shares
+                                    </Text>
+                                    <Text style={[styles.positionSeparator, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        •
+                                    </Text>
+                                    <Text style={[styles.positionAvgCost, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        {formatCurrency(position.avgCostPerShare)} avg
+                                    </Text>
+                                </View>
+                                <View style={styles.positionValue}>
+                                    <Text style={[styles.positionCurrentValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        {formatCurrency(position.currentValue)}
+                                    </Text>
+                                    <Text
+                                        style={[
+                                            styles.positionGainLoss,
+                                            { color: position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626' }
+                                        ]}
+                                    >
+                                        {formatPercentage(position.gainLossPercentage)}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
-            </GlassCard>
+                </GlassCard>
+            </TouchableOpacity>
         );
     };
 
@@ -147,6 +151,25 @@ export default function InvestingScreen() {
                     </GlassCard>
                 </View>
 
+                {/* Performance Chart Placeholder */}
+                <View style={styles.chartContainer}>
+                    <GlassCard style={styles.chartCard}>
+                        <View style={styles.chartContent}>
+                            <Text style={[styles.chartTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                Portfolio Performance
+                            </Text>
+                            <View style={[styles.chartPlaceholder, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                                <Text style={[styles.chartPlaceholderText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    📈 Chart Coming Soon
+                                </Text>
+                            </View>
+                            <Text style={[styles.chartDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                Track your portfolio performance over time
+                            </Text>
+                        </View>
+                    </GlassCard>
+                </View>
+
                 {/* Sort Options */}
                 <View style={styles.sortContainer}>
                     <Text style={[styles.sortLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
@@ -193,25 +216,6 @@ export default function InvestingScreen() {
                         scrollEnabled={false}
                         contentContainerStyle={styles.positionsList}
                     />
-                </View>
-
-                {/* Performance Chart Placeholder */}
-                <View style={styles.chartContainer}>
-                    <GlassCard style={styles.chartCard}>
-                        <View style={styles.chartContent}>
-                            <Text style={[styles.chartTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                Portfolio Performance
-                            </Text>
-                            <View style={[styles.chartPlaceholder, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
-                                <Text style={[styles.chartPlaceholderText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    📈 Chart Coming Soon
-                                </Text>
-                            </View>
-                            <Text style={[styles.chartDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                Track your portfolio performance over time
-                            </Text>
-                        </View>
-                    </GlassCard>
                 </View>
 
                 {/* Bottom Spacing */}
@@ -309,16 +313,18 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     positionsContainer: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 0,
         marginBottom: 24,
     },
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 16,
+        paddingHorizontal: 20,
     },
     positionsList: {
         paddingBottom: 20,
+        paddingHorizontal: 20,
     },
     positionCard: {
         marginBottom: 12,
@@ -408,6 +414,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     bottomSpacing: {
-        height: 100,
+        height: 50,
     },
 });

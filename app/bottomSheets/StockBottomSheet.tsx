@@ -1,15 +1,15 @@
 import Chart from '@/components/chart';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { brightenColor, isDarkColor } from '@/components/utils';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
-import { TimePeriod } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import BuySellBottomSheet from './BuySellBottomSheet';
 
 type StockBottomSheetProps = {
     stockBottomSheetRef: React.RefObject<BottomSheetModal>;
@@ -17,6 +17,16 @@ type StockBottomSheetProps = {
 
 export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomSheetProps) {
     const { activeStockId, setActiveStockId } = useStockStore();
+    const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
+    const { buySellBottomSheetOpen, setBuySellBottomSheetOpen } = useStockStore();
+
+    useEffect(() => {
+        if (buySellBottomSheetOpen) {
+            buySellBottomSheetRef.current?.present();
+        } else {
+            buySellBottomSheetRef.current?.dismiss();
+        }
+    }, [buySellBottomSheetOpen]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -31,12 +41,8 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         []
     );
 
-    const router = useRouter();
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
-
-    const [selectedTimeframe, setSelectedTimeframe] = useState<TimePeriod>('1D');
 
     // Find the stock by ID from the store
     const stock = stocks.find(s => s.id === activeStockId);
@@ -82,13 +88,8 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const brightenedPrimaryColor = brightenColor(primaryColor);
 
     const handleBuy = () => {
-        // TODO: Implement buy functionality
         lightImpact();
-    };
-
-    const handleFollow = () => {
-        // TODO: Implement follow functionality
-        lightImpact();
+        setBuySellBottomSheetOpen(true);
     };
 
     return (
@@ -100,8 +101,8 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
             backdropComponent={renderBackdrop}
             handleStyle={{ display: 'none' }}
             snapPoints={['92%']}
-            style={{ borderRadius: 20 }}
-            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            style={{ borderRadius: 25 }}
+            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
         >
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
@@ -109,7 +110,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                     <View style={styles.headerContent}>
                         <View style={styles.stockInfo}>
                             <View style={[styles.stockLogo, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}>
-                                <Text style={[styles.stockLogoText, { color: primaryColor }]}>
+                                <Text style={[styles.stockLogoText, { color: '#fff' }]}>
                                     {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                 </Text>
                             </View>
@@ -133,7 +134,30 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
                 {/* Chart */}
                 <View style={styles.chartContainer}>
-                    <Chart stockId={stock.id} color={isDarkBackground ? brightenedPrimaryColor : primaryColor} backgroundColor={isDark ? '#1C1C1E' : '#FFFFFF'} />
+                    <Chart stockId={stock.id} color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor} backgroundColor={isDark ? '#1C1C1E' : '#FFFFFF'} />
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                        onPress={handleBuy}
+                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                    >
+                        <Ionicons name="cart-outline" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            Buy/Sell
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => lightImpact()}
+                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                    >
+                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            Follow
+                        </Text>
+                        <Ionicons name="heart-outline" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Stock Stats */}
@@ -201,30 +225,10 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                     </GlassCard>
                 </View>
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        onPress={handleBuy}
-                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
-                    >
-                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Buy/Short
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={handleFollow}
-                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
-                    >
-                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Follow
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
             </BottomSheetScrollView>
+            <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef} />
         </BottomSheetModal>
     );
 }
@@ -344,7 +348,7 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     statItem: {
-        width: '48%',
+        width: '100%',
         marginBottom: 16,
     },
     statLabel: {
@@ -364,9 +368,12 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 10,
         paddingVertical: 16,
         borderRadius: 12,
-        alignItems: 'center',
     },
     buyButton: {
         // Styling handled by backgroundColor

@@ -1,16 +1,17 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, positions, user } from '@/lib/dummy-data';
+import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useTheme();
     const { lightImpact, mediumImpact } = useHaptics();
+    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen } = useStockStore();
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -25,23 +26,16 @@ export default function ProfileScreen() {
     };
 
     const accountActions = [
-        { title: 'Deposit', icon: 'cash-outline', color: '#217C0A' },
         { title: 'Withdraw', icon: 'remove-circle-outline', color: '#dc2626' },
-        { title: 'Transfer', icon: 'arrow-redo-outline', color: '#6B7280' },
+        { title: 'Deposit', icon: 'cash-outline', color: '#217C0A' },
     ];
 
     const settingsSections = [
         {
             title: 'Account',
             items: [
-                { title: 'Personal Information', iconName: 'person-outline' }
-            ]
-        },
-        {
-            title: 'Appearance',
-            items: [
+                { title: 'Personal Information', iconName: 'person-outline' },
                 { title: 'Light/Dark Mode', iconName: 'moon-outline' },
-                { title: 'Haptics', iconName: 'phone-portrait-outline' },
             ]
         },
         {
@@ -63,16 +57,6 @@ export default function ProfileScreen() {
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                         Profile
                     </Text>
-                    <TouchableOpacity
-                        style={styles.settingsButton}
-                        onPress={() => lightImpact()}
-                    >
-                        <Ionicons
-                            name="settings-outline"
-                            size={24}
-                            color={isDark ? '#9CA3AF' : '#6B7280'}
-                        />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Profile Header */}
@@ -209,37 +193,42 @@ export default function ProfileScreen() {
                             <Text style={[styles.settingsSectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                 {section.title}
                             </Text>
-                            <GlassCard style={styles.settingsCard}>
-                                <View style={styles.settingsContent}>
-                                    {section.items.map((item, itemIndex) => (
-                                        <TouchableOpacity
-                                            key={itemIndex}
-                                            style={[
-                                                styles.settingsItem,
-                                                itemIndex < section.items.length - 1 && styles.settingsItemBorder
-                                            ]}
-                                            onPress={() => lightImpact()}
-                                        >
-                                            <View style={styles.settingsItemContent}>
-                                                {/* Icon rendered directly */}
-                                                <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                                                    <Ionicons
-                                                        name={item.iconName as any}
-                                                        size={24}
-                                                        color={isDark ? "#FFFFFF" : "#000000"}
-                                                    />
-                                                </View>
-                                                <Text style={[styles.settingsItemTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                    {item.title}
-                                                </Text>
-                                                <View style={{ flex: 1 }} />
-                                                <Text style={[styles.settingsItemChevron, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                                    ›
-                                                </Text>
+                            <GlassCard style={styles.settingsCard} padding={8}>
+                                {section.items.map((item, itemIndex) => (
+                                    <TouchableOpacity
+                                        key={itemIndex}
+                                        style={[
+                                            styles.settingsItem,
+                                            itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#E5E7EB' } : {},
+                                        ]}
+                                        onPress={() => {
+                                            lightImpact()
+                                            if (item.title === 'Light/Dark Mode') {
+                                                setLightDarkBottomSheetOpen(true);
+                                            } else if (item.title === 'Personal Information') {
+                                                setProfileBottomSheetOpen(true);
+                                            }
+                                        }}
+                                    >
+                                        <View style={styles.settingsItemContent}>
+                                            {/* Icon rendered directly */}
+                                            <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                                <Ionicons
+                                                    name={item.iconName as any}
+                                                    size={24}
+                                                    color={isDark ? "#FFFFFF" : "#000000"}
+                                                />
                                             </View>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
+                                            <Text style={[styles.settingsItemTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                {item.title}
+                                            </Text>
+                                            <View style={{ flex: 1 }} />
+                                            <Text style={[styles.settingsItemChevron, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                                ›
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
                             </GlassCard>
                         </View>
                     ))}
@@ -446,12 +435,9 @@ const styles = StyleSheet.create({
         gap: 0,
     },
     settingsItem: {
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-    },
-    settingsItemBorder: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        paddingVertical: 8,
+        paddingHorizontal: 0,
+        marginHorizontal: 8,
     },
     settingsItemContent: {
         flexDirection: 'row',
