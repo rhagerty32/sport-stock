@@ -25,10 +25,9 @@ export default function ProfileScreen() {
     };
 
     const accountActions = [
-        { title: 'Deposit', icon: '💰', color: '#217C0A' },
-        { title: 'Withdraw', icon: '💸', color: '#dc2626' },
-        { title: 'Transfer', icon: '🔄', color: '#6B7280' },
-        { title: 'Statements', icon: '📄', color: '#6B7280' },
+        { title: 'Deposit', icon: 'cash-outline', color: '#217C0A' },
+        { title: 'Withdraw', icon: 'remove-circle-outline', color: '#dc2626' },
+        { title: 'Transfer', icon: 'arrow-redo-outline', color: '#6B7280' },
     ];
 
     const settingsSections = [
@@ -68,9 +67,11 @@ export default function ProfileScreen() {
                         style={styles.settingsButton}
                         onPress={() => lightImpact()}
                     >
-                        <Text style={[styles.settingsIcon, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            ⚙️
-                        </Text>
+                        <Ionicons
+                            name="settings-outline"
+                            size={24}
+                            color={isDark ? '#9CA3AF' : '#6B7280'}
+                        />
                     </TouchableOpacity>
                 </View>
 
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
                             >
                                 <GlassCard style={styles.actionCard}>
                                     <View style={styles.actionContent}>
-                                        <Text style={styles.actionIcon}>{action.icon}</Text>
+                                        <Ionicons name={action.icon as any} size={24} color={action.color} />
                                         <Text style={[styles.actionTitle, { color: action.color }]}>
                                             {action.title}
                                         </Text>
@@ -406,9 +407,11 @@ const styles = StyleSheet.create({
     actionsGrid: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        gap: 12,
     },
     actionButton: {
-        width: '23%',
+        flex: 1,
+        width: '100%',
     },
     actionCard: {
         minHeight: 80,

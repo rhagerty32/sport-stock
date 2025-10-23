@@ -10,6 +10,7 @@ function SearchLayoutContent() {
                 name="index"
                 options={{
                     title: 'Search',
+                    // Show the header to display the search bar
                     headerShown: false,
                     headerSearchBarOptions: {
                         placement: 'automatic',

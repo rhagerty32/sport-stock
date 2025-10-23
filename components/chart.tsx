@@ -1,3 +1,5 @@
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PriceHistory, TimePeriod } from '@/types';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,6 +18,7 @@ const CHART_HEIGHT = 200;
 interface ChartProps {
     stockId: number;
     color?: string;
+    backgroundColor?: string;
 }
 
 // Generate price history data (simplified version of the one in dummy-data)
@@ -48,11 +51,12 @@ const generatePriceHistory = (stockId: number, days: number = 365): PriceHistory
 
 const Chart: React.FC<ChartProps> = ({
     stockId,
-    color = '#00C853'
+    color = '#00C853',
+    backgroundColor = null
 }) => {
     const [priceData, setPriceData] = useState<PriceHistory[]>([]);
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('1D');
-
+    const colorScheme = useColorScheme();
     const animationProgress = useSharedValue(0);
 
     // Get data points based on time period
@@ -191,6 +195,7 @@ const Chart: React.FC<ChartProps> = ({
                     <Animated.View
                         style={[
                             styles.chartMask,
+                            { backgroundColor: backgroundColor || Colors[colorScheme || 'light'].background },
                             animatedClipStyle
                         ]}
                     />
@@ -248,7 +253,6 @@ const styles = StyleSheet.create({
         top: 0,
         right: 0,
         height: CHART_HEIGHT,
-        backgroundColor: 'white',
     },
     timePeriodContainer: {
         flexDirection: 'row',

@@ -1,16 +1,36 @@
 import Chart from '@/components/chart';
-import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { brightenColor, isDarkColor } from '@/components/utils';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
+import { useStockStore } from '@/stores/stockStore';
 import { TimePeriod } from '@/types';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function StockDetailScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+type StockBottomSheetProps = {
+    stockBottomSheetRef: React.RefObject<BottomSheetModal>;
+};
+
+export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomSheetProps) {
+    const { activeStockId, setActiveStockId } = useStockStore();
+
+    const renderBackdrop = useCallback(
+        (props: any) => (
+            <BottomSheetBackdrop
+                {...props}
+                appearsOnIndex={0}
+                disappearsOnIndex={-1}
+                enableTouchThrough={false}
+                opacity={0.4}
+            />
+        ),
+        []
+    );
+
     const router = useRouter();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -18,20 +38,15 @@ export default function StockDetailScreen() {
 
     const [selectedTimeframe, setSelectedTimeframe] = useState<TimePeriod>('1D');
 
-    // Find the stock by ID
-    const stock = stocks.find(s => s.id === parseInt(id || '0'));
+    // Find the stock by ID from the store
+    const stock = stocks.find(s => s.id === activeStockId);
     const league = leagues.find(l => l.id === stock?.leagueID);
     const stockColor = colors.find(c => c.stockID === stock?.id.toString());
     const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
 
-    if (!stock) {
-        return (
-            <ThemedView style={styles.container}>
-                <Text style={[styles.errorText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                    Stock not found
-                </Text>
-            </ThemedView>
-        );
+    // Don't render anything if no stock is selected
+    if (!activeStockId || !stock) {
+        return null;
     }
 
     const formatCurrency = (amount: number) => {
@@ -63,19 +78,8 @@ export default function StockDetailScreen() {
 
     // Get team colors
     const primaryColor = stockColor?.hex || '#3B82F6';
-    const secondaryColor = isDark ? '#1F2937' : '#F9FAFB';
-
-    const timeframes: TimePeriod[] = ['1D', '1W', '1M', '1Y', 'ALL'];
-
-    const handleTimeframeChange = (timeframe: TimePeriod) => {
-        setSelectedTimeframe(timeframe);
-        lightImpact();
-    };
-
-    const handleBack = () => {
-        router.back();
-        lightImpact();
-    };
+    const isDarkBackground = isDarkColor(primaryColor);
+    const brightenedPrimaryColor = brightenColor(primaryColor);
 
     const handleBuy = () => {
         // TODO: Implement buy functionality
@@ -88,13 +92,20 @@ export default function StockDetailScreen() {
     };
 
     return (
-        <ThemedView style={[styles.container, { backgroundColor: secondaryColor }]}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <BottomSheetModal
+            ref={stockBottomSheetRef}
+            onDismiss={() => setActiveStockId(null)}
+            enableDynamicSizing={true}
+            enablePanDownToClose={true}
+            backdropComponent={renderBackdrop}
+            handleStyle={{ display: 'none' }}
+            snapPoints={['92%']}
+            style={{ borderRadius: 20 }}
+            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+        >
+            <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={[styles.header, { backgroundColor: primaryColor }]}>
-                    <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>←</Text>
-                    </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <View style={styles.stockInfo}>
                             <View style={[styles.stockLogo, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -107,8 +118,8 @@ export default function StockDetailScreen() {
                                 <Text style={styles.leagueName}>{league?.name}</Text>
                             </View>
                         </View>
-                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#374151' : '#FFFFFF' }]}>
-                            <Text style={styles.currentPrice}>{formatCurrency(currentPrice)}</Text>
+                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+                            <Text style={[styles.currentPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>{formatCurrency(currentPrice)}</Text>
                         </View>
                     </View>
                 </View>
@@ -122,28 +133,7 @@ export default function StockDetailScreen() {
 
                 {/* Chart */}
                 <View style={styles.chartContainer}>
-                    <Chart stockId={stock.id} color={primaryColor} />
-                </View>
-
-                {/* Timeframe Selector */}
-                <View style={styles.timeframeContainer}>
-                    {timeframes.map((timeframe) => (
-                        <TouchableOpacity
-                            key={timeframe}
-                            onPress={() => handleTimeframeChange(timeframe)}
-                            style={[
-                                styles.timeframeButton,
-                                selectedTimeframe === timeframe && { backgroundColor: isDark ? '#374151' : '#E5E7EB' }
-                            ]}
-                        >
-                            <Text style={[
-                                styles.timeframeText,
-                                { color: isDark ? '#FFFFFF' : '#000000' }
-                            ]}>
-                                {timeframe}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    <Chart stockId={stock.id} color={isDarkBackground ? brightenedPrimaryColor : primaryColor} backgroundColor={isDark ? '#1C1C1E' : '#FFFFFF'} />
                 </View>
 
                 {/* Stock Stats */}
@@ -234,8 +224,8 @@ export default function StockDetailScreen() {
 
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
-            </ScrollView>
-        </ThemedView>
+            </BottomSheetScrollView>
+        </BottomSheetModal>
     );
 }
 
@@ -245,11 +235,10 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+        borderRadius: 25,
     },
     header: {
-        paddingTop: 60,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
+        padding: 20
     },
     backButton: {
         width: 40,
@@ -320,7 +309,6 @@ const styles = StyleSheet.create({
     chartContainer: {
         marginHorizontal: 20,
         marginBottom: 20,
-        height: 200,
     },
     timeframeContainer: {
         flexDirection: 'row',
@@ -391,7 +379,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     bottomSpacing: {
-        height: 100,
+        height: 50,
     },
     errorText: {
         fontSize: 18,

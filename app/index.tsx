@@ -4,6 +4,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio } from '@/lib/dummy-data';
+import { useStockStore } from '@/stores/stockStore';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -15,6 +16,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const [activePage, setActivePage] = useState(0);
     const pageCount = Math.ceil(portfolio.positions.length / 3);
+    const { setActiveStockId } = useStockStore();
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -33,24 +35,8 @@ export default function HomeScreen() {
     };
 
     const handleStockPress = (stockId: number) => {
-        console.log('Stock pressed:', stockId);
-        console.log('Navigating to modal with stockId:', stockId);
-        try {
-            // Try multiple navigation methods
-            console.log('Attempting router.push...');
-            router.push(`/modal?stockId=${stockId}`);
-            console.log('router.push completed');
-        } catch (error) {
-            console.error('Navigation error:', error);
-            try {
-                console.log('Attempting router.navigate...');
-                router.navigate(`/modal?stockId=${stockId}`);
-                console.log('router.navigate completed');
-            } catch (navigateError) {
-                console.error('Navigate error:', navigateError);
-            }
-        }
         lightImpact();
+        setActiveStockId(stockId);
     };
 
     return (
@@ -74,7 +60,7 @@ export default function HomeScreen() {
                         style={styles.portfolioCard}
                         standard={false}
                         padding={0}
-                        border={false}
+                        fullWidth={true}
                     >
                         <View style={styles.portfolioContent}>
                             <Text style={[styles.portfolioTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
