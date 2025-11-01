@@ -1,10 +1,8 @@
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useHaptics } from '@/hooks/useHaptics';
 import { PriceHistory, TimePeriod } from '@/types';
-import { Host, Picker } from '@expo/ui/swift-ui';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
     interpolate,
@@ -102,13 +100,7 @@ const Chart: React.FC<ChartProps> = ({
     const [priceData, setPriceData] = useState<PriceHistory[]>([]);
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('1H');
     const { isDark } = useTheme();
-    const { selection } = useHaptics();
     const animationProgress = useSharedValue(0);
-
-    const timePeriodOptions = ['1H', '1D', '1M', '1Y', '5Y', 'ALL'];
-    const timePeriodKeys: TimePeriod[] = ['1H', '1D', '1M', '1Y', '5Y', 'ALL'];
-    const initialTimeIndex = timePeriodKeys.indexOf(timePeriod);
-    const [selectedTimeIndex, setSelectedTimeIndex] = useState<number>(initialTimeIndex >= 0 ? initialTimeIndex : 0);
 
     // Interactive chart state
     const [isScrubbing, setIsScrubbing] = useState(false);
@@ -388,14 +380,6 @@ const Chart: React.FC<ChartProps> = ({
                 return generatePriceHistory(stockId, 1, 'hourly').slice(-24);
         }
     };
-
-    // Sync selectedTimeIndex when timePeriod changes externally
-    useEffect(() => {
-        const newIndex = timePeriodKeys.indexOf(timePeriod);
-        if (newIndex >= 0 && newIndex !== selectedTimeIndex) {
-            setSelectedTimeIndex(newIndex);
-        }
-    }, [timePeriod]);
 
     useEffect(() => {
         const data = getDataPoints(timePeriod);
@@ -893,18 +877,29 @@ const Chart: React.FC<ChartProps> = ({
 
             {/* Time Period Selector */}
             <View style={styles.timePeriodContainer}>
-                <Host style={{ width: '100%', minHeight: 20 }}>
-                    <Picker
-                        options={timePeriodOptions}
-                        selectedIndex={selectedTimeIndex}
-                        onOptionSelected={({ nativeEvent: { index } }) => {
-                            setSelectedTimeIndex(index);
-                            setTimePeriod(timePeriodKeys[index]);
-                            selection();
-                        }}
-                        variant="segmented"
-                    />
-                </Host>
+                {['1H', '1D', '1M', '1Y', '5Y', 'ALL'].map((period) => {
+                    const isActive = timePeriod === period;
+                    return (
+                        <TouchableOpacity
+                            key={period}
+                            style={[
+                                styles.timePeriodButton,
+                                isActive && styles.activeTimePeriod,
+                                isActive && { backgroundColor: color }
+                            ]}
+                            onPress={() => setTimePeriod(period as TimePeriod)}
+                        >
+                            <Text style={[
+                                styles.timePeriodText,
+                                isActive && styles.activeTimePeriodText,
+                                isActive && { color: backgroundColor || '#FFFFFF' },
+                                !isActive && { color: isDark ? '#9CA3AF' : '#666' }
+                            ]}>
+                                {period}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
         </View>
     );
@@ -945,8 +940,26 @@ const styles = StyleSheet.create({
         height: CHART_HEIGHT,
     },
     timePeriodContainer: {
-        paddingHorizontal: 20,
-        marginBottom: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 30,
+    },
+    timePeriodButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    activeTimePeriod: {
+        // backgroundColor will be set dynamically based on chart color
+    },
+    timePeriodText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#666',
+    },
+    activeTimePeriodText: {
+        fontWeight: '600',
+        // color will be set dynamically
     },
     tooltip: {
         position: 'absolute',

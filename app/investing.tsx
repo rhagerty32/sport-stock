@@ -5,7 +5,6 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, positions } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { Position } from '@/types';
-import { Host, Picker } from '@expo/ui/swift-ui';
 import React, { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -14,10 +13,6 @@ export default function InvestingScreen() {
     const isDark = colorScheme === 'dark';
     const { selection } = useHaptics();
     const [sortBy, setSortBy] = useState<'value' | 'gainLoss' | 'alphabetical'>('value');
-    const sortOptions = ['Value', 'Gain/Loss', 'Name'];
-    const sortKeys: ('value' | 'gainLoss' | 'alphabetical')[] = ['value', 'gainLoss', 'alphabetical'];
-    const initialIndex = sortKeys.indexOf(sortBy);
-    const [selectedIndex, setSelectedIndex] = useState<number>(initialIndex >= 0 ? initialIndex : 0);
     const { setActiveStockId } = useStockStore();
 
     const formatCurrency = (amount: number) => {
@@ -157,19 +152,37 @@ export default function InvestingScreen() {
                 </View>
 
                 {/* Sort Options */}
-                <View style={styles.tabsContainer}>
-                    <Host style={{ width: '100%', minHeight: 20 }}>
-                        <Picker
-                            options={sortOptions}
-                            selectedIndex={selectedIndex}
-                            onOptionSelected={({ nativeEvent: { index } }) => {
-                                setSelectedIndex(index);
-                                setSortBy(sortKeys[index]);
-                                selection();
-                            }}
-                            variant="segmented"
-                        />
-                    </Host>
+                <View style={styles.sortContainer}>
+                    <Text style={[styles.sortLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        Sort by:
+                    </Text>
+                    <View style={styles.sortButtons}>
+                        {[
+                            { key: 'value', label: 'Value' },
+                            { key: 'gainLoss', label: 'Gain/Loss' },
+                            { key: 'alphabetical', label: 'Name' },
+                        ].map((option) => (
+                            <TouchableOpacity
+                                key={option.key}
+                                style={[
+                                    styles.sortButton,
+                                    sortBy === option.key && styles.activeSortButton,
+                                    { backgroundColor: sortBy === option.key ? '#217C0A' : 'transparent' }
+                                ]}
+                                onPress={() => {
+                                    setSortBy(option.key as any);
+                                    selection();
+                                }}
+                            >
+                                <Text style={[
+                                    styles.sortButtonText,
+                                    { color: sortBy === option.key ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }
+                                ]}>
+                                    {option.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                 </View>
 
                 {/* Positions List */}
@@ -252,9 +265,33 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-    tabsContainer: {
+    sortContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 20,
         marginBottom: 20,
+    },
+    sortLabel: {
+        fontSize: 14,
+        marginRight: 12,
+    },
+    sortButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    sortButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    activeSortButton: {
+        borderColor: '#217C0A',
+    },
+    sortButtonText: {
+        fontSize: 12,
+        fontWeight: '500',
     },
     positionsContainer: {
         paddingHorizontal: 0,

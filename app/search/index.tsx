@@ -6,7 +6,6 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { leagues, stocks, users } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { Stock, User } from '@/types';
-import { Host, Picker } from '@expo/ui/swift-ui';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -144,8 +143,8 @@ export default function SearchScreen() {
             >
                 <GlassCard style={styles.gridCard}>
                     <View style={styles.gridCardContent}>
-                        <View style={[styles.teamLogo, { backgroundColor: '#E5E7EB' }]}>
-                            <Text style={styles.logoText}>
+                        <View style={[styles.teamLogo, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                            <Text style={[styles.logoText, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
                                 {stock.name.split(' ').map(word => word[0]).join('')}
                             </Text>
                         </View>
@@ -183,18 +182,63 @@ export default function SearchScreen() {
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* Search Tabs */}
-                <View style={styles.tabsContainer}>
-                    <Host style={{ width: '100%', minHeight: 20 }}>
-                        <Picker
-                            options={['Stocks', 'Users']}
-                            selectedIndex={selectedIndex}
-                            onOptionSelected={({ nativeEvent: { index } }) => {
-                                setSelectedIndex(index);
-                                selection();
-                            }}
-                            variant="segmented"
-                        />
-                    </Host>
+                <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                    <TouchableOpacity
+                        style={[
+                            styles.tabButton,
+                            searchTab === 'stocks' && {
+                                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 2,
+                                elevation: 2,
+                            }
+                        ]}
+                        onPress={() => {
+                            setSelectedIndex(0);
+                            selection();
+                        }}
+                    >
+                        <Text style={[
+                            styles.tabButtonText,
+                            {
+                                color: searchTab === 'stocks'
+                                    ? (isDark ? '#FFFFFF' : '#000000')
+                                    : (isDark ? '#9CA3AF' : '#6B7280')
+                            }
+                        ]}>
+                            Stocks
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.tabButton,
+                            searchTab === 'users' && {
+                                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 2,
+                                elevation: 2,
+                            }
+                        ]}
+                        onPress={() => {
+                            setSelectedIndex(1);
+                            selection();
+                        }}
+                    >
+                        <Text style={[
+                            styles.tabButtonText,
+                            {
+                                color: searchTab === 'users'
+                                    ? (isDark ? '#FFFFFF' : '#000000')
+                                    : (isDark ? '#9CA3AF' : '#6B7280')
+                            }
+                        ]}>
+                            Users
+                        </Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={{ position: 'relative', minHeight: 400 }}>
@@ -220,7 +264,12 @@ export default function SearchScreen() {
                                         style={[
                                             styles.filterPill,
                                             selectedLeague === league && styles.activeFilterPill,
-                                            { backgroundColor: selectedLeague === league ? '#217C0A' : 'transparent' }
+                                            {
+                                                backgroundColor: selectedLeague === league ? '#217C0A' : 'transparent',
+                                                borderColor: selectedLeague === league
+                                                    ? '#217C0A'
+                                                    : (isDark ? '#4B5563' : '#E5E7EB')
+                                            }
                                         ]}
                                         onPress={() => {
                                             setSelectedLeague(league);
@@ -300,7 +349,7 @@ export default function SearchScreen() {
                                     <View style={{ height: 40 }} />
                                 </View>
                                 <View style={styles.resultsContainer}>
-                                    <Text style={[styles.resultsText]}>0 teams found</Text>
+                                    <Text style={[styles.resultsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>0 teams found</Text>
                                 </View>
                                 <View style={styles.teamsContainer}>
                                     <FlatList
@@ -316,7 +365,7 @@ export default function SearchScreen() {
                         ) : (
                             <>
                                 <View style={styles.resultsContainer}>
-                                    <Text style={[styles.resultsText]}>0 users found</Text>
+                                    <Text style={[styles.resultsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>0 users found</Text>
                                 </View>
                                 <View style={styles.teamsContainer}>
                                     <FlatList
@@ -357,30 +406,6 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
     },
-    searchContainer: {
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    searchCard: {
-        minHeight: 50,
-    },
-    searchContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    searchIcon: {
-        fontSize: 18,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 16,
-        paddingVertical: 0,
-    },
-    clearIcon: {
-        fontSize: 16,
-        padding: 4,
-    },
     filterContainer: {
         marginBottom: 20,
     },
@@ -393,7 +418,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 12,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        // borderColor will be set dynamically
     },
     activeFilterPill: {
         borderColor: '#217C0A',
@@ -515,15 +540,30 @@ const styles = StyleSheet.create({
     logoText: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#6B7280',
+        // color will be set dynamically
     },
     bottomSpacing: {
         height: 100,
     },
     tabsContainer: {
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 20,
+        flexDirection: 'row',
+        borderRadius: 12,
+        padding: 4,
+        marginHorizontal: 20,
+        marginTop: 10,
+        marginBottom: 20,
+    },
+    tabButton: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+    },
+    tabButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
     userAvatar: {
         width: 50,

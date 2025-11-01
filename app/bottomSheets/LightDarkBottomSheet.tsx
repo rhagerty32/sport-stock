@@ -2,11 +2,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
-import { Host, Picker } from '@expo/ui/swift-ui';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type LightDarkBottomSheetProps = {
     lightDarkBottomSheetRef: React.RefObject<BottomSheetModal>;
@@ -18,7 +17,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
     const { setLightDarkBottomSheetOpen } = useStockStore();
     const { theme, setTheme } = useSettingsStore();
     const { isDark } = useTheme();
-    const { selection } = useHaptics();
+    const { lightImpact } = useHaptics();
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -54,32 +53,16 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
         }
     ];
 
-    const themeKeys: ThemeOption[] = ['light', 'dark', 'system'];
-    const themeOptionsLabels = ['Light', 'Dark', 'System'];
-    const initialIndex = themeKeys.indexOf(theme);
-    const [selectedIndex, setSelectedIndex] = useState<number>(initialIndex >= 0 ? initialIndex : 0);
-
-    // Sync selectedIndex when theme changes externally
-    useEffect(() => {
-        const newIndex = themeKeys.indexOf(theme);
-        if (newIndex >= 0 && newIndex !== selectedIndex) {
-            setSelectedIndex(newIndex);
-        }
-    }, [theme]);
-
-    const handleThemeSelect = (index: number) => {
-        const selectedTheme = themeKeys[index];
+    const handleThemeSelect = (selectedTheme: ThemeOption) => {
         console.log('Setting theme to:', selectedTheme);
         setTheme(selectedTheme);
-        selection();
+        lightImpact();
         console.log('Theme set successfully');
     };
 
     const closeModal = () => {
         setLightDarkBottomSheetOpen(false);
     };
-
-    // TODO figure out a solution for the apple picker in dark mode
 
     return (
         <BottomSheetModal
@@ -106,18 +89,43 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                 </View>
 
                 {/* Tab List */}
-                <View style={styles.tabsContainer}>
-                    <Host style={{ width: '100%', minHeight: 20 }}>
-                        <Picker
-                            options={themeOptionsLabels}
-                            selectedIndex={selectedIndex}
-                            onOptionSelected={({ nativeEvent: { index } }) => {
-                                setSelectedIndex(index);
-                                handleThemeSelect(index);
-                            }}
-                            variant="segmented"
-                        />
-                    </Host>
+                <View style={[styles.tabsList, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                    {themeOptions.map((option) => (
+                        <TouchableOpacity
+                            key={option.value}
+                            style={[
+                                styles.tabTrigger,
+                                theme === option.value && {
+                                    backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 2,
+                                    elevation: 2,
+                                }
+                            ]}
+                            onPress={() => handleThemeSelect(option.value)}
+                        >
+                            <Ionicons
+                                name={option.icon as any}
+                                size={20}
+                                color={theme === option.value
+                                    ? (isDark ? '#FFFFFF' : '#000000')
+                                    : (isDark ? '#9CA3AF' : '#6B7280')
+                                }
+                            />
+                            <Text style={[
+                                styles.tabTriggerText,
+                                {
+                                    color: theme === option.value
+                                        ? (isDark ? '#FFFFFF' : '#000000')
+                                        : (isDark ? '#9CA3AF' : '#6B7280')
+                                }
+                            ]}>
+                                {option.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
                 {/* Tab Content */}
@@ -244,8 +252,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
-    tabsContainer: {
+    tabsList: {
+        flexDirection: 'row',
+        borderRadius: 12,
+        padding: 4,
         marginBottom: 24,
+    },
+    tabTrigger: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        gap: 8,
+    },
+    tabTriggerText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
     tabContent: {
         marginBottom: 20,
