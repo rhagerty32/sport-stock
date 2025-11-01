@@ -3,17 +3,40 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useSearch } from '@/contexts/SearchContext';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { leagues, stocks } from '@/lib/dummy-data';
-import { Stock } from '@/types';
-import React, { useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { leagues, stocks, users } from '@/lib/dummy-data';
+import { useStockStore } from '@/stores/stockStore';
+import { Stock, User } from '@/types';
+import { Host, Picker } from '@expo/ui/swift-ui';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SearchScreen() {
     const { isDark } = useTheme();
     const { lightImpact, selection } = useHaptics();
     const { searchQuery, setSearchQuery } = useSearch();
+    const { setActiveUserId, setActiveStockId } = useStockStore();
     const [selectedLeague, setSelectedLeague] = useState<string>('All');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [selectedIndex, setSelectedIndex] = useState<number>(0);
+    const searchTab = selectedIndex === 0 ? 'stocks' : 'users';
+
+    const stocksOpacity = useRef(new Animated.Value(searchTab === 'stocks' ? 1 : 0)).current;
+    const usersOpacity = useRef(new Animated.Value(searchTab === 'users' ? 1 : 0)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(stocksOpacity, {
+                toValue: searchTab === 'stocks' ? 1 : 0,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(usersOpacity, {
+                toValue: searchTab === 'users' ? 1 : 0,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [searchTab, stocksOpacity, usersOpacity]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -34,6 +57,13 @@ export default function SearchScreen() {
         return matchesSearch && matchesLeague;
     });
 
+    const filteredUsers = users.filter(user => {
+        const query = searchQuery.toLowerCase();
+        const matchesName = `${user.firstName} ${user.lastName}`.toLowerCase().includes(query);
+        const matchesEmail = user.email.toLowerCase().includes(query);
+        return matchesName || matchesEmail;
+    });
+
     const getPriceChange = (stock: Stock) => {
         // Simulate price change
         const change = (Math.random() - 0.5) * 10;
@@ -43,170 +73,262 @@ export default function SearchScreen() {
         };
     };
 
-    const renderStockCard = ({ item: stock }: { item: Stock }) => {
-        const priceChange = getPriceChange(stock);
-        const league = leagues.find(l => l.id === stock.leagueID);
+    // User card component with image error handling
+    const UserCard = ({ user }: { user: User }) => {
+        const [imageError, setImageError] = useState(false);
 
-        if (viewMode === 'list') {
-            return (
+        return (
+            <TouchableOpacity
+                onPress={() => {
+                    setActiveUserId(user.id);
+                    selection();
+                }}
+                style={{ paddingHorizontal: 10 }}
+            >
                 <GlassCard style={styles.listCard}>
                     <View style={styles.listCardContent}>
                         <View style={styles.listCardHeader}>
-                            <View style={[styles.teamLogo, { backgroundColor: '#E5E7EB' }]}>
-                                <Text style={styles.logoText}>
-                                    {stock.name.split(' ').map(word => word[0]).join('')}
-                                </Text>
-                            </View>
+                            {imageError || !user.photoURL ? (
+                                <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                                    <Ionicons
+                                        name="person"
+                                        size={25}
+                                        color={isDark ? '#9CA3AF' : '#6B7280'}
+                                    />
+                                </View>
+                            ) : (
+                                <Image
+                                    source={{ uri: user.photoURL }}
+                                    style={styles.userAvatar}
+                                    onError={() => setImageError(true)}
+                                />
+                            )}
                             <View style={styles.listCardInfo}>
                                 <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {stock.name}
+                                    {user.firstName} {user.lastName}
                                 </Text>
                                 <Text style={[styles.leagueName, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {league?.name}
+                                    {user.email}
                                 </Text>
                                 <View style={styles.priceContainer}>
-                                    <Text style={[styles.stockPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {formatCurrency(stock.price)}
-                                    </Text>
-                                    <Text
-                                        style={[
-                                            styles.priceChange,
-                                            { color: priceChange.amount >= 0 ? '#217C0A' : '#dc2626' }
-                                        ]}
-                                    >
-                                        {formatPercentage(priceChange.percentage)}
+                                    <Text style={[
+                                        styles.priceChange,
+                                        { color: user.public ? '#217C0A' : '#dc2626' }
+                                    ]}>
+                                        {user.public ? 'Public Portfolio' : 'Private Portfolio'}
                                     </Text>
                                 </View>
                             </View>
                         </View>
                     </View>
                 </GlassCard>
-            );
-        }
+            </TouchableOpacity>
+        );
+    };
+
+    const renderUserCard = ({ item: user }: { item: User }) => {
+        return <UserCard user={user} />;
+    };
+
+    const renderStockCard = ({ item: stock }: { item: Stock }) => {
+        const priceChange = getPriceChange(stock);
+        const league = leagues.find(l => l.id === stock.leagueID);
 
         return (
-            <GlassCard style={styles.gridCard}>
-                <View style={styles.gridCardContent}>
-                    <View style={[styles.teamLogo, { backgroundColor: '#E5E7EB' }]}>
-                        <Text style={styles.logoText}>
-                            {stock.name.split(' ').map(word => word[0]).join('')}
-                        </Text>
+            <TouchableOpacity
+                onPress={() => {
+                    setActiveStockId(stock.id);
+                    selection();
+                }}
+                style={styles.gridCardWrapper}
+            >
+                <GlassCard style={styles.gridCard}>
+                    <View style={styles.gridCardContent}>
+                        <View style={[styles.teamLogo, { backgroundColor: '#E5E7EB' }]}>
+                            <Text style={styles.logoText}>
+                                {stock.name.split(' ').map(word => word[0]).join('')}
+                            </Text>
+                        </View>
+                        <View style={styles.gridCardInfo}>
+                            <Text style={[styles.gridStockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                {stock.name}
+                            </Text>
+                            <Text style={[styles.gridLeagueName, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                {league?.name}
+                            </Text>
+                            <Text style={[styles.gridStockPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                {formatCurrency(stock.price)}
+                            </Text>
+                            <Text
+                                style={[
+                                    styles.gridPriceChange,
+                                    { color: priceChange.amount >= 0 ? '#217C0A' : '#dc2626' }
+                                ]}
+                            >
+                                {formatPercentage(priceChange.percentage)}
+                            </Text>
+                        </View>
                     </View>
-                    <View style={styles.gridCardInfo}>
-                        <Text style={[styles.gridStockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            {stock.name}
-                        </Text>
-                        <Text style={[styles.gridLeagueName, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            {league?.name}
-                        </Text>
-                        <Text style={[styles.gridStockPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            {formatCurrency(stock.price)}
-                        </Text>
-                        <Text
-                            style={[
-                                styles.gridPriceChange,
-                                { color: priceChange.amount >= 0 ? '#217C0A' : '#dc2626' }
-                            ]}
-                        >
-                            {formatPercentage(priceChange.percentage)}
-                        </Text>
-                    </View>
-                </View>
-            </GlassCard>
+                </GlassCard>
+            </TouchableOpacity>
         );
     };
 
     return (
         <ThemedView style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* League Filter Pills */}
-                <View style={styles.filterContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                        {['All', ...leagues.map(l => l.name)].map((league) => (
-                            <TouchableOpacity
-                                key={league}
-                                style={[
-                                    styles.filterPill,
-                                    selectedLeague === league && styles.activeFilterPill,
-                                    { backgroundColor: selectedLeague === league ? '#217C0A' : 'transparent' }
-                                ]}
-                                onPress={() => {
-                                    setSelectedLeague(league);
-                                    selection();
-                                }}
-                            >
-                                <Text style={[
-                                    styles.filterPillText,
-                                    { color: selectedLeague === league ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }
-                                ]}>
-                                    {league}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+            <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentInsetAdjustmentBehavior="never"
+                contentContainerStyle={styles.scrollContent}
+            >
+                {/* Search Tabs */}
+                <View style={styles.tabsContainer}>
+                    <Host style={{ width: '100%', minHeight: 20 }}>
+                        <Picker
+                            options={['Stocks', 'Users']}
+                            selectedIndex={selectedIndex}
+                            onOptionSelected={({ nativeEvent: { index } }) => {
+                                setSelectedIndex(index);
+                                selection();
+                            }}
+                            variant="segmented"
+                        />
+                    </Host>
                 </View>
 
-                {/* View Mode Toggle */}
-                <View style={styles.viewModeContainer}>
-                    <View style={styles.viewModeButtons}>
-                        <TouchableOpacity
-                            style={[
-                                styles.viewModeButton,
-                                viewMode === 'grid' && styles.activeViewModeButton,
-                                { backgroundColor: viewMode === 'grid' ? '#217C0A' : 'transparent' }
-                            ]}
-                            onPress={() => {
-                                setViewMode('grid');
-                                selection();
-                            }}
-                        >
-                            <Text style={[
-                                styles.viewModeText,
-                                { color: viewMode === 'grid' ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }
-                            ]}>
-                                Grid
+                <View style={{ position: 'relative', minHeight: 400 }}>
+                    {/* Stocks Section */}
+                    <Animated.View
+                        style={{
+                            opacity: stocksOpacity,
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            width: '100%',
+                            zIndex: searchTab === 'stocks' ? 1 : 0,
+                            pointerEvents: searchTab === 'stocks' ? 'auto' : 'none',
+                        }}
+                    >
+                        {/* League Filter Pills */}
+                        <View style={styles.filterContainer}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                                {['All', ...leagues.map(l => l.name)].map((league) => (
+                                    <TouchableOpacity
+                                        key={league}
+                                        style={[
+                                            styles.filterPill,
+                                            selectedLeague === league && styles.activeFilterPill,
+                                            { backgroundColor: selectedLeague === league ? '#217C0A' : 'transparent' }
+                                        ]}
+                                        onPress={() => {
+                                            setSelectedLeague(league);
+                                            selection();
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.filterPillText,
+                                            { color: selectedLeague === league ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }
+                                        ]}>
+                                            {league}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        {/* Results Count */}
+                        <View style={styles.resultsContainer}>
+                            <Text style={[styles.resultsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                {filteredStocks.length} teams found
                             </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.viewModeButton,
-                                viewMode === 'list' && styles.activeViewModeButton,
-                                { backgroundColor: viewMode === 'list' ? '#217C0A' : 'transparent' }
-                            ]}
-                            onPress={() => {
-                                setViewMode('list');
-                                selection();
-                            }}
-                        >
-                            <Text style={[
-                                styles.viewModeText,
-                                { color: viewMode === 'list' ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }
-                            ]}>
-                                List
+                        </View>
+
+                        {/* Team List/Grid */}
+                        <View style={styles.teamsContainer}>
+                            <FlatList
+                                data={filteredStocks}
+                                renderItem={renderStockCard}
+                                keyExtractor={(item) => item.id.toString()}
+                                numColumns={2}
+                                key={'grid'} // Force re-render when view mode changes
+                                scrollEnabled={false}
+                                contentContainerStyle={styles.teamsList}
+                                columnWrapperStyle={styles.gridRow}
+                            />
+                        </View>
+                    </Animated.View>
+
+                    {/* Users Section */}
+                    <Animated.View
+                        style={{
+                            opacity: usersOpacity,
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            width: '100%',
+                            zIndex: searchTab === 'users' ? 1 : 0,
+                            pointerEvents: searchTab === 'users' ? 'auto' : 'none',
+                        }}
+                    >
+                        {/* Results Count */}
+                        <View style={styles.resultsContainer}>
+                            <Text style={[styles.resultsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                {filteredUsers.length} users found
                             </Text>
-                        </TouchableOpacity>
+                        </View>
+
+                        {/* Users List */}
+                        <View style={styles.teamsContainer}>
+                            <FlatList
+                                data={filteredUsers}
+                                renderItem={renderUserCard}
+                                keyExtractor={(item) => item.id.toString()}
+                                scrollEnabled={false}
+                                contentContainerStyle={styles.teamsList}
+                            />
+                        </View>
+                    </Animated.View>
+
+                    {/* Invisible spacer to maintain layout height */}
+                    <View style={{ opacity: 0, pointerEvents: 'none' }}>
+                        {searchTab === 'stocks' ? (
+                            <>
+                                <View style={styles.filterContainer}>
+                                    <View style={{ height: 40 }} />
+                                </View>
+                                <View style={styles.resultsContainer}>
+                                    <Text style={[styles.resultsText]}>0 teams found</Text>
+                                </View>
+                                <View style={styles.teamsContainer}>
+                                    <FlatList
+                                        data={filteredStocks}
+                                        renderItem={() => <View style={{ height: 100, width: '48%', marginBottom: 16 }} />}
+                                        keyExtractor={(item) => item.id.toString()}
+                                        numColumns={2}
+                                        scrollEnabled={false}
+                                        columnWrapperStyle={styles.gridRow}
+                                    />
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <View style={styles.resultsContainer}>
+                                    <Text style={[styles.resultsText]}>0 users found</Text>
+                                </View>
+                                <View style={styles.teamsContainer}>
+                                    <FlatList
+                                        data={filteredUsers}
+                                        renderItem={() => <View style={{ height: 100, marginBottom: 12 }} />}
+                                        keyExtractor={(item) => item.id.toString()}
+                                        scrollEnabled={false}
+                                    />
+                                </View>
+                            </>
+                        )}
                     </View>
-                </View>
-
-                {/* Results Count */}
-                <View style={styles.resultsContainer}>
-                    <Text style={[styles.resultsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        {filteredStocks.length} teams found
-                    </Text>
-                </View>
-
-                {/* Team List/Grid */}
-                <View style={styles.teamsContainer}>
-                    <FlatList
-                        data={filteredStocks}
-                        renderItem={renderStockCard}
-                        keyExtractor={(item) => item.id.toString()}
-                        numColumns={viewMode === 'grid' ? 2 : 1}
-                        key={viewMode} // Force re-render when view mode changes
-                        scrollEnabled={false}
-                        contentContainerStyle={styles.teamsList}
-                        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
-                    />
                 </View>
 
                 {/* Bottom Spacing */}
@@ -222,6 +344,9 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     header: {
         paddingTop: 60,
@@ -307,7 +432,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     teamsContainer: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 10,
     },
     teamsList: {
         paddingBottom: 20,
@@ -315,9 +440,12 @@ const styles = StyleSheet.create({
     gridRow: {
         justifyContent: 'space-between',
     },
-    gridCard: {
+    gridCardWrapper: {
         width: '48%',
         marginBottom: 16,
+    },
+    gridCard: {
+        width: '100%',
     },
     gridCardContent: {
         alignItems: 'center',
@@ -391,5 +519,19 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 100,
+    },
+    tabsContainer: {
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 20,
+    },
+    userAvatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+    },
+    avatarPlaceholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

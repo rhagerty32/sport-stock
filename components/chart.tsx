@@ -1,11 +1,15 @@
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useHaptics } from '@/hooks/useHaptics';
 import { PriceHistory, TimePeriod } from '@/types';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Host, Picker } from '@expo/ui/swift-ui';
+import React, { useEffect, useRef, useState } from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
     interpolate,
+    runOnJS,
+    useAnimatedReaction,
     useAnimatedStyle,
     useSharedValue,
     withTiming
@@ -23,16 +27,56 @@ interface ChartProps {
 }
 
 // Generate price history data (simplified version of the one in dummy-data)
-const generatePriceHistory = (stockId: number, days: number = 365): PriceHistory[] => {
+const generatePriceHistory = (
+    stockId: number,
+    days: number = 365,
+    interval: 'daily' | 'hourly' | 'minute' | 'weekly' | 'monthly' = 'daily'
+): PriceHistory[] => {
     const history: PriceHistory[] = [];
     let currentPrice = Math.random() * 100 + 20; // Start between $20-$120
 
-    for (let i = 0; i < days; i++) {
+    let totalIntervals: number;
+    if (interval === 'minute') {
+        totalIntervals = days * 24 * 60; // minutes
+    } else if (interval === 'hourly') {
+        totalIntervals = days * 24; // hours
+    } else if (interval === 'weekly') {
+        totalIntervals = Math.ceil(days / 7); // weeks (rounded up)
+    } else if (interval === 'monthly') {
+        totalIntervals = Math.ceil(days / 30); // months (approximate, rounded up)
+    } else {
+        totalIntervals = days; // days
+    }
+
+    for (let i = 0; i < totalIntervals; i++) {
         const date = new Date();
-        date.setDate(date.getDate() - (days - i));
+        if (interval === 'minute') {
+            date.setMinutes(date.getMinutes() - (totalIntervals - i));
+        } else if (interval === 'hourly') {
+            date.setHours(date.getHours() - (totalIntervals - i));
+        } else if (interval === 'weekly') {
+            date.setDate(date.getDate() - ((totalIntervals - i) * 7));
+        } else if (interval === 'monthly') {
+            date.setMonth(date.getMonth() - (totalIntervals - i));
+        } else {
+            date.setDate(date.getDate() - (days - i));
+        }
 
         // Random walk with slight upward bias
-        const change = (Math.random() - 0.45) * 0.05; // Slight upward bias
+        // Smaller changes for smaller intervals (less volatility per interval)
+        let volatility: number;
+        if (interval === 'minute') {
+            volatility = 0.002; // Very small changes per minute
+        } else if (interval === 'hourly') {
+            volatility = 0.01; // Small changes per hour
+        } else if (interval === 'weekly') {
+            volatility = 0.15; // Moderate changes per week
+        } else if (interval === 'monthly') {
+            volatility = 0.5; // Larger changes per month
+        } else {
+            volatility = 0.05; // Normal changes per day
+        }
+        const change = (Math.random() - 0.45) * volatility; // Slight upward bias
         currentPrice = Math.max(1, currentPrice * (1 + change));
 
         const changeAmount = i > 0 ? currentPrice - history[i - 1].price : 0;
@@ -56,9 +100,15 @@ const Chart: React.FC<ChartProps> = ({
     backgroundColor = null
 }) => {
     const [priceData, setPriceData] = useState<PriceHistory[]>([]);
-    const [timePeriod, setTimePeriod] = useState<TimePeriod>('1D');
+    const [timePeriod, setTimePeriod] = useState<TimePeriod>('1H');
     const { isDark } = useTheme();
+    const { selection } = useHaptics();
     const animationProgress = useSharedValue(0);
+
+    const timePeriodOptions = ['1H', '1D', '1M', '1Y', '5Y', 'ALL'];
+    const timePeriodKeys: TimePeriod[] = ['1H', '1D', '1M', '1Y', '5Y', 'ALL'];
+    const initialTimeIndex = timePeriodKeys.indexOf(timePeriod);
+    const [selectedTimeIndex, setSelectedTimeIndex] = useState<number>(initialTimeIndex >= 0 ? initialTimeIndex : 0);
 
     // Interactive chart state
     const [isScrubbing, setIsScrubbing] = useState(false);
@@ -70,6 +120,118 @@ const Chart: React.FC<ChartProps> = ({
     const crosshairX = useSharedValue(0);
     const crosshairY = useSharedValue(0);
     const tooltipOpacity = useSharedValue(0);
+
+    // Animated value for smooth/sharp transition (1 = smooth, 0 = sharp)
+    const smoothness = useSharedValue(1);
+    const [smoothnessState, setSmoothnessState] = useState(1);
+    const [tooltipVisible, setTooltipVisible] = useState(false);
+    const animationFrameRef = useRef<number | null>(null);
+    const smoothnessStateRef = useRef(1);
+    const timeoutRef = useRef<number | null>(null);
+    const isScrubbingRef = useRef(false);
+
+    // Keep refs in sync with state
+    useEffect(() => {
+        smoothnessStateRef.current = smoothnessState;
+    }, [smoothnessState]);
+
+    useEffect(() => {
+        isScrubbingRef.current = isScrubbing;
+    }, [isScrubbing]);
+
+    // Sync tooltipOpacity to tooltipVisible state - use lower threshold for better responsiveness
+    useAnimatedReaction(
+        () => tooltipOpacity.value,
+        (value, previousValue) => {
+            // Update when crossing the threshold or when value changes significantly
+            const wasVisible = previousValue !== undefined && previousValue !== null && previousValue > 0.1;
+            const isVisible = value > 0.1;
+
+            if (wasVisible !== isVisible) {
+                runOnJS(setTooltipVisible)(isVisible);
+            }
+        }
+    );
+
+    // Watch isScrubbing and animate smoothness accordingly
+    useEffect(() => {
+        // Determine target smoothness: 
+        // - If scrubbing: always sharp (even if tooltip hasn't appeared yet)
+        // - If not scrubbing: smooth (regardless of tooltip visibility, tooltip will fade)
+        const targetSmoothness = isScrubbing ? 0 : 1;
+
+        // Cancel any existing animation FIRST
+        if (animationFrameRef.current !== null) {
+            if (typeof cancelAnimationFrame !== 'undefined') {
+                cancelAnimationFrame(animationFrameRef.current);
+            } else {
+                clearTimeout(animationFrameRef.current);
+            }
+            animationFrameRef.current = null;
+        }
+        if (timeoutRef.current !== null) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+
+        // Update ref with current state value
+        smoothnessStateRef.current = smoothnessState;
+
+        // Get current value
+        const currentValue = smoothnessStateRef.current;
+
+        // If already at target, don't animate
+        if (Math.abs(currentValue - targetSmoothness) < 0.001) {
+            return;
+        }
+
+        const duration = 300;
+        const startTime = Date.now();
+        const startValue = currentValue;
+        const endValue = targetSmoothness;
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const currentValue = startValue + (endValue - startValue) * eased;
+
+            setSmoothnessState(currentValue);
+
+            if (progress < 1) {
+                if (typeof requestAnimationFrame !== 'undefined') {
+                    animationFrameRef.current = requestAnimationFrame(animate);
+                } else {
+                    animationFrameRef.current = setTimeout(animate, 16) as unknown as number;
+                }
+            } else {
+                setSmoothnessState(endValue);
+                animationFrameRef.current = null;
+            }
+        };
+
+        // Start animation immediately
+        if (typeof requestAnimationFrame !== 'undefined') {
+            animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+            animationFrameRef.current = setTimeout(animate, 16) as unknown as number;
+        }
+
+        return () => {
+            if (animationFrameRef.current !== null) {
+                if (typeof cancelAnimationFrame !== 'undefined') {
+                    cancelAnimationFrame(animationFrameRef.current);
+                } else {
+                    clearTimeout(animationFrameRef.current);
+                }
+                animationFrameRef.current = null;
+            }
+            if (timeoutRef.current !== null) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+        };
+    }, [isScrubbing]); // Only watch isScrubbing for reliability
 
     // Helper function to get price at x position
     const getPriceAtX = (x: number) => {
@@ -104,22 +266,86 @@ const Chart: React.FC<ChartProps> = ({
         crosshairX.value = x;
         crosshairY.value = y;
 
-        const priceData = getPriceAtX(x);
-        if (priceData) {
-            setCurrentPrice(priceData.price);
-            setCurrentDate(priceData.date.toLocaleDateString());
+        const priceDataResult = getPriceAtX(x);
+        if (priceDataResult) {
+            setCurrentPrice(priceDataResult.price);
+            setCurrentDate(priceDataResult.date.toLocaleDateString());
             setScrubPosition({ x, y });
         }
     };
 
+    const startSmoothnessAnimation = (targetValue: number) => {
+        // Cancel any existing animation
+        if (animationFrameRef.current !== null) {
+            if (typeof cancelAnimationFrame !== 'undefined') {
+                cancelAnimationFrame(animationFrameRef.current);
+            } else {
+                clearTimeout(animationFrameRef.current);
+            }
+            animationFrameRef.current = null;
+        }
+        if (timeoutRef.current !== null) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+
+        const duration = 300;
+        const startTime = Date.now();
+        const startValue = smoothnessStateRef.current;
+        const endValue = targetValue;
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const currentValue = startValue + (endValue - startValue) * eased;
+
+            setSmoothnessState(currentValue);
+
+            if (progress < 1) {
+                if (typeof requestAnimationFrame !== 'undefined') {
+                    animationFrameRef.current = requestAnimationFrame(animate);
+                } else {
+                    animationFrameRef.current = setTimeout(animate, 16) as unknown as number;
+                }
+            } else {
+                setSmoothnessState(endValue);
+                animationFrameRef.current = null;
+            }
+        };
+
+        if (typeof requestAnimationFrame !== 'undefined') {
+            animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+            animationFrameRef.current = setTimeout(animate, 16) as unknown as number;
+        }
+    };
+
     const handleGestureBegin = () => {
+        isScrubbingRef.current = true; // Set ref immediately for synchronous access
         setIsScrubbing(true);
         tooltipOpacity.value = withTiming(1, { duration: 200 });
+        // Immediately start animation to sharp
+        smoothnessStateRef.current = smoothnessState;
+        startSmoothnessAnimation(0);
     };
 
     const handleGestureEnd = () => {
+        isScrubbingRef.current = false; // Set ref immediately for synchronous access
         setIsScrubbing(false);
         tooltipOpacity.value = withTiming(0, { duration: 200 });
+
+        // Immediately start animation back to smooth
+        // Ensure we have the latest value - use functional update to guarantee current state
+        setSmoothnessState((currentValue) => {
+            // Update ref with the current value from the state
+            smoothnessStateRef.current = currentValue;
+            // Start the animation immediately
+            startSmoothnessAnimation(1);
+            // Return current value so state update doesn't interfere
+            return currentValue;
+        });
+
         setScrubPosition(null);
         setCurrentPrice(null);
         setCurrentDate(null);
@@ -127,25 +353,49 @@ const Chart: React.FC<ChartProps> = ({
 
     // Get data points based on time period
     const getDataPoints = (period: TimePeriod) => {
-        const fullData = generatePriceHistory(stockId);
-
         switch (period) {
+            case '1H':
+                // Generate minute-by-minute data for last hour (60 minutes = 60 data points)
+                // Generate at least 2 hours of minute data to ensure we have enough
+                // 2 hours = 2/24 days = 1/12 days
+                const minuteData = generatePriceHistory(stockId, 2 / 24, 'minute');
+                return minuteData.slice(-60); // Last 60 minutes
             case '1D':
-                return fullData.slice(-24); // Last 24 hours (hourly data)
+                // Generate hourly data for last 24 hours (24 data points)
+                // Generate at least 2 days of hourly data to ensure we have enough
+                const dayHourlyData = generatePriceHistory(stockId, 2, 'hourly');
+                return dayHourlyData.slice(-24); // Last 24 hours
             case '1W':
-                return fullData.slice(-7); // Last 7 days
+                // Daily data for last 7 days
+                return generatePriceHistory(stockId, 7, 'daily');
             case '1M':
-                return fullData.slice(-30); // Last 30 days
+                // Daily data for last 30 days
+                return generatePriceHistory(stockId, 30, 'daily');
             case '3M':
-                return fullData.slice(-90); // Last 90 days
+                // Daily data for last 90 days
+                return generatePriceHistory(stockId, 90, 'daily');
             case '1Y':
-                return fullData.slice(-365); // Last year
+                // Daily data for last year
+                return generatePriceHistory(stockId, 365, 'daily');
             case '5Y':
-                return fullData; // All data
+                // Weekly data for last 5 years (much more performant than daily)
+                // 5 years = ~1825 days = ~260 weeks
+                return generatePriceHistory(stockId, 1825, 'weekly');
+            case 'ALL':
+                // Weekly data for all available data (optimized for performance)
+                return generatePriceHistory(stockId, 1825, 'weekly');
             default:
-                return fullData.slice(-24);
+                return generatePriceHistory(stockId, 1, 'hourly').slice(-24);
         }
     };
+
+    // Sync selectedTimeIndex when timePeriod changes externally
+    useEffect(() => {
+        const newIndex = timePeriodKeys.indexOf(timePeriod);
+        if (newIndex >= 0 && newIndex !== selectedTimeIndex) {
+            setSelectedTimeIndex(newIndex);
+        }
+    }, [timePeriod]);
 
     useEffect(() => {
         const data = getDataPoints(timePeriod);
@@ -154,10 +404,85 @@ const Chart: React.FC<ChartProps> = ({
         // Start animation
         animationProgress.value = 0;
         animationProgress.value = withTiming(1, { duration: 2500 });
+
+        // Reset to smooth lines when data changes
+        smoothness.value = 1;
+        setSmoothnessState(1);
     }, [timePeriod, stockId]);
 
-    // Create SVG path for the line
-    const createPath = (data: PriceHistory[]) => {
+
+
+    // Helper function to create smooth cubic bezier curve path
+    const createSmoothPath = (data: PriceHistory[]) => {
+        if (data.length < 2) return '';
+
+        const stepX = CHART_WIDTH / (data.length - 1);
+        const minPrice = Math.min(...data.map(d => d.price));
+        const maxPrice = Math.max(...data.map(d => d.price));
+        const priceRange = maxPrice - minPrice;
+        const padding = priceRange * 0.1;
+
+        // Calculate points
+        const points = data.map((point, index) => {
+            const x = index * stepX;
+            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
+            return { x, y };
+        });
+
+        if (points.length < 2) return '';
+
+        let path = `M ${points[0].x} ${points[0].y}`;
+
+        // For smooth curves, use cubic bezier with control points
+        // Calculate control points using cardinal spline
+        const tension = 0.5;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const current = points[i];
+            const next = points[i + 1];
+
+            let cp1x, cp1y, cp2x, cp2y;
+
+            if (i === 0) {
+                // First segment
+                const dx = (next.x - current.x) * tension;
+                const dy = (next.y - current.y) * tension;
+                cp1x = current.x + dx * 0.3;
+                cp1y = current.y + dy * 0.3;
+                cp2x = next.x - dx * 0.7;
+                cp2y = next.y - dy * 0.7;
+            } else if (i === points.length - 2) {
+                // Last segment
+                const prev = points[i - 1];
+                const dx = (next.x - prev.x) * tension;
+                const dy = (next.y - prev.y) * tension;
+                cp1x = current.x + dx * 0.3;
+                cp1y = current.y + dy * 0.3;
+                cp2x = next.x - dx * 0.3;
+                cp2y = next.y - dy * 0.3;
+            } else {
+                // Middle segments
+                const prev = points[i - 1];
+                const nextNext = points[i + 2];
+                const dx1 = (next.x - prev.x) * tension;
+                const dy1 = (next.y - prev.y) * tension;
+                const dx2 = (nextNext.x - current.x) * tension;
+                const dy2 = (nextNext.y - current.y) * tension;
+
+                cp1x = current.x + dx1 * 0.3;
+                cp1y = current.y + dy1 * 0.3;
+                cp2x = next.x - dx2 * 0.3;
+                cp2y = next.y - dy2 * 0.3;
+            }
+
+            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+        }
+
+        return path;
+    };
+
+    // Create SVG path for the line (sharp/straight version)
+    const createSharpPath = (data: PriceHistory[]) => {
         if (data.length < 2) return '';
 
         const stepX = CHART_WIDTH / (data.length - 1);
@@ -182,8 +507,151 @@ const Chart: React.FC<ChartProps> = ({
         return path;
     };
 
-    // Create gradient path for area under the line
-    const createAreaPath = (data: PriceHistory[]) => {
+    // Create interpolated path that smoothly transitions between smooth and sharp
+    const createInterpolatedPath = (data: PriceHistory[], smoothnessValue: number) => {
+        if (data.length < 2) return '';
+
+        const stepX = CHART_WIDTH / (data.length - 1);
+        const minPrice = Math.min(...data.map(d => d.price));
+        const maxPrice = Math.max(...data.map(d => d.price));
+        const priceRange = maxPrice - minPrice;
+        const padding = priceRange * 0.1;
+
+        // Calculate points
+        const points = data.map((point, index) => {
+            const x = index * stepX;
+            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
+            return { x, y };
+        });
+
+        if (points.length < 2) return '';
+
+        let path = `M ${points[0].x} ${points[0].y}`;
+
+        // When smoothness is 0, use straight lines
+        // When smoothness is 1, use full bezier curves
+        // Interpolate control points between these states
+        const tension = 0.5;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const current = points[i];
+            const next = points[i + 1];
+
+            let cp1x, cp1y, cp2x, cp2y;
+
+            if (i === 0) {
+                // First segment
+                const dx = (next.x - current.x) * tension;
+                const dy = (next.y - current.y) * tension;
+                // Interpolate control points: at smoothness=0, control points are on the line (straight)
+                // at smoothness=1, control points are at calculated positions (curved)
+                cp1x = current.x + dx * 0.3 * smoothnessValue;
+                cp1y = current.y + dy * 0.3 * smoothnessValue;
+                cp2x = next.x - dx * (0.7 * smoothnessValue);
+                cp2y = next.y - dy * (0.7 * smoothnessValue);
+            } else if (i === points.length - 2) {
+                // Last segment
+                const prev = points[i - 1];
+                const dx = (next.x - prev.x) * tension;
+                const dy = (next.y - prev.y) * tension;
+                cp1x = current.x + dx * 0.3 * smoothnessValue;
+                cp1y = current.y + dy * 0.3 * smoothnessValue;
+                cp2x = next.x - dx * 0.3 * smoothnessValue;
+                cp2y = next.y - dy * 0.3 * smoothnessValue;
+            } else {
+                // Middle segments
+                const prev = points[i - 1];
+                const nextNext = points[i + 2];
+                const dx1 = (next.x - prev.x) * tension;
+                const dy1 = (next.y - prev.y) * tension;
+                const dx2 = (nextNext.x - current.x) * tension;
+                const dy2 = (nextNext.y - current.y) * tension;
+
+                cp1x = current.x + dx1 * 0.3 * smoothnessValue;
+                cp1y = current.y + dy1 * 0.3 * smoothnessValue;
+                cp2x = next.x - dx2 * 0.3 * smoothnessValue;
+                cp2y = next.y - dy2 * 0.3 * smoothnessValue;
+            }
+
+            // Always use bezier curves, but interpolate control points to approach the line when smoothness is 0
+            // This ensures smooth transitions without snapping
+            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+        }
+
+        return path;
+    };
+
+    // Create gradient path for area under the line (smooth version)
+    const createSmoothAreaPath = (data: PriceHistory[]) => {
+        if (data.length < 2) return '';
+
+        const stepX = CHART_WIDTH / (data.length - 1);
+        const minPrice = Math.min(...data.map(d => d.price));
+        const maxPrice = Math.max(...data.map(d => d.price));
+        const priceRange = maxPrice - minPrice;
+        const padding = priceRange * 0.1;
+
+        // Calculate points
+        const points = data.map((point, index) => {
+            const x = index * stepX;
+            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
+            return { x, y };
+        });
+
+        if (points.length < 2) return '';
+
+        let path = `M ${points[0].x} ${CHART_HEIGHT} L ${points[0].x} ${points[0].y}`;
+
+        // Use same smooth curve logic as line path
+        const tension = 0.5;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const current = points[i];
+            const next = points[i + 1];
+
+            let cp1x, cp1y, cp2x, cp2y;
+
+            if (i === 0) {
+                const dx = (next.x - current.x) * tension;
+                const dy = (next.y - current.y) * tension;
+                cp1x = current.x + dx * 0.3;
+                cp1y = current.y + dy * 0.3;
+                cp2x = next.x - dx * 0.7;
+                cp2y = next.y - dy * 0.7;
+            } else if (i === points.length - 2) {
+                const prev = points[i - 1];
+                const dx = (next.x - prev.x) * tension;
+                const dy = (next.y - prev.y) * tension;
+                cp1x = current.x + dx * 0.3;
+                cp1y = current.y + dy * 0.3;
+                cp2x = next.x - dx * 0.3;
+                cp2y = next.y - dy * 0.3;
+            } else {
+                const prev = points[i - 1];
+                const nextNext = points[i + 2];
+                const dx1 = (next.x - prev.x) * tension;
+                const dy1 = (next.y - prev.y) * tension;
+                const dx2 = (nextNext.x - current.x) * tension;
+                const dy2 = (nextNext.y - current.y) * tension;
+
+                cp1x = current.x + dx1 * 0.3;
+                cp1y = current.y + dy1 * 0.3;
+                cp2x = next.x - dx2 * 0.3;
+                cp2y = next.y - dy2 * 0.3;
+            }
+
+            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+        }
+
+        // Close the path
+        const lastX = (data.length - 1) * stepX;
+        path += ` L ${lastX} ${CHART_HEIGHT} Z`;
+
+        return path;
+    };
+
+    // Create gradient path for area under the line (sharp version)
+    const createSharpAreaPath = (data: PriceHistory[]) => {
         if (data.length < 2) return '';
 
         const stepX = CHART_WIDTH / (data.length - 1);
@@ -204,6 +672,76 @@ const Chart: React.FC<ChartProps> = ({
                 path += ` L ${x} ${y}`;
             }
         });
+
+        // Close the path
+        const lastX = (data.length - 1) * stepX;
+        path += ` L ${lastX} ${CHART_HEIGHT} Z`;
+
+        return path;
+    };
+
+    // Create interpolated area path that smoothly transitions between smooth and sharp
+    const createInterpolatedAreaPath = (data: PriceHistory[], smoothnessValue: number) => {
+        if (data.length < 2) return '';
+
+        const stepX = CHART_WIDTH / (data.length - 1);
+        const minPrice = Math.min(...data.map(d => d.price));
+        const maxPrice = Math.max(...data.map(d => d.price));
+        const priceRange = maxPrice - minPrice;
+        const padding = priceRange * 0.1;
+
+        // Calculate points
+        const points = data.map((point, index) => {
+            const x = index * stepX;
+            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
+            return { x, y };
+        });
+
+        if (points.length < 2) return '';
+
+        let path = `M ${points[0].x} ${CHART_HEIGHT} L ${points[0].x} ${points[0].y}`;
+
+        const tension = 0.5;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const current = points[i];
+            const next = points[i + 1];
+
+            let cp1x, cp1y, cp2x, cp2y;
+
+            if (i === 0) {
+                const dx = (next.x - current.x) * tension;
+                const dy = (next.y - current.y) * tension;
+                cp1x = current.x + dx * 0.3 * smoothnessValue;
+                cp1y = current.y + dy * 0.3 * smoothnessValue;
+                cp2x = next.x - dx * (0.7 * smoothnessValue);
+                cp2y = next.y - dy * (0.7 * smoothnessValue);
+            } else if (i === points.length - 2) {
+                const prev = points[i - 1];
+                const dx = (next.x - prev.x) * tension;
+                const dy = (next.y - prev.y) * tension;
+                cp1x = current.x + dx * 0.3 * smoothnessValue;
+                cp1y = current.y + dy * 0.3 * smoothnessValue;
+                cp2x = next.x - dx * 0.3 * smoothnessValue;
+                cp2y = next.y - dy * 0.3 * smoothnessValue;
+            } else {
+                const prev = points[i - 1];
+                const nextNext = points[i + 2];
+                const dx1 = (next.x - prev.x) * tension;
+                const dy1 = (next.y - prev.y) * tension;
+                const dx2 = (nextNext.x - current.x) * tension;
+                const dy2 = (nextNext.y - current.y) * tension;
+
+                cp1x = current.x + dx1 * 0.3 * smoothnessValue;
+                cp1y = current.y + dy1 * 0.3 * smoothnessValue;
+                cp2x = next.x - dx2 * 0.3 * smoothnessValue;
+                cp2y = next.y - dy2 * 0.3 * smoothnessValue;
+            }
+
+            // Always use bezier curves, but interpolate control points to approach the line when smoothness is 0
+            // This ensures smooth transitions without snapping
+            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+        }
 
         // Close the path
         const lastX = (data.length - 1) * stepX;
@@ -256,13 +794,13 @@ const Chart: React.FC<ChartProps> = ({
 
                                 {/* Area under the line */}
                                 <Path
-                                    d={createAreaPath(priceData)}
+                                    d={createInterpolatedAreaPath(priceData, smoothnessState)}
                                     fill="url(#gradient)"
                                 />
 
                                 {/* Line */}
                                 <Path
-                                    d={createPath(priceData)}
+                                    d={createInterpolatedPath(priceData, smoothnessState)}
                                     stroke={color}
                                     strokeWidth="2"
                                     fill="none"
@@ -355,17 +893,18 @@ const Chart: React.FC<ChartProps> = ({
 
             {/* Time Period Selector */}
             <View style={styles.timePeriodContainer}>
-                {['1H', '1D', '1M', '1Y', '5Y', 'ALL'].map((period) => (
-                    <TouchableOpacity
-                        key={period}
-                        style={styles.timePeriodButton}
-                        onPress={() => setTimePeriod(period as TimePeriod)}
-                    >
-                        <Text style={styles.timePeriodText}>
-                            {period}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+                <Host style={{ width: '100%', minHeight: 20 }}>
+                    <Picker
+                        options={timePeriodOptions}
+                        selectedIndex={selectedTimeIndex}
+                        onOptionSelected={({ nativeEvent: { index } }) => {
+                            setSelectedTimeIndex(index);
+                            setTimePeriod(timePeriodKeys[index]);
+                            selection();
+                        }}
+                        variant="segmented"
+                    />
+                </Host>
             </View>
         </View>
     );
@@ -406,25 +945,8 @@ const styles = StyleSheet.create({
         height: CHART_HEIGHT,
     },
     timePeriodContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 30,
-    },
-    timePeriodButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-    },
-    activeTimePeriod: {
-        backgroundColor: '#00C853',
-    },
-    timePeriodText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#666',
-    },
-    activeTimePeriodText: {
-        color: 'white',
+        paddingHorizontal: 20,
+        marginBottom: 0,
     },
     tooltip: {
         position: 'absolute',

@@ -247,7 +247,7 @@ export const colors: Color[] = stocks.map((stock, index) => ({
     updatedAt: new Date(),
 }));
 
-// Generate user
+// Generate users
 export const user: User = {
     id: 1,
     firstName: 'John',
@@ -256,9 +256,122 @@ export const user: User = {
     phoneNumber: '+1 (555) 123-4567',
     birthday: new Date('1990-05-15'),
     photoURL: 'https://via.placeholder.com/150x150/217C0A/FFFFFF?text=JD',
+    public: true,
     createdAt: new Date('2023-01-01'),
     updatedAt: new Date(),
 };
+
+export const users: User[] = [
+    user,
+    {
+        id: 2,
+        firstName: 'Sarah',
+        lastName: 'Smith',
+        email: 'sarah.smith@example.com',
+        phoneNumber: '+1 (555) 234-5678',
+        birthday: new Date('1992-08-22'),
+        photoURL: 'https://via.placeholder.com/150x150/E31837/FFFFFF?text=SS',
+        public: true,
+        createdAt: new Date('2023-02-15'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 3,
+        firstName: 'Michael',
+        lastName: 'Johnson',
+        email: 'michael.johnson@example.com',
+        phoneNumber: '+1 (555) 345-6789',
+        birthday: new Date('1988-03-10'),
+        photoURL: 'https://via.placeholder.com/150x150/00338D/FFFFFF?text=MJ',
+        public: true,
+        createdAt: new Date('2023-01-20'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 4,
+        firstName: 'Emily',
+        lastName: 'Williams',
+        email: 'emily.williams@example.com',
+        phoneNumber: '+1 (555) 456-7890',
+        birthday: new Date('1995-11-05'),
+        photoURL: 'https://via.placeholder.com/150x150/552583/FFFFFF?text=EW',
+        public: false,
+        createdAt: new Date('2023-03-01'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 5,
+        firstName: 'David',
+        lastName: 'Brown',
+        email: 'david.brown@example.com',
+        phoneNumber: '+1 (555) 567-8901',
+        birthday: new Date('1991-07-18'),
+        photoURL: 'https://via.placeholder.com/150x150/1D428A/FFFFFF?text=DB',
+        public: true,
+        createdAt: new Date('2023-02-10'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 6,
+        firstName: 'Jessica',
+        lastName: 'Davis',
+        email: 'jessica.davis@example.com',
+        phoneNumber: '+1 (555) 678-9012',
+        birthday: new Date('1993-09-25'),
+        photoURL: 'https://via.placeholder.com/150x150/007A33/FFFFFF?text=JD',
+        public: false,
+        createdAt: new Date('2023-04-15'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 7,
+        firstName: 'Chris',
+        lastName: 'Miller',
+        email: 'chris.miller@example.com',
+        phoneNumber: '+1 (555) 789-0123',
+        birthday: new Date('1989-12-30'),
+        photoURL: 'https://via.placeholder.com/150x150/CE1141/FFFFFF?text=CM',
+        public: true,
+        createdAt: new Date('2023-01-05'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 8,
+        firstName: 'Amanda',
+        lastName: 'Wilson',
+        email: 'amanda.wilson@example.com',
+        phoneNumber: '+1 (555) 890-1234',
+        birthday: new Date('1994-04-12'),
+        photoURL: 'https://via.placeholder.com/150x150/98002E/FFFFFF?text=AW',
+        public: true,
+        createdAt: new Date('2023-03-20'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 9,
+        firstName: 'Ryan',
+        lastName: 'Taylor',
+        email: 'ryan.taylor@example.com',
+        phoneNumber: '+1 (555) 901-2345',
+        birthday: new Date('1990-06-08'),
+        photoURL: 'https://via.placeholder.com/150x150/006BB6/FFFFFF?text=RT',
+        public: false,
+        createdAt: new Date('2023-02-28'),
+        updatedAt: new Date(),
+    },
+    {
+        id: 10,
+        firstName: 'Lisa',
+        lastName: 'Anderson',
+        email: 'lisa.anderson@example.com',
+        phoneNumber: '+1 (555) 012-3456',
+        birthday: new Date('1992-10-15'),
+        photoURL: 'https://via.placeholder.com/150x150/1D1160/FFFFFF?text=LA',
+        public: true,
+        createdAt: new Date('2023-01-25'),
+        updatedAt: new Date(),
+    },
+];
 
 // Generate sample positions for portfolio
 export const positions: Position[] = [
@@ -460,3 +573,59 @@ export const follows: Follow[] = [
     { id: 4, userID: 1, stockID: 20, createdAt: new Date('2024-01-01'), updatedAt: new Date() },
     { id: 5, userID: 1, stockID: 12, createdAt: new Date('2024-01-01'), updatedAt: new Date() },
 ];
+
+// Generate portfolios for different users
+const generateUserPortfolio = (userId: number, stockIds: number[]): Portfolio => {
+    const userPositions: Position[] = stockIds.map((stockId) => {
+        const stock = stocks.find(s => s.id === stockId);
+        if (!stock) {
+            console.warn(`Stock with ID ${stockId} not found`);
+            return null;
+        }
+        const shares = Math.random() * 20 + 5; // Random shares between 5-25
+        const avgCostPerShare = stock.price * (0.9 + Math.random() * 0.2); // Random cost between 90-110% of current price
+        const currentValue = shares * stock.price;
+        const totalGainLoss = currentValue - (shares * avgCostPerShare);
+        const gainLossPercentage = (totalGainLoss / (shares * avgCostPerShare)) * 100;
+
+        // Find color by stockID string
+        const stockColor = colors.find(c => c.stockID === stockId.toString());
+
+        return {
+            stock,
+            shares: Math.round(shares * 10) / 10,
+            avgCostPerShare: Math.round(avgCostPerShare * 100) / 100,
+            currentValue: Math.round(currentValue * 100) / 100,
+            totalGainLoss: Math.round(totalGainLoss * 100) / 100,
+            gainLossPercentage: Math.round(gainLossPercentage * 100) / 100,
+            colors: stockColor ? [stockColor] : [],
+        };
+    }).filter((pos): pos is Position => pos !== null);
+
+    const totalValue = userPositions.reduce((sum, pos) => sum + pos.currentValue, 0);
+    const totalInvested = userPositions.reduce((sum, pos) => sum + (pos.shares * pos.avgCostPerShare), 0);
+    const totalGainLoss = totalValue - totalInvested;
+    const totalGainLossPercentage = (totalGainLoss / totalInvested) * 100;
+
+    return {
+        totalValue: Math.round(totalValue * 100) / 100,
+        totalInvested: Math.round(totalInvested * 100) / 100,
+        totalGainLoss: Math.round(totalGainLoss * 100) / 100,
+        totalGainLossPercentage: Math.round(totalGainLossPercentage * 100) / 100,
+        positions: userPositions,
+    };
+};
+
+// User portfolios - each user has different stock holdings
+export const userPortfolios: Record<number, Portfolio> = {
+    1: portfolio, // John Doe - use existing portfolio
+    2: generateUserPortfolio(2, [11, 12, 13, 14, 15]), // Sarah Smith - NBA focused
+    3: generateUserPortfolio(3, [1, 2, 3, 4, 5, 6, 7]), // Michael Johnson - NFL focused
+    4: generateUserPortfolio(4, [21, 22, 23, 24, 25]), // Emily Williams - MLB focused
+    5: generateUserPortfolio(5, [26, 27, 28, 29, 30]), // David Brown - NHL focused
+    6: generateUserPortfolio(6, [45, 46, 47, 48, 49]), // Jessica Davis - College Basketball
+    7: generateUserPortfolio(7, [74, 75, 76, 77, 78]), // Chris Miller - Big 12 teams
+    8: generateUserPortfolio(8, [88, 89, 90, 91, 92]), // Amanda Wilson - Pac-12 teams
+    9: generateUserPortfolio(9, [100, 101, 102, 103]), // Ryan Taylor - Big East teams
+    10: generateUserPortfolio(10, [1, 11, 21, 26, 45]), // Lisa Anderson - Mixed portfolio
+};

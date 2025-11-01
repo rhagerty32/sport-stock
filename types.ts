@@ -30,6 +30,7 @@ export type User = {
     phoneNumber: string;
     birthday: Date;
     photoURL: string;
+    public: boolean;
     createdAt: Date;
     updatedAt: Date;
 };
@@ -142,4 +143,9 @@ export type Order = {
     status: 'pending' | 'filled' | 'cancelled';
     createdAt: Date;
     updatedAt: Date;
+};
+
+export type FriendInvested = {
+    user: User;
+    position: Position;
 };

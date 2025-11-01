@@ -7,6 +7,8 @@ type ThemeOption = 'light' | 'dark' | 'system';
 interface SettingsState {
     theme: ThemeOption;
     setTheme: (theme: ThemeOption) => void;
+    isPublicAccount: boolean;
+    setIsPublicAccount: (isPublic: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -14,6 +16,8 @@ export const useSettingsStore = create<SettingsState>()(
         (set) => ({
             theme: 'system',
             setTheme: (theme) => set({ theme }),
+            isPublicAccount: true,
+            setIsPublicAccount: (isPublic) => set({ isPublicAccount: isPublic }),
         }),
         {
             name: 'settings-storage',

@@ -3,11 +3,97 @@ import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { portfolio } from '@/lib/dummy-data';
+import { portfolio, userPortfolios, users } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+// Friend item component with image error handling
+function FriendItem({ user, portfolio, isDark, onPress, formatCurrency, formatPercentage }: {
+    user: typeof users[0];
+    portfolio: typeof userPortfolios[1];
+    isDark: boolean;
+    onPress: (userId: number) => void;
+    formatCurrency: (amount: number) => string;
+    formatPercentage: (percentage: number) => string;
+}) {
+    const [imageError, setImageError] = useState(false);
+    const isPublic = user.public;
+
+    return (
+        <TouchableOpacity
+            onPress={() => onPress(user.id)}
+            style={styles.friendItem}
+        >
+            <View style={styles.friendHeader}>
+                {imageError || !user.photoURL ? (
+                    <View style={[styles.friendAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                        <Ionicons
+                            name="person"
+                            size={25}
+                            color={isDark ? '#9CA3AF' : '#6B7280'}
+                        />
+                    </View>
+                ) : (
+                    <Image
+                        source={{ uri: user.photoURL }}
+                        style={styles.friendAvatar}
+                        onError={() => setImageError(true)}
+                    />
+                )}
+                <View style={styles.friendInfo}>
+                    <Text style={[styles.friendName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        {user.firstName} {user.lastName}
+                    </Text>
+                    <Text style={[styles.friendEmail, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        {user.email}
+                    </Text>
+                </View>
+            </View>
+
+            {isPublic && (
+                <View style={styles.friendPortfolio}>
+                    <View style={styles.friendPortfolioRow}>
+                        <Text style={[styles.friendPortfolioLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            Portfolio Value
+                        </Text>
+                        <Text style={[styles.friendPortfolioValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            {formatCurrency(portfolio.totalValue)}
+                        </Text>
+                    </View>
+                    <View style={styles.friendPortfolioRow}>
+                        <Text style={[styles.friendPortfolioLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            Gain/Loss
+                        </Text>
+                        <Text
+                            style={[
+                                styles.friendPortfolioValue,
+                                { color: portfolio.totalGainLoss >= 0 ? '#217C0A' : '#dc2626' }
+                            ]}
+                        >
+                            {formatCurrency(portfolio.totalGainLoss)} ({formatPercentage(portfolio.totalGainLossPercentage)})
+                        </Text>
+                    </View>
+                    <View style={styles.friendPositions}>
+                        <Text style={[styles.friendPositionsLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            Holdings: {portfolio.positions.length} positions
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {!isPublic && (
+                <View style={styles.friendPrivate}>
+                    <Text style={[styles.friendPrivateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        Portfolio is private
+                    </Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+}
 
 export default function HomeScreen() {
     const { isDark } = useTheme();
@@ -15,7 +101,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const [activePage, setActivePage] = useState(0);
     const pageCount = Math.ceil(portfolio.positions.length / 3);
-    const { setActiveStockId } = useStockStore();
+    const { setActiveStockId, friends, setActiveUserId } = useStockStore();
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -37,6 +123,20 @@ export default function HomeScreen() {
         lightImpact();
         setActiveStockId(stockId);
     };
+
+    const handleUserPress = (userId: number) => {
+        lightImpact();
+        setActiveUserId(userId);
+    };
+
+    // Get friends' data
+    const friendsData = friends
+        .map(userId => {
+            const user = users.find(u => u.id === userId);
+            const userPortfolio = userPortfolios[userId];
+            return user && userPortfolio ? { user, portfolio: userPortfolio } : null;
+        })
+        .filter((item): item is { user: typeof users[0]; portfolio: typeof userPortfolios[1] } => item !== null);
 
     return (
         <ThemedView style={styles.container}>
@@ -228,6 +328,38 @@ export default function HomeScreen() {
                         </View>
                     </GlassCard>
                 </View>
+
+                {/* Friends Section */}
+                {friendsData.length > 0 && (
+                    <View style={styles.section}>
+                        <GlassCard style={styles.friendsCard} padding={0}>
+                            <View style={styles.friendsContent}>
+                                <Text style={[styles.friendsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    Friends ({friendsData.length})
+                                </Text>
+
+                                <FlatList
+                                    data={friendsData}
+                                    renderItem={({ item }) => (
+                                        <FriendItem
+                                            user={item.user}
+                                            portfolio={item.portfolio}
+                                            isDark={isDark}
+                                            onPress={handleUserPress}
+                                            formatCurrency={formatCurrency}
+                                            formatPercentage={formatPercentage}
+                                        />
+                                    )}
+                                    keyExtractor={(item) => item.user.id.toString()}
+                                    scrollEnabled={false}
+                                    ItemSeparatorComponent={() => (
+                                        <View style={[styles.friendSeparator, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+                                    )}
+                                />
+                            </View>
+                        </GlassCard>
+                    </View>
+                )}
 
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
@@ -531,5 +663,83 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         backgroundColor: '#6B7280',
         marginHorizontal: 4,
+    },
+    // Friends Section Styles
+    friendsCard: {
+        marginHorizontal: 20,
+        marginBottom: 12,
+    },
+    friendsContent: {
+        paddingVertical: 20,
+    },
+    friendsTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        paddingHorizontal: 20,
+    },
+    friendItem: {
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+    },
+    friendHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    friendAvatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        marginRight: 12,
+    },
+    avatarPlaceholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    friendInfo: {
+        flex: 1,
+    },
+    friendName: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    friendEmail: {
+        fontSize: 14,
+    },
+    friendPortfolio: {
+        marginTop: 8,
+    },
+    friendPortfolioRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    friendPortfolioLabel: {
+        fontSize: 14,
+    },
+    friendPortfolioValue: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    friendPositions: {
+        marginTop: 4,
+    },
+    friendPositionsLabel: {
+        fontSize: 12,
+    },
+    friendPrivate: {
+        marginTop: 8,
+        paddingVertical: 8,
+    },
+    friendPrivateText: {
+        fontSize: 14,
+        fontStyle: 'italic',
+    },
+    friendSeparator: {
+        height: 1,
+        marginHorizontal: 20,
     },
 });

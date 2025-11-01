@@ -1,9 +1,10 @@
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 type ProfileBottomSheetProps = {
     profileBottomSheetRef: React.RefObject<BottomSheetModal>;
@@ -11,6 +12,7 @@ type ProfileBottomSheetProps = {
 
 export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBottomSheetProps) {
     const { setProfileBottomSheetOpen } = useStockStore();
+    const { isPublicAccount, setIsPublicAccount } = useSettingsStore();
     const [firstName, setFirstName] = useState('John');
     const [lastName, setLastName] = useState('Doe');
     const [email, setEmail] = useState('john.doe@example.com');
@@ -30,6 +32,11 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
     );
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
+
+    const handlePublicToggle = (value: boolean) => {
+        setIsPublicAccount(value);
+        lightImpact();
+    };
 
     const handleSave = () => {
         // TODO: Implement save functionality
@@ -154,6 +161,31 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             keyboardType="phone-pad"
                         />
                     </View>
+
+                    {/* Public Account Toggle */}
+                    <View style={styles.inputGroup}>
+                        <View style={styles.switchContainer}>
+                            <View style={styles.switchLabelContainer}>
+                                <Text style={[styles.label, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    Public Account
+                                </Text>
+                                <Text style={[styles.switchDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Allow others to view your profile and portfolio
+                                </Text>
+                            </View>
+                            <Switch
+                                value={isPublicAccount}
+                                onValueChange={handlePublicToggle}
+                                {...(Platform.OS === 'ios' ? {
+                                    trackColor: { false: isDark ? '#3A3A3C' : '#E5E7EB', true: '#217C0A' },
+                                    thumbColor: '#FFFFFF',
+                                } : {
+                                    trackColor: { false: '#767577', true: '#217C0A' },
+                                    thumbColor: isPublicAccount ? '#FFFFFF' : '#f4f3f4',
+                                })}
+                            />
+                        </View>
+                    </View>
                 </View>
 
                 {/* Save Button */}
@@ -227,5 +259,20 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 30,
+    },
+    switchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    switchLabelContainer: {
+        flex: 1,
+        marginRight: 12,
+    },
+    switchDescription: {
+        fontSize: 13,
+        fontWeight: '400',
+        marginTop: 4,
+        lineHeight: 18,
     },
 });

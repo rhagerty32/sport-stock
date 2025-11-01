@@ -15,6 +15,7 @@ import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
 import StockBottomSheet from './bottomSheets/StockBottomSheet';
+import UserBottomSheet from './bottomSheets/UserBottomSheet';
 
 export default function RootLayout() {
     const { theme, isDark } = useTheme();
@@ -22,15 +23,26 @@ export default function RootLayout() {
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null);
     const profileBottomSheetRef = useRef<BottomSheetModal>(null);
     const lightDarkBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, profileBottomSheetOpen, lightDarkBottomSheetOpen } = useStockStore();
+    const userBottomSheetRef = useRef<BottomSheetModal>(null);
+    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen } = useStockStore();
 
     useEffect(() => {
         if (activeStockId) {
             stockBottomSheetRef.current?.present();
+            userBottomSheetRef.current?.dismiss(); // Close user sheet when opening stock sheet
         } else {
             stockBottomSheetRef.current?.dismiss();
         }
     }, [activeStockId]);
+
+    useEffect(() => {
+        if (activeUserId) {
+            userBottomSheetRef.current?.present();
+            stockBottomSheetRef.current?.dismiss(); // Close stock sheet when opening user sheet
+        } else {
+            userBottomSheetRef.current?.dismiss();
+        }
+    }, [activeUserId]);
 
     console.log(profileBottomSheetOpen)
 
@@ -125,6 +137,7 @@ export default function RootLayout() {
 
                     {/* Bottom Sheets */}
                     <StockBottomSheet stockBottomSheetRef={stockBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <UserBottomSheet userBottomSheetRef={userBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <ProfileBottomSheet profileBottomSheetRef={profileBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
