@@ -4,14 +4,28 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, positions, user } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
+import { useWalletStore } from '@/stores/walletStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import WalletBalance from '@/components/wallet/WalletBalance';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact } = useHaptics();
-    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen } = useStockStore();
+    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen } = useStockStore();
+    const { wallet, initializeWallet, loadWallet } = useWalletStore();
+    const { resetOnboarding } = useSettingsStore();
+
+    // Initialize wallet on mount
+    useEffect(() => {
+        const DUMMY_USER_ID = 1;
+        initializeWallet();
+        if (!wallet) {
+            loadWallet(DUMMY_USER_ID);
+        }
+    }, []);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -26,8 +40,8 @@ export default function ProfileScreen() {
     };
 
     const accountActions = [
-        { title: 'Withdraw', icon: 'remove-circle-outline', color: '#dc2626' },
-        { title: 'Deposit', icon: 'cash-outline', color: '#217C0A' },
+        { title: 'Purchase FanCoins', icon: 'add-circle-outline', color: '#217C0A', action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
+        { title: 'How It Works', icon: 'information-circle-outline', color: '#217C0A', action: () => setWalletSystemBottomSheetOpen(true) },
     ];
 
     const settingsSections = [
@@ -36,6 +50,7 @@ export default function ProfileScreen() {
             items: [
                 { title: 'Personal Information', iconName: 'person-outline' },
                 { title: 'Light/Dark Mode', iconName: 'moon-outline' },
+                { title: 'Reset Onboarding', iconName: 'refresh-outline' },
             ]
         },
         {
@@ -76,12 +91,9 @@ export default function ProfileScreen() {
                                     {user.email}
                                 </Text>
                             </View>
-                            <View style={[styles.accountBadge, { backgroundColor: '#217C0A' }]}>
-                                <Text style={styles.accountBadgeText}>Premium Account</Text>
+                            <View style={styles.walletBalanceContainer}>
+                                <WalletBalance showFanCoins={true} size="medium" />
                             </View>
-                            <Text style={[styles.cashBalance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                {`Cash Balance: ${formatCurrency(120.00)}`}
-                            </Text>
                         </View>
                     </GlassCard>
                 </View>
@@ -94,24 +106,61 @@ export default function ProfileScreen() {
                     <GlassCard style={styles.holdingsCard}>
                         <View style={styles.holdingsContent}>
                             <View style={styles.holdingsGrid}>
-                                {positions.slice(0, 6).map((position, index) => (
-                                    <View key={position.stock.id} style={styles.holdingItem}>
-                                        <View style={[
-                                            styles.holdingLogo,
-                                            {
-                                                backgroundColor: position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626',
-                                                opacity: Math.abs(position.gainLossPercentage) / 10 + 0.3
-                                            }
-                                        ]}>
-                                            <Text style={styles.holdingLogoText}>
-                                                {position.stock.name.split(' ').map(word => word[0]).join('')}
-                                            </Text>
-                                        </View>
-                                        <Text style={[styles.holdingPercentage, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                            {formatPercentage(position.gainLossPercentage)}
-                                        </Text>
-                                    </View>
-                                ))}
+                                {(() => {
+                                    // Calculate portfolio percentages for all positions
+                                    const positionsWithPercentages = positions.slice(0, 6).map((position) => {
+                                        const portfolioPercentage = portfolio.totalValue > 0 
+                                            ? (position.currentValue / portfolio.totalValue) * 100 
+                                            : 0;
+                                        return { position, portfolioPercentage };
+                                    });
+                                    
+                                    // Find min and max percentages to normalize
+                                    const percentages = positionsWithPercentages.map(p => p.portfolioPercentage);
+                                    const minPercent = Math.min(...percentages);
+                                    const maxPercent = Math.max(...percentages);
+                                    const percentRange = maxPercent - minPercent || 1; // Avoid division by zero
+                                    
+                                    // Size range: 30px to 80px for more noticeable differences
+                                    const minSize = 30;
+                                    const maxSize = 80;
+                                    
+                                    return positionsWithPercentages.map(({ position, portfolioPercentage }, index) => {
+                                        // Normalize percentage to 0-1 range, then scale to size range
+                                        // This ensures the smallest holding is minSize and largest is maxSize
+                                        const normalizedPercent = percentRange > 0 
+                                            ? (portfolioPercentage - minPercent) / percentRange 
+                                            : 0.5;
+                                        
+                                        // Use square root for more pronounced differences
+                                        const bubbleSize = minSize + Math.sqrt(normalizedPercent) * (maxSize - minSize);
+                                        
+                                        // Font size scales with bubble size
+                                        const fontSize = Math.max(10, Math.min(18, bubbleSize * 0.25));
+                                        
+                                        return (
+                                            <View key={position.stock.id} style={styles.holdingItem}>
+                                                <View style={[
+                                                    styles.holdingLogo,
+                                                    {
+                                                        width: bubbleSize,
+                                                        height: bubbleSize,
+                                                        borderRadius: bubbleSize / 2,
+                                                        backgroundColor: position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626',
+                                                        opacity: Math.abs(position.gainLossPercentage) / 10 + 0.3
+                                                    }
+                                                ]}>
+                                                    <Text style={[styles.holdingLogoText, { fontSize }]}>
+                                                        {position.stock.name.split(' ').map(word => word[0]).join('')}
+                                                    </Text>
+                                                </View>
+                                                <Text style={[styles.holdingPercentage, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                                    {formatPercentage(portfolioPercentage)}
+                                                </Text>
+                                            </View>
+                                        );
+                                    });
+                                })()}
                                 {positions.length > 6 && (
                                     <TouchableOpacity
                                         style={styles.seeAllButton}
@@ -171,7 +220,12 @@ export default function ProfileScreen() {
                             <TouchableOpacity
                                 key={index}
                                 style={styles.actionButton}
-                                onPress={() => mediumImpact()}
+                                onPress={() => {
+                                    mediumImpact();
+                                    if (action.action) {
+                                        action.action();
+                                    }
+                                }}
                             >
                                 <GlassCard style={styles.actionCard}>
                                     <View style={styles.actionContent}>
@@ -201,12 +255,15 @@ export default function ProfileScreen() {
                                             styles.settingsItem,
                                             itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#E5E7EB' } : {},
                                         ]}
-                                        onPress={() => {
+                                        onPress={async () => {
                                             lightImpact()
                                             if (item.title === 'Light/Dark Mode') {
                                                 setLightDarkBottomSheetOpen(true);
                                             } else if (item.title === 'Personal Information') {
                                                 setProfileBottomSheetOpen(true);
+                                            } else if (item.title === 'Reset Onboarding') {
+                                                await resetOnboarding();
+                                                mediumImpact();
                                             }
                                         }}
                                     >
@@ -300,19 +357,9 @@ const styles = StyleSheet.create({
     profileEmail: {
         fontSize: 14,
     },
-    accountBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-    },
-    accountBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    cashBalance: {
-        fontSize: 16,
-        fontWeight: '500',
+    walletBalanceContainer: {
+        width: '100%',
+        marginTop: 8,
     },
     holdingsContainer: {
         paddingHorizontal: 20,
@@ -340,15 +387,11 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     holdingLogo: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 8,
     },
     holdingLogoText: {
-        fontSize: 16,
         fontWeight: 'bold',
         color: '#FFFFFF',
     },

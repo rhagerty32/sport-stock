@@ -17,6 +17,10 @@ type StockStore = {
     setProfileBottomSheetOpen: (open: boolean) => void;
     lightDarkBottomSheetOpen: boolean;
     setLightDarkBottomSheetOpen: (open: boolean) => void;
+    purchaseFanCoinsBottomSheetOpen: boolean;
+    setPurchaseFanCoinsBottomSheetOpen: (open: boolean) => void;
+    walletSystemBottomSheetOpen: boolean;
+    setWalletSystemBottomSheetOpen: (open: boolean) => void;
 };
 
 export const useStockStore = create<StockStore>()(
@@ -45,6 +49,10 @@ export const useStockStore = create<StockStore>()(
             setProfileBottomSheetOpen: (open) => set({ profileBottomSheetOpen: open }),
             lightDarkBottomSheetOpen: false,
             setLightDarkBottomSheetOpen: (open) => set({ lightDarkBottomSheetOpen: open }),
+            purchaseFanCoinsBottomSheetOpen: false,
+            setPurchaseFanCoinsBottomSheetOpen: (open) => set({ purchaseFanCoinsBottomSheetOpen: open }),
+            walletSystemBottomSheetOpen: false,
+            setWalletSystemBottomSheetOpen: (open) => set({ walletSystemBottomSheetOpen: open }),
         }),
         {
             name: 'stock-storage',

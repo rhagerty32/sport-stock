@@ -1,26 +1,30 @@
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
 import { Easing } from "react-native-reanimated";
 
-type BuySellBottomSheetProps = {
-    buySellBottomSheetRef: React.RefObject<BottomSheetModal>;
+type PurchaseFanCoinsBottomSheetProps = {
+    purchaseFanCoinsBottomSheetRef: React.RefObject<BottomSheetModal>;
 };
 
-export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBottomSheetProps) {
-    const { activeStockId, setBuySellBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen } = useStockStore();
-    const { wallet, spendCredits } = useWalletStore();
+const DUMMY_USER_ID = 1;
+const PRESET_AMOUNTS = [10, 25, 50, 100, 250];
+
+export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomSheetRef }: PurchaseFanCoinsBottomSheetProps) {
+    const { setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen } = useStockStore();
+    const { wallet, purchaseFanCoins, isLoading } = useWalletStore();
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
     const [showCustomAmount, setShowCustomAmount] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
     const customAmountInputRef = useRef<any>(null);
+    const { isDark } = useTheme();
+    const { lightImpact, success } = useHaptics();
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -34,16 +38,6 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
         ),
         []
     );
-    const { isDark } = useTheme();
-    const { lightImpact } = useHaptics();
-
-    // Find the stock by ID from the store
-    const stock = stocks.find(s => s.id === activeStockId);
-
-    // Don't render anything if no stock is selected
-    if (!activeStockId || !stock) {
-        return null;
-    }
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -54,48 +48,15 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
 
     const handleAmountSelect = (amount: number) => {
         setSelectedAmount(amount);
-        lightImpact();
-    };
-
-    const handleAdd = () => {
-        if (selectedAmount && wallet) {
-            if (wallet.tradingCredits >= selectedAmount) {
-                try {
-                    spendCredits(selectedAmount);
-                    // TODO: Implement actual trade execution
-                    console.log(`Buying ${formatCurrency(selectedAmount)} of ${stock.name}`);
-                    lightImpact();
-                    // Close sheet after successful trade
-                    setTimeout(() => {
-                        closeModal();
-                    }, 500);
-                } catch (error) {
-                    console.error('Failed to execute trade:', error);
-                    lightImpact();
-                }
-            } else {
-                // Show insufficient credits - handled in UI below
-                lightImpact();
-            }
-        }
-    };
-
-    const handlePurchaseCredits = () => {
-        setPurchaseFanCoinsBottomSheetOpen(true);
-        lightImpact();
-    };
-
-    const hasInsufficientCredits = wallet ? (selectedAmount ? wallet.tradingCredits < selectedAmount : false) : false;
-
-    const handleOrderTypeChange = () => {
-        // TODO: Implement order type change functionality
+        setShowCustomAmount(false);
+        setCustomAmount('');
         lightImpact();
     };
 
     const handleCustomAmountPress = () => {
         setShowCustomAmount(true);
+        setSelectedAmount(null);
         lightImpact();
-        // Focus the input after a short delay to ensure the modal is fully rendered
         setTimeout(() => {
             customAmountInputRef.current?.focus();
         }, 100);
@@ -103,8 +64,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
 
     const handleCustomAmountSubmit = () => {
         const amount = parseFloat(customAmount);
-        console.log('amount', amount);
-        if (amount > 0) {
+        if (amount > 0 && amount >= 10) {
             setSelectedAmount(amount);
             setShowCustomAmount(false);
             setCustomAmount('');
@@ -115,19 +75,53 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
     const handleCustomAmountCancel = () => {
         setShowCustomAmount(false);
         setCustomAmount('');
+        setSelectedAmount(null);
         lightImpact();
     };
 
-    const closeModal = () => {
-        setBuySellBottomSheetOpen(false);
-        setSelectedAmount(null);
+    const handlePurchase = async () => {
+        if (!selectedAmount) return;
+
+        try {
+            lightImpact();
+            await purchaseFanCoins(DUMMY_USER_ID, selectedAmount, 'stripe');
+            success();
+
+            // Reset form
+            setSelectedAmount(null);
+            setCustomAmount('');
+            setShowCustomAmount(false);
+
+            // Close sheet after short delay to show success
+            setTimeout(() => {
+                closeModal();
+            }, 1500);
+        } catch (error) {
+            console.error('Purchase failed:', error);
+            lightImpact();
+        }
     };
 
-    const presetAmounts = [1, 10, 20, 50, 100];
+    const closeModal = () => {
+        setPurchaseFanCoinsBottomSheetOpen(false);
+        setSelectedAmount(null);
+        setCustomAmount('');
+        setShowCustomAmount(false);
+    };
+
+    const openHowItWorks = () => {
+        setWalletSystemBottomSheetOpen(true);
+        lightImpact();
+    };
+
+    // Calculate FanCoins: 100 FanCoins per $1
+    const FANCOINS_PER_DOLLAR = 100;
+    const fanCoinsToReceive = selectedAmount ? selectedAmount * FANCOINS_PER_DOLLAR : 0;
+    const tradingCreditsToReceive = selectedAmount || 0; // 1:1 ratio, no bonus
 
     return (
         <BottomSheetModal
-            ref={buySellBottomSheetRef}
+            ref={purchaseFanCoinsBottomSheetRef}
             onDismiss={closeModal}
             stackBehavior='push'
             enableDynamicSizing={true}
@@ -142,49 +136,32 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Buy {stock.name}
+                        Purchase FanCoins
                     </Text>
                     <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        One-Time Order
+                        Get Trading Credits as a bonus
                     </Text>
-                    {wallet && (
-                        <Text style={[styles.balanceText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            Trading Credits: {formatCurrency(wallet.tradingCredits)}
-                        </Text>
-                    )}
                 </View>
 
-                {/* Insufficient Credits Warning */}
-                {hasInsufficientCredits && (
-                    <View style={[styles.warningContainer, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
-                        <Ionicons name="warning" size={20} color="#DC2626" />
-                        <View style={styles.warningTextContainer}>
-                            <Text style={[styles.warningTitle, { color: '#DC2626' }]}>
-                                Insufficient Trading Credits
-                            </Text>
-                            <Text style={[styles.warningText, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>
-                                You need {formatCurrency(selectedAmount! - (wallet?.tradingCredits || 0))} more credits to complete this purchase.
-                            </Text>
-                        </View>
-                        <TouchableOpacity
-                            style={styles.purchaseCreditsButton}
-                            onPress={handlePurchaseCredits}
-                        >
-                            <Text style={styles.purchaseCreditsButtonText}>Get Credits</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+                {/* How It Works Link */}
+                <TouchableOpacity
+                    style={styles.howItWorksButton}
+                    onPress={openHowItWorks}
+                >
+                    <Ionicons name="information-circle-outline" size={16} color="#217C0A" />
+                    <Text style={styles.howItWorksText}>How It Works</Text>
+                </TouchableOpacity>
 
                 {/* Amount Selection Grid */}
                 <View style={styles.amountGrid}>
-                    {presetAmounts.map((amount) => (
+                    {PRESET_AMOUNTS.map((amount) => (
                         <TouchableOpacity
                             key={amount}
                             style={[
                                 styles.amountButton,
                                 {
                                     backgroundColor: selectedAmount === amount
-                                        ? '#bbb'
+                                        ? '#217C0A'
                                         : (isDark ? '#374151' : '#F3F4F6')
                                 }
                             ]}
@@ -207,7 +184,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         onPress={handleCustomAmountPress}
                     >
                         <Text style={[styles.amountText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            ...
+                            Custom
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -216,7 +193,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                 {showCustomAmount && (
                     <View style={styles.customAmountContainer}>
                         <Text style={[styles.customAmountLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Enter Custom Amount
+                            Enter Amount (min. $10)
                         </Text>
                         <BottomSheetTextInput
                             ref={customAmountInputRef}
@@ -228,7 +205,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
-                            placeholder="Enter amount"
+                            placeholder="$0.00"
                             placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
                             value={customAmount}
                             onChangeText={setCustomAmount}
@@ -246,9 +223,9 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.submitButton, { backgroundColor: customAmount ? '#10B981' : '#9CA3AF' }]}
+                                style={[styles.customAmountButton, styles.submitButton, { backgroundColor: customAmount && parseFloat(customAmount) >= 10 ? '#10B981' : '#9CA3AF' }]}
                                 onPress={handleCustomAmountSubmit}
-                                disabled={!customAmount}
+                                disabled={!customAmount || parseFloat(customAmount) < 10}
                             >
                                 <Text style={styles.customAmountButtonText}>
                                     Done
@@ -258,56 +235,66 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                     </View>
                 )}
 
-                {/* Add Button */}
-                <View style={styles.addButtonContainer}>
-                    <TouchableOpacity
-                        style={[
-                            styles.addButton,
-                            {
-                                backgroundColor: selectedAmount ? '#F87171' : '#9CA3AF', // light shade of red
-                                opacity: selectedAmount ? 1 : 0.5
-                            }
-                        ]}
-                        onPress={handleAdd}
-                        disabled={!selectedAmount}
-                    >
-                        <Text style={styles.addButtonText}>Sell</Text>
-                        {selectedAmount && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}>$</Text>
-                                <AnimatedRollingNumber
-                                    value={selectedAmount ? selectedAmount : 0}
-                                    useGrouping={true}
-                                    enableCompactNotation={true}
-                                    compactToFixed={2}
-                                    textStyle={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}
-                                    spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
-                                />
+                {/* Purchase Summary */}
+                {selectedAmount && (
+                    <View style={[styles.bonusContainer, { backgroundColor: isDark ? '#1F2937' : '#F0FDF4' }]}>
+                        <View style={styles.bonusHeader}>
+                            <Text style={[styles.bonusTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                You'll Receive
+                            </Text>
+                        </View>
+                        <View style={styles.bonusDetails}>
+                            <View style={styles.bonusRow}>
+                                <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    FanCoins
+                                </Text>
+                                <Text style={[styles.bonusValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    {fanCoinsToReceive.toLocaleString()}
+                                </Text>
                             </View>
-                        )}
-                    </TouchableOpacity>
+                            <View style={styles.bonusRow}>
+                                <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Trading Credits
+                                </Text>
+                                <Text style={[styles.bonusValue, { color: '#217C0A', fontWeight: 'bold' }]}>
+                                    {formatCurrency(tradingCreditsToReceive)}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {/* Purchase Button */}
+                <View style={styles.purchaseButtonContainer}>
                     <TouchableOpacity
                         style={[
-                            styles.addButton,
+                            styles.purchaseButton,
                             {
-                                backgroundColor: selectedAmount ? '#10B981' : '#9CA3AF',
-                                opacity: selectedAmount ? 1 : 0.5
+                                backgroundColor: selectedAmount && !isLoading ? '#217C0A' : '#9CA3AF',
+                                opacity: selectedAmount && !isLoading ? 1 : 0.5
                             }
                         ]}
-                        onPress={handleAdd}
-                        disabled={!selectedAmount}
+                        onPress={handlePurchase}
+                        disabled={!selectedAmount || isLoading}
                     >
-                        <Text style={styles.addButtonText}>Buy</Text>
-                        {selectedAmount && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}>$</Text>
-                                <AnimatedRollingNumber
-                                    value={selectedAmount ? selectedAmount : 0}
-                                    useGrouping={true}
-                                    enableCompactNotation={true}
-                                    textStyle={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}
-                                    spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
-                                />
+                        {isLoading ? (
+                            <Text style={styles.purchaseButtonText}>Processing...</Text>
+                        ) : (
+                            <View style={styles.purchaseButtonContent}>
+                                <Text style={styles.purchaseButtonText}>Purchase</Text>
+                                {selectedAmount && (
+                                    <View style={styles.purchaseButtonAmount}>
+                                        <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}>$</Text>
+                                        <AnimatedRollingNumber
+                                            value={selectedAmount ? selectedAmount : 0}
+                                            useGrouping={true}
+                                            enableCompactNotation={true}
+                                            compactToFixed={2}
+                                            textStyle={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}
+                                            spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
+                                        />
+                                    </View>
+                                )}
                             </View>
                         )}
                     </TouchableOpacity>
@@ -329,7 +316,7 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginTop: 20,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     title: {
         fontSize: 24,
@@ -340,63 +327,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
-    balanceText: {
-        fontSize: 14,
-        fontWeight: '500',
-        marginTop: 8,
-    },
-    warningContainer: {
+    howItWorksButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 20,
-        gap: 12,
+        justifyContent: 'center',
+        marginBottom: 24,
+        gap: 6,
     },
-    warningTextContainer: {
-        flex: 1,
-    },
-    warningTitle: {
+    howItWorksText: {
+        color: '#217C0A',
         fontSize: 14,
         fontWeight: '600',
-        marginBottom: 4,
-    },
-    warningText: {
-        fontSize: 12,
-        lineHeight: 16,
-    },
-    purchaseCreditsButton: {
-        backgroundColor: '#217C0A',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    purchaseCreditsButtonText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    orderTypeContainer: {
-        marginBottom: 30,
-        alignItems: 'center',
-    },
-    orderTypeButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        gap: 8,
-    },
-    orderTypeText: {
-        fontSize: 16,
-        fontWeight: '500',
     },
     amountGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        marginBottom: 40,
+        marginBottom: 30,
         gap: 12,
     },
     amountButton: {
@@ -411,29 +358,6 @@ const styles = StyleSheet.create({
     amountText: {
         fontSize: 16,
         fontWeight: '600',
-    },
-    addButtonContainer: {
-        marginBottom: 20,
-        width: '100%',
-        flexDirection: 'row',
-        gap: 12,
-    },
-    addButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 50,
-        borderRadius: 12,
-        gap: 8,
-    },
-    addButtonText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    bottomSpacing: {
-        height: 30,
     },
     customAmountContainer: {
         marginBottom: 30,
@@ -474,6 +398,79 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    bonusContainer: {
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+    },
+    bonusHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    bonusTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    bonusDetails: {
+        gap: 8,
+    },
+    bonusRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    bonusLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    bonusValue: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    firstTimeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        padding: 8,
+        backgroundColor: 'rgba(33, 124, 10, 0.1)',
+        borderRadius: 8,
+    },
+    firstTimeText: {
+        fontSize: 12,
+        color: '#217C0A',
+        fontWeight: '500',
+    },
+    purchaseButtonContainer: {
+        marginBottom: 20,
+    },
+    purchaseButton: {
+        height: 50,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    purchaseButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    purchaseButtonText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    purchaseButtonAmount: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bottomSpacing: {
+        height: 30,
     },
 });
 

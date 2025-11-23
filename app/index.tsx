@@ -5,9 +5,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, userPortfolios, users } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
+import { useWalletStore } from '@/stores/walletStore';
+import WalletBalance from '@/components/wallet/WalletBalance';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Friend item component with image error handling
@@ -101,7 +103,17 @@ export default function HomeScreen() {
     const router = useRouter();
     const [activePage, setActivePage] = useState(0);
     const pageCount = Math.ceil(portfolio.positions.length / 3);
-    const { setActiveStockId, friends, setActiveUserId } = useStockStore();
+    const { setActiveStockId, friends, setActiveUserId, setPurchaseFanCoinsBottomSheetOpen } = useStockStore();
+    const { wallet, loadWallet, initializeWallet } = useWalletStore();
+
+    // Initialize wallet on mount
+    useEffect(() => {
+        const DUMMY_USER_ID = 1;
+        initializeWallet();
+        if (!wallet) {
+            loadWallet(DUMMY_USER_ID);
+        }
+    }, []);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -147,9 +159,27 @@ export default function HomeScreen() {
                         <Text style={[styles.logo, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             SportStock
                         </Text>
-                        <Text style={[styles.balance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            {formatCurrency(120.00)}
-                        </Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setPurchaseFanCoinsBottomSheetOpen(true);
+                                lightImpact();
+                            }}
+                        >
+                            {wallet ? (
+                                <View style={styles.balanceContainer}>
+                                    <Text style={[styles.balance, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        {formatCurrency(wallet.tradingCredits)}
+                                    </Text>
+                                    <Text style={[styles.balanceLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        Trading Credits
+                                    </Text>
+                                </View>
+                            ) : (
+                                <Text style={[styles.balance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Loading...
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -389,9 +419,17 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
     },
+    balanceContainer: {
+        alignItems: 'flex-end',
+    },
     balance: {
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '600',
+    },
+    balanceLabel: {
+        fontSize: 11,
+        fontWeight: '400',
+        marginTop: 2,
     },
     cardContainer: {
         marginBottom: 24,

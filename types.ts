@@ -149,3 +149,43 @@ export type FriendInvested = {
     user: User;
     position: Position;
 };
+
+// Wallet System Types
+export type Wallet = {
+    fanCoins: number;
+    tradingCredits: number;
+    userId: number;
+    updatedAt: Date;
+};
+
+export type FanCoinPurchase = {
+    id: number;
+    userId: number;
+    amount: number; // Amount in USD spent
+    fanCoinsReceived: number; // FanCoins purchased (same as amount)
+    tradingCreditsGranted: number; // Bonus credits granted
+    bonusPercentage: number; // Bonus percentage applied
+    paymentMethod: 'bank' | 'paypal' | 'stripe' | 'apple_pay' | 'google_pay';
+    status: 'pending' | 'completed' | 'failed';
+    createdAt: Date;
+    updatedAt: Date;
+};
+
+export type CreditBonus = {
+    id: number;
+    userId: number;
+    amount: number;
+    reason: 'purchase_bonus' | 'first_time_bonus' | 'tier_bonus' | 'promotional';
+    purchaseId?: number; // Link to purchase if applicable
+    createdAt: Date;
+};
+
+export type BonusInfo = {
+    baseMultiplier: number; // Base bonus percentage (e.g., 1.0 = 100%)
+    tierMultipliers: {
+        min: number;
+        max: number;
+        multiplier: number;
+    }[];
+    firstTimeBonus: number; // Additional bonus for first purchase (e.g., 0.2 = 20% extra)
+};

@@ -9,13 +9,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
+import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
+import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSheet';
 import StockBottomSheet from './bottomSheets/StockBottomSheet';
 import UserBottomSheet from './bottomSheets/UserBottomSheet';
+import WalletSystemBottomSheet from './bottomSheets/WalletSystemBottomSheet';
 
 export default function RootLayout() {
     const { theme, isDark } = useTheme();
@@ -24,7 +28,11 @@ export default function RootLayout() {
     const profileBottomSheetRef = useRef<BottomSheetModal>(null);
     const lightDarkBottomSheetRef = useRef<BottomSheetModal>(null);
     const userBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen } = useStockStore();
+    const purchaseFanCoinsBottomSheetRef = useRef<BottomSheetModal>(null);
+    const walletSystemBottomSheetRef = useRef<BottomSheetModal>(null);
+    const onboardingBottomSheetRef = useRef<BottomSheetModal>(null);
+    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen } = useStockStore();
+    const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
 
     useEffect(() => {
         if (activeStockId) {
@@ -65,6 +73,22 @@ export default function RootLayout() {
     }, [lightDarkBottomSheetOpen]);
 
     useEffect(() => {
+        if (purchaseFanCoinsBottomSheetOpen) {
+            purchaseFanCoinsBottomSheetRef.current?.present();
+        } else {
+            purchaseFanCoinsBottomSheetRef.current?.dismiss();
+        }
+    }, [purchaseFanCoinsBottomSheetOpen]);
+
+    useEffect(() => {
+        if (walletSystemBottomSheetOpen) {
+            walletSystemBottomSheetRef.current?.present();
+        } else {
+            walletSystemBottomSheetRef.current?.dismiss();
+        }
+    }, [walletSystemBottomSheetOpen]);
+
+    useEffect(() => {
         // Load Ionicons font
         const loadIonicons = async () => {
             try {
@@ -78,6 +102,42 @@ export default function RootLayout() {
 
         loadIonicons();
 
+        // Check onboarding status and show onboarding if not completed
+        const checkAndShowOnboarding = async () => {
+            try {
+                const completed = await checkOnboardingStatus();
+                if (!completed) {
+                    // Small delay to ensure the app is fully loaded
+                    setTimeout(() => {
+                        onboardingBottomSheetRef.current?.present();
+                    }, 500);
+                }
+            } catch (error) {
+                console.error('Failed to check onboarding status:', error);
+                // Show onboarding by default if check fails
+                setTimeout(() => {
+                    onboardingBottomSheetRef.current?.present();
+                }, 500);
+            }
+        };
+
+        checkAndShowOnboarding();
+    }, [checkOnboardingStatus]);
+
+    // Watch for onboarding reset and show onboarding immediately (but not on initial mount)
+    const hasMounted = useRef(false);
+    useEffect(() => {
+        if (hasMounted.current && !onboardingCompleted) {
+            // Small delay to ensure smooth transition
+            const timer = setTimeout(() => {
+                onboardingBottomSheetRef.current?.present();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+        hasMounted.current = true;
+    }, [onboardingCompleted]);
+
+    useEffect(() => {
         // Suppress specific warnings and errors that are common in Expo development
         LogBox.ignoreLogs([
             'Unable to save asset to directory',
@@ -102,7 +162,7 @@ export default function RootLayout() {
             // Restore original console.error
             console.error = originalConsoleError;
         };
-    }, []);
+    }, [checkOnboardingStatus]);
 
     return (
         <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
@@ -136,11 +196,14 @@ export default function RootLayout() {
                     </NativeTabs>
 
                     {/* Bottom Sheets */}
+                    <OnboardingBottomSheet onboardingBottomSheetRef={onboardingBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <StockBottomSheet stockBottomSheetRef={stockBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <UserBottomSheet userBottomSheetRef={userBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <ProfileBottomSheet profileBottomSheetRef={profileBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <PurchaseFanCoinsBottomSheet purchaseFanCoinsBottomSheetRef={purchaseFanCoinsBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <WalletSystemBottomSheet walletSystemBottomSheetRef={walletSystemBottomSheetRef as React.RefObject<BottomSheetModal>} />
 
                     <StatusBar style="auto" />
                 </BottomSheetModalProvider>
