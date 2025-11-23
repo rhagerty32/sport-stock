@@ -60,16 +60,16 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
             handleStyle={{ display: 'none' }}
             enableOverDrag={true}
             style={{ borderRadius: 20 }}
-            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Personal Information
+                        Profile
                     </Text>
                     <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        Update your profile details
+                        Update your info
                     </Text>
                 </View>
 
@@ -84,7 +84,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -105,7 +105,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -126,7 +126,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -149,7 +149,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -170,14 +170,14 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                     Public Account
                                 </Text>
                                 <Text style={[styles.switchDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Allow others to view your profile and portfolio
+                                    Let others see your profile and bag
                                 </Text>
                             </View>
                             <Switch
                                 value={isPublicAccount}
                                 onValueChange={handlePublicToggle}
                                 {...(Platform.OS === 'ios' ? {
-                                    trackColor: { false: isDark ? '#3A3A3C' : '#E5E7EB', true: '#217C0A' },
+                                    trackColor: { false: isDark ? '#2F2F2F' : '#E5E7EB', true: '#217C0A' },
                                     thumbColor: '#FFFFFF',
                                 } : {
                                     trackColor: { false: '#767577', true: '#217C0A' },

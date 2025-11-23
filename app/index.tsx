@@ -31,7 +31,7 @@ function FriendItem({ user, portfolio, isDark, onPress, formatCurrency, formatPe
         >
             <View style={styles.friendHeader}>
                 {imageError || !user.photoURL ? (
-                    <View style={[styles.friendAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                    <View style={[styles.friendAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#2F2F2F' : '#E5E7EB' }]}>
                         <Ionicons
                             name="person"
                             size={25}
@@ -59,7 +59,7 @@ function FriendItem({ user, portfolio, isDark, onPress, formatCurrency, formatPe
                 <View style={styles.friendPortfolio}>
                     <View style={styles.friendPortfolioRow}>
                         <Text style={[styles.friendPortfolioLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            Portfolio Value
+                            Total Value
                         </Text>
                         <Text style={[styles.friendPortfolioValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             {formatCurrency(portfolio.totalValue)}
@@ -67,7 +67,7 @@ function FriendItem({ user, portfolio, isDark, onPress, formatCurrency, formatPe
                     </View>
                     <View style={styles.friendPortfolioRow}>
                         <Text style={[styles.friendPortfolioLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            Gain/Loss
+                            W/L
                         </Text>
                         <Text
                             style={[
@@ -80,7 +80,7 @@ function FriendItem({ user, portfolio, isDark, onPress, formatCurrency, formatPe
                     </View>
                     <View style={styles.friendPositions}>
                         <Text style={[styles.friendPositionsLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            Holdings: {portfolio.positions.length} positions
+                            Positions: {portfolio.positions.length} bets
                         </Text>
                     </View>
                 </View>
@@ -89,7 +89,7 @@ function FriendItem({ user, portfolio, isDark, onPress, formatCurrency, formatPe
             {!isPublic && (
                 <View style={styles.friendPrivate}>
                     <Text style={[styles.friendPrivateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        Portfolio is private
+                        Bag is private
                     </Text>
                 </View>
             )}
@@ -171,7 +171,7 @@ export default function HomeScreen() {
                                         {formatCurrency(wallet.tradingCredits)}
                                     </Text>
                                     <Text style={[styles.balanceLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        Trading Credits
+                                        SportCash (SC)
                                     </Text>
                                 </View>
                             ) : (
@@ -193,7 +193,7 @@ export default function HomeScreen() {
                     >
                         <View style={styles.portfolioContent}>
                             <Text style={[styles.portfolioTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                Portfolio Value
+                                Total Value
                             </Text>
 
                             <Text style={[styles.portfolioValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -233,7 +233,7 @@ export default function HomeScreen() {
                         <View style={styles.investmentsContent}>
                             {/* My Investments Header */}
                             <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                My Investments
+                                My Bets
                             </Text>
 
                             {/* Investment Overview */}
@@ -243,7 +243,7 @@ export default function HomeScreen() {
                                         {formatCurrency(portfolio.totalInvested)}
                                     </Text>
                                     <Text style={[styles.investmentLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        Invested
+                                        Put In
                                     </Text>
                                 </View>
                                 <View style={styles.investmentRight}>
@@ -254,13 +254,13 @@ export default function HomeScreen() {
                                         {formatCurrency(portfolio.totalGainLoss)}
                                     </Text>
                                     <Text style={[styles.investmentLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        Gain/Loss
+                                        W/L
                                     </Text>
                                 </View>
                             </View>
 
                             {/* Divider */}
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]} />
 
                             {/* Summary Details */}
                             <View style={styles.summaryDetails}>
@@ -284,19 +284,19 @@ export default function HomeScreen() {
                             </View>
 
                             {/* Divider */}
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]} />
 
                             {/* Stocks Owned Section */}
                             <View style={styles.stocksOwnedHeader}>
                                 <View style={styles.stocksOwnedLeft}>
-                                    <Text style={[styles.stocksOwnedTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        Stocks Owned
-                                    </Text>
-                                    <Text style={[styles.stocksOwnedSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        My Total Investment Value
-                                    </Text>
+                                <Text style={[styles.stocksOwnedTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    Teams Backed
+                                </Text>
+                                <Text style={[styles.stocksOwnedSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Total Bag Value
+                                </Text>
                                 </View>
-                                <View style={[styles.sortButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                                <View style={[styles.sortButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
                                     <Text style={[styles.sortButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                         Sort by
                                     </Text>
@@ -338,7 +338,7 @@ export default function HomeScreen() {
                                                 <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                                     {position.stock.name}
                                                 </Text>
-                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
                                                     <Text style={[styles.stockValueText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                                         {formatCurrency(position.currentValue)}
                                                     </Text>
@@ -383,7 +383,7 @@ export default function HomeScreen() {
                                     keyExtractor={(item) => item.user.id.toString()}
                                     scrollEnabled={false}
                                     ItemSeparatorComponent={() => (
-                                        <View style={[styles.friendSeparator, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+                                        <View style={[styles.friendSeparator, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]} />
                                     )}
                                 />
                             </View>

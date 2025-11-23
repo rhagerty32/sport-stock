@@ -40,7 +40,7 @@ export default function ProfileScreen() {
     };
 
     const accountActions = [
-        { title: 'Purchase FanCoins', icon: 'add-circle-outline', color: '#217C0A', action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
+        { title: 'Buy Gold Coins', icon: 'add-circle-outline', color: '#217C0A', action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
         { title: 'How It Works', icon: 'information-circle-outline', color: '#217C0A', action: () => setWalletSystemBottomSheetOpen(true) },
     ];
 
@@ -48,7 +48,7 @@ export default function ProfileScreen() {
         {
             title: 'Account',
             items: [
-                { title: 'Personal Information', iconName: 'person-outline' },
+                                { title: 'Profile', iconName: 'person-outline' },
                 { title: 'Light/Dark Mode', iconName: 'moon-outline' },
                 { title: 'Reset Onboarding', iconName: 'refresh-outline' },
             ]
@@ -101,7 +101,7 @@ export default function ProfileScreen() {
                 {/* My Holdings Visual */}
                 <View style={styles.holdingsContainer}>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        My Holdings
+                        My Stash
                     </Text>
                     <GlassCard style={styles.holdingsCard}>
                         <View style={styles.holdingsContent}>
@@ -179,13 +179,13 @@ export default function ProfileScreen() {
                 {/* Account Metrics */}
                 <View style={styles.metricsContainer}>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Account Metrics
+                        Stats
                     </Text>
                     <View style={styles.metricsGrid}>
                         <GlassCard style={styles.metricCard}>
                             <View style={styles.metricContent}>
                                 <Text style={[styles.metricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Total Gains
+                                    Total Winnings
                                 </Text>
                                 <Text style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                     {formatCurrency(portfolio.totalGainLoss)}
@@ -195,7 +195,7 @@ export default function ProfileScreen() {
                         <GlassCard style={styles.metricCard}>
                             <View style={styles.metricContent}>
                                 <Text style={[styles.metricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Current % Gain
+                                    Up %
                                 </Text>
                                 <Text
                                     style={[
@@ -213,7 +213,7 @@ export default function ProfileScreen() {
                 {/* Account Actions */}
                 <View style={styles.actionsContainer}>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Account Actions
+                        Quick Actions
                     </Text>
                     <View style={styles.actionsGrid}>
                         {accountActions.map((action, index) => (
@@ -245,7 +245,7 @@ export default function ProfileScreen() {
                     {settingsSections.map((section, sectionIndex) => (
                         <View key={sectionIndex} style={styles.settingsSection}>
                             <Text style={[styles.settingsSectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                {section.title}
+                                {section.title === 'Account' ? 'Account' : section.title === 'Help & Support' ? 'Help' : section.title}
                             </Text>
                             <GlassCard style={styles.settingsCard} padding={8}>
                                 {section.items.map((item, itemIndex) => (
@@ -253,13 +253,13 @@ export default function ProfileScreen() {
                                         key={itemIndex}
                                         style={[
                                             styles.settingsItem,
-                                            itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#E5E7EB' } : {},
+                                            itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#262626' : '#E5E7EB' } : {},
                                         ]}
                                         onPress={async () => {
                                             lightImpact()
                                             if (item.title === 'Light/Dark Mode') {
                                                 setLightDarkBottomSheetOpen(true);
-                                            } else if (item.title === 'Personal Information') {
+                                            } else if (item.title === 'Profile') {
                                                 setProfileBottomSheetOpen(true);
                                             } else if (item.title === 'Reset Onboarding') {
                                                 await resetOnboarding();

@@ -136,7 +136,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
             handleStyle={{ display: 'none' }}
             enableOverDrag={true}
             style={{ borderRadius: 20 }}
-            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetView style={styles.scrollView}>
                 {/* Header */}
@@ -145,11 +145,11 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         Buy {stock.name}
                     </Text>
                     <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        One-Time Order
+                        Single Bet
                     </Text>
                     {wallet && (
                         <Text style={[styles.balanceText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                            Trading Credits: {formatCurrency(wallet.tradingCredits)}
+                            SportCash (SC): {formatCurrency(wallet.tradingCredits)}
                         </Text>
                     )}
                 </View>
@@ -160,17 +160,17 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         <Ionicons name="warning" size={20} color="#DC2626" />
                         <View style={styles.warningTextContainer}>
                             <Text style={[styles.warningTitle, { color: '#DC2626' }]}>
-                                Insufficient Trading Credits
+                                Not Enough SportCash
                             </Text>
                             <Text style={[styles.warningText, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>
-                                You need {formatCurrency(selectedAmount! - (wallet?.tradingCredits || 0))} more credits to complete this purchase.
+                                You need {formatCurrency(selectedAmount! - (wallet?.tradingCredits || 0))} more to make this bet.
                             </Text>
                         </View>
                         <TouchableOpacity
                             style={styles.purchaseCreditsButton}
                             onPress={handlePurchaseCredits}
                         >
-                            <Text style={styles.purchaseCreditsButtonText}>Get Credits</Text>
+                            <Text style={styles.purchaseCreditsButtonText}>Add SportCash</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -185,7 +185,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 {
                                     backgroundColor: selectedAmount === amount
                                         ? '#bbb'
-                                        : (isDark ? '#374151' : '#F3F4F6')
+                                        : (isDark ? '#262626' : '#F3F4F6')
                                 }
                             ]}
                             onPress={() => handleAmountSelect(amount)}
@@ -203,7 +203,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         </TouchableOpacity>
                     ))}
                     <TouchableOpacity
-                        style={[styles.amountButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                        style={[styles.amountButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                         onPress={handleCustomAmountPress}
                     >
                         <Text style={[styles.amountText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -223,7 +223,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             style={[
                                 styles.customAmountInput,
                                 {
-                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -238,7 +238,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         />
                         <View style={styles.customAmountButtons}>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                                 onPress={handleCustomAmountCancel}
                             >
                                 <Text style={[styles.customAmountButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>

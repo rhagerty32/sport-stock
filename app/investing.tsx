@@ -93,7 +93,7 @@ export default function InvestingScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        My Portfolio
+                        My Bag
                     </Text>
                 </View>
 
@@ -102,7 +102,7 @@ export default function InvestingScreen() {
                     <GlassCard style={styles.summaryCard}>
                         <View style={styles.summaryContent}>
                             <Text style={[styles.summaryTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                Portfolio Value
+                                Total Value
                             </Text>
 
                             <Text style={[styles.summaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -132,7 +132,7 @@ export default function InvestingScreen() {
                             <View style={styles.summaryStats}>
                                 <View style={styles.summaryStatItem}>
                                     <Text style={[styles.summaryStatLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        Total Invested
+                                        Total Put In
                                     </Text>
                                     <Text style={[styles.summaryStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                         {formatCurrency(portfolio.totalInvested)}
@@ -157,9 +157,9 @@ export default function InvestingScreen() {
                         Sort by:
                     </Text>
                     <View style={styles.sortButtons}>
-                        {[
+                                {[
                             { key: 'value', label: 'Value' },
-                            { key: 'gainLoss', label: 'Gain/Loss' },
+                            { key: 'gainLoss', label: 'W/L' },
                             { key: 'alphabetical', label: 'Name' },
                         ].map((option) => (
                             <TouchableOpacity
@@ -188,7 +188,7 @@ export default function InvestingScreen() {
                 {/* Positions List */}
                 <View style={styles.positionsContainer}>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        My Positions ({positions.length})
+                        My Bets ({positions.length})
                     </Text>
                     <FlatList
                         data={sortedPositions}

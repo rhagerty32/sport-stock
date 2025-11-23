@@ -144,7 +144,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         }
 
         return (
-            <View style={[styles.friendAvatar, styles.friendAvatarPlaceholder, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+            <View style={[styles.friendAvatar, styles.friendAvatarPlaceholder, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]}>
                 {user.photoURL ? (
                     <Ionicons
                         name="person"
@@ -209,7 +209,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
             handleStyle={{ display: 'none' }}
             snapPoints={['92%']}
             style={{ borderRadius: 25 }}
-            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
@@ -226,7 +226,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                                 <Text style={styles.leagueName}>{league?.name}</Text>
                             </View>
                         </View>
-                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
                             <Text style={[styles.currentPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>{formatCurrency(currentPrice)}</Text>
                         </View>
                     </View>
@@ -241,14 +241,14 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
                 {/* Chart */}
                 <View style={styles.chartContainer}>
-                    <Chart stockId={stock.id} color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor} backgroundColor={isDark ? '#1C1C1E' : '#FFFFFF'} />
+                    <Chart stockId={stock.id} color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor} backgroundColor={isDark ? '#1A1D21' : '#FFFFFF'} />
                 </View>
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
                     <TouchableOpacity
                         onPress={handleBuy}
-                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                     >
                         <Ionicons name="cart-outline" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -258,7 +258,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
                     <TouchableOpacity
                         onPress={() => lightImpact()}
-                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                     >
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Follow
@@ -271,7 +271,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                 <View style={styles.statsContainer}>
                     <GlassCard style={styles.statsCard}>
                         <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Stock Information
+                            Team Info
                         </Text>
 
                         <View style={styles.statsGrid}>
@@ -335,7 +335,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                 {/* Friends Invested Section */}
                 <View style={styles.friendsContainer}>
                     <Text style={[styles.friendsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Friends Invested ({friendsInvested.length})
+                        Squad In ({friendsInvested.length})
                     </Text>
                     {friendsInvested.length > 0 ? (
                         <FlatList
@@ -348,11 +348,11 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                     ) : (
                         <View style={styles.noFriendsContainer}>
                             <Text style={[styles.noFriendsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                No friends are currently invested in this stock
+                                No one in your squad is backing this team
                             </Text>
                             {friends.length > 0 && (
                                 <Text style={[styles.noFriendsHint, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-                                    You have {friends.length} friend{friends.length !== 1 ? 's' : ''}, but none are invested in {stock.name}
+                                    You have {friends.length} friend{friends.length !== 1 ? 's' : ''}, but none are in on {stock.name}
                                 </Text>
                             )}
                         </View>

@@ -3,7 +3,7 @@ import { BonusInfo, CreditBonus, FanCoinPurchase, Wallet } from '@/types';
 // Dummy user ID (in real app, this would come from auth context)
 const DUMMY_USER_ID = 1;
 
-// FanCoins conversion rate: 100 FanCoins per $1 USD
+// Gold Coins conversion rate: 100 GC per $1 USD
 const FANCOINS_PER_DOLLAR = 100;
 
 // Bonus calculation rules (no bonuses - 1:1 ratio)
@@ -53,7 +53,7 @@ export const simulatePurchase = async (
 ): Promise<FanCoinPurchase> => {
     await delay(800); // Simulate processing delay
     
-    // Calculate FanCoins: 100 FanCoins per $1
+    // Calculate Gold Coins: 100 GC per $1
     const fanCoinsReceived = amount * FANCOINS_PER_DOLLAR;
     // Trading Credits: 1:1 ratio (no bonus)
     const tradingCreditsGranted = amount;

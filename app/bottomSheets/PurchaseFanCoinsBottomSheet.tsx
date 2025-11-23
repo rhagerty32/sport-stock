@@ -114,10 +114,10 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
         lightImpact();
     };
 
-    // Calculate FanCoins: 100 FanCoins per $1
-    const FANCOINS_PER_DOLLAR = 100;
-    const fanCoinsToReceive = selectedAmount ? selectedAmount * FANCOINS_PER_DOLLAR : 0;
-    const tradingCreditsToReceive = selectedAmount || 0; // 1:1 ratio, no bonus
+    // Calculate Gold Coins: 100 GC per $1
+    const GOLD_COINS_PER_DOLLAR = 100;
+    const goldCoinsToReceive = selectedAmount ? selectedAmount * GOLD_COINS_PER_DOLLAR : 0;
+    const sportCashToReceive = selectedAmount || 0; // 1:1 ratio, no bonus
 
     return (
         <BottomSheetModal
@@ -130,16 +130,16 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
             handleStyle={{ display: 'none' }}
             enableOverDrag={true}
             style={{ borderRadius: 20 }}
-            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Purchase FanCoins
+                        Buy Gold Coins
                     </Text>
                     <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        Get Trading Credits as a bonus
+                        Get SportCash as a bonus
                     </Text>
                 </View>
 
@@ -162,7 +162,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                 {
                                     backgroundColor: selectedAmount === amount
                                         ? '#217C0A'
-                                        : (isDark ? '#374151' : '#F3F4F6')
+                                        : (isDark ? '#262626' : '#F3F4F6')
                                 }
                             ]}
                             onPress={() => handleAmountSelect(amount)}
@@ -180,7 +180,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                         </TouchableOpacity>
                     ))}
                     <TouchableOpacity
-                        style={[styles.amountButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                        style={[styles.amountButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                         onPress={handleCustomAmountPress}
                     >
                         <Text style={[styles.amountText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -200,7 +200,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                             style={[
                                 styles.customAmountInput,
                                 {
-                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -215,7 +215,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                         />
                         <View style={styles.customAmountButtons}>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                                 onPress={handleCustomAmountCancel}
                             >
                                 <Text style={[styles.customAmountButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -237,7 +237,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
 
                 {/* Purchase Summary */}
                 {selectedAmount && (
-                    <View style={[styles.bonusContainer, { backgroundColor: isDark ? '#1F2937' : '#F0FDF4' }]}>
+                    <View style={[styles.bonusContainer, { backgroundColor: isDark ? '#1A1D21' : '#F0FDF4' }]}>
                         <View style={styles.bonusHeader}>
                             <Text style={[styles.bonusTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                 You'll Receive
@@ -246,18 +246,18 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                         <View style={styles.bonusDetails}>
                             <View style={styles.bonusRow}>
                                 <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    FanCoins
+                                    Gold Coins (GC)
                                 </Text>
                                 <Text style={[styles.bonusValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {fanCoinsToReceive.toLocaleString()}
+                                    {goldCoinsToReceive.toLocaleString()}
                                 </Text>
                             </View>
                             <View style={styles.bonusRow}>
                                 <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Trading Credits
+                                    SportCash (SC)
                                 </Text>
                                 <Text style={[styles.bonusValue, { color: '#217C0A', fontWeight: 'bold' }]}>
-                                    {formatCurrency(tradingCreditsToReceive)}
+                                    {formatCurrency(sportCashToReceive)}
                                 </Text>
                             </View>
                         </View>

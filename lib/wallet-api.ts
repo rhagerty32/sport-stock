@@ -44,7 +44,7 @@ export const fetchWallet = async (userId: number): Promise<Wallet> => {
 };
 
 /**
- * Purchase FanCoins
+ * Purchase Gold Coins
  */
 export const purchaseFanCoins = async (
     userId: number,
@@ -68,7 +68,7 @@ export const purchaseFanCoins = async (
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to purchase FanCoins: ${response.statusText}`);
+                throw new Error(`Failed to purchase Gold Coins: ${response.statusText}`);
             }
 
             const data = await response.json();
@@ -78,7 +78,7 @@ export const purchaseFanCoins = async (
                 updatedAt: new Date(data.updatedAt),
             };
         } catch (error) {
-            console.error('Error purchasing FanCoins:', error);
+            console.error('Error purchasing Gold Coins:', error);
             throw error;
         }
     } else {

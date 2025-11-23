@@ -56,7 +56,7 @@ export default function UserPortfolioScreen() {
             <ThemedView style={styles.container}>
                 <View style={styles.errorContainer}>
                     <Text style={[styles.errorText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        No portfolio data available
+                        No bag data available
                     </Text>
                 </View>
             </ThemedView>
@@ -117,7 +117,7 @@ export default function UserPortfolioScreen() {
                                 ) : (
                                     <View style={styles.positionValue}>
                                         <Text style={[styles.positionShares, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                            Holdings not disclosed
+                                            Stash not disclosed
                                         </Text>
                                     </View>
                                 )}
@@ -147,7 +147,7 @@ export default function UserPortfolioScreen() {
                     </TouchableOpacity>
                     <View style={styles.userInfo}>
                         {imageError || !user.photoURL ? (
-                            <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                            <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#2F2F2F' : '#E5E7EB' }]}>
                                 <Ionicons
                                     name="person"
                                     size={40}
@@ -172,7 +172,7 @@ export default function UserPortfolioScreen() {
                                 styles.publicBadgeText,
                                 { color: isPublic ? '#217C0A' : '#dc2626' }
                             ]}>
-                                {isPublic ? 'Public Portfolio' : 'Private Portfolio'}
+                                {isPublic ? 'Public Bag' : 'Private Bag'}
                             </Text>
                         </View>
                     </View>
@@ -184,7 +184,7 @@ export default function UserPortfolioScreen() {
                         <GlassCard style={styles.summaryCard}>
                             <View style={styles.summaryContent}>
                                 <Text style={[styles.summaryTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    Portfolio Value
+                                    Total Value
                                 </Text>
 
                                 <Text style={[styles.summaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -214,7 +214,7 @@ export default function UserPortfolioScreen() {
                                 <View style={styles.summaryStats}>
                                     <View style={styles.summaryStatItem}>
                                         <Text style={[styles.summaryStatLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                            Total Invested
+                                            Total Put In
                                         </Text>
                                         <Text style={[styles.summaryStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                             {formatCurrency(portfolio.totalInvested)}
@@ -237,7 +237,7 @@ export default function UserPortfolioScreen() {
                 {/* Positions List */}
                 <View style={styles.positionsContainer}>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        {isPublic ? 'Portfolio Holdings' : 'Investments'} ({displayPositions.length})
+                        {isPublic ? 'Stash' : 'Bets'} ({displayPositions.length})
                     </Text>
                     <FlatList
                         data={displayPositions}

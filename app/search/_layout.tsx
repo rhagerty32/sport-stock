@@ -14,7 +14,7 @@ function SearchLayoutContent() {
                 options={{
                     title: 'Search',
                     headerShown: true,
-                    headerStyle: { backgroundColor: isDark ? '#151718' : '#FFFFFF' },
+                    headerStyle: { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' },
                     // Instead of relying on headerTitleAlign (not always respected on all platforms), 
                     // make the title left-aligned manually by using a custom headerTitle component
                     headerTitle: () => (

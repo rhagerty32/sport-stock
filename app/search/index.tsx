@@ -88,7 +88,7 @@ export default function SearchScreen() {
                     <View style={styles.listCardContent}>
                         <View style={styles.listCardHeader}>
                             {imageError || !user.photoURL ? (
-                                <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                                <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#2F2F2F' : '#E5E7EB' }]}>
                                     <Ionicons
                                         name="person"
                                         size={25}
@@ -143,7 +143,7 @@ export default function SearchScreen() {
             >
                 <GlassCard style={styles.gridCard}>
                     <View style={styles.gridCardContent}>
-                        <View style={[styles.teamLogo, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                        <View style={[styles.teamLogo, { backgroundColor: isDark ? '#2F2F2F' : '#E5E7EB' }]}>
                             <Text style={[styles.logoText, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
                                 {stock.name.split(' ').map(word => word[0]).join('')}
                             </Text>
@@ -182,12 +182,12 @@ export default function SearchScreen() {
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* Search Tabs */}
-                <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
                     <TouchableOpacity
                         style={[
                             styles.tabButton,
                             searchTab === 'stocks' && {
-                                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                                backgroundColor: isDark ? '#1A1D21' : '#FFFFFF',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: 0.1,
@@ -215,7 +215,7 @@ export default function SearchScreen() {
                         style={[
                             styles.tabButton,
                             searchTab === 'users' && {
-                                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                                backgroundColor: isDark ? '#1A1D21' : '#FFFFFF',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: 0.1,

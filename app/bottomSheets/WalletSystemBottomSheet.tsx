@@ -5,7 +5,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import WalletBalance from '@/components/wallet/WalletBalance';
 
 type WalletSystemBottomSheetProps = {
@@ -53,19 +53,19 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
             handleStyle={{ display: 'none' }}
             enableOverDrag={true}
             style={{ borderRadius: 20 }}
-            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        How The Wallet System Works
+                        How The SportCash System Works
                     </Text>
                 </View>
 
                 {/* Current Balances */}
                 {wallet && (
-                    <View style={[styles.balanceCard, { backgroundColor: isDark ? '#2C2C2E' : '#F9FAFB' }]}>
+                    <View style={[styles.balanceCard, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
                         <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Your Current Balances
                         </Text>
@@ -73,29 +73,33 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                     </View>
                 )}
 
-                {/* FanCoins Explanation */}
+                {/* Gold Coins Explanation */}
                 <View style={styles.section}>
                     <View style={styles.iconContainer}>
-                        <Ionicons name="logo-bitcoin" size={32} color="#217C0A" />
+                        <Ionicons name="cash" size={32} color="#FFD700" />
                     </View>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        What Are FanCoins?
+                        What Are Gold Coins?
                     </Text>
                     <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        FanCoins are entertainment tokens that you purchase with real money. They have no monetary value and cannot be exchanged for cash. Think of them as collectible tokens that show your support for SportStock.
+                        Gold Coins (GC) are entertainment tokens that you purchase with real money. They have no monetary value and cannot be exchanged for SportCash. Think of them as collectible tokens that show your support for SportStock.
                     </Text>
                 </View>
 
-                {/* Trading Credits Explanation */}
+                {/* SportCash Explanation */}
                 <View style={styles.section}>
                     <View style={styles.iconContainer}>
-                        <Ionicons name="wallet" size={32} color="#217C0A" />
+                        <Image 
+                            source={require('@/assets/images/icon.png')} 
+                            style={{ width: 32, height: 32 }}
+                            resizeMode="contain"
+                        />
                     </View>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        What Are Trading Credits?
+                        What Is SportCash?
                     </Text>
                     <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        Trading Credits are promotional bonus credits that we grant you when you purchase FanCoins. These credits can be used to invest in sports teams, build your portfolio, and participate in trading activities on SportStock.
+                        SportCash (SC) is bonus money we give you when you buy Gold Coins. Use it to back sports teams, build your bag, and make plays on SportStock.
                     </Text>
                 </View>
 
@@ -105,21 +109,21 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                         <Ionicons name="gift" size={32} color="#217C0A" />
                     </View>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        How FanCoins Work
+                        How Gold Coins Work
                     </Text>
                     <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        When you purchase FanCoins, you receive 100 FanCoins for every $1 you spend. FanCoins are entertainment tokens with no monetary value. For every dollar you spend, you also receive $1 in Trading Credits that you can use to invest in sports teams.
+                        When you buy Gold Coins, you get 100 Gold Coins (GC) for every $1 you spend. Gold Coins are just for fun with no real value. For every dollar you spend, you also get $1 in SportCash (SC) to back sports teams.
                     </Text>
-                    <View style={[styles.bonusTiers, { backgroundColor: isDark ? '#2C2C2E' : '#F9FAFB' }]}>
+                    <View style={[styles.bonusTiers, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
                         <View style={styles.tierRow}>
-                            <Text style={[styles.tierAmount, { color: isDark ? '#FFFFFF' : '#000000' }]}>Example: $100 Purchase</Text>
+                            <Text style={[styles.tierAmount, { color: isDark ? '#FFFFFF' : '#000000' }]}>Example: $100 Buy</Text>
                         </View>
                         <View style={styles.tierRow}>
-                            <Text style={[styles.tierAmount, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>FanCoins Received</Text>
+                            <Text style={[styles.tierAmount, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Gold Coins (GC) You Get</Text>
                             <Text style={[styles.tierBonus, { color: '#217C0A' }]}>10,000</Text>
                         </View>
                         <View style={styles.tierRow}>
-                            <Text style={[styles.tierAmount, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Trading Credits</Text>
+                            <Text style={[styles.tierAmount, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>SportCash (SC)</Text>
                             <Text style={[styles.tierBonus, { color: '#217C0A' }]}>$100.00</Text>
                         </View>
                     </View>
@@ -139,7 +143,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                                 <Text style={styles.stepNumberText}>1</Text>
                             </View>
                             <Text style={[styles.flowText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                Purchase FanCoins with real money
+                                Buy Gold Coins with real money
                             </Text>
                         </View>
                         <Ionicons name="arrow-down" size={24} color={isDark ? '#9CA3AF' : '#6B7280'} style={styles.flowArrow} />
@@ -148,7 +152,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                                 <Text style={styles.stepNumberText}>2</Text>
                             </View>
                             <Text style={[styles.flowText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                Receive Trading Credits as a bonus
+                                Get SportCash as a bonus
                             </Text>
                         </View>
                         <Ionicons name="arrow-down" size={24} color={isDark ? '#9CA3AF' : '#6B7280'} style={styles.flowArrow} />
@@ -157,17 +161,17 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                                 <Text style={styles.stepNumberText}>3</Text>
                             </View>
                             <Text style={[styles.flowText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                Use Trading Credits to invest in teams
+                                Use SportCash to back teams
                             </Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Legal Note */}
-                <View style={[styles.legalNote, { backgroundColor: isDark ? '#1F2937' : '#FEF3C7' }]}>
+                <View style={[styles.legalNote, { backgroundColor: isDark ? '#1A1D21' : '#FEF3C7' }]}>
                     <Ionicons name="information-circle" size={20} color={isDark ? '#9CA3AF' : '#92400E'} />
                     <Text style={[styles.legalText, { color: isDark ? '#9CA3AF' : '#92400E' }]}>
-                        FanCoins are entertainment tokens with no monetary value. Trading Credits are promotional credits that can only be used within the SportStock platform. This system is designed to comply with applicable regulations.
+                        Gold Coins are just for fun with no real value. SportCash is bonus money that can only be used on SportStock. This system follows all the rules.
                     </Text>
                 </View>
 

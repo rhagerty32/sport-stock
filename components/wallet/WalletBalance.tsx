@@ -53,7 +53,7 @@ export default function WalletBalance({
                 </Text>
                 {showFanCoins && (
                     <Text style={[componentStyles.fanCoinsText, { fontSize: fontSizeStyles.fanCoins, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        {formatFanCoins(wallet.fanCoins)} FanCoins
+                        {formatFanCoins(wallet.fanCoins)} GC
                     </Text>
                 )}
             </View>
@@ -64,7 +64,7 @@ export default function WalletBalance({
         <View style={componentStyles.container}>
             <View style={componentStyles.balanceRow}>
                 <Text style={[componentStyles.label, { fontSize: fontSizeStyles.label, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                    Trading Credits
+                    SportCash (SC)
                 </Text>
                 <Text style={[componentStyles.creditsText, { fontSize: fontSizeStyles.credits, color: isDark ? '#FFFFFF' : '#000000' }]}>
                     {formatCurrency(wallet.tradingCredits)}
@@ -73,7 +73,7 @@ export default function WalletBalance({
             {showFanCoins && (
                 <View style={componentStyles.balanceRow}>
                     <Text style={[componentStyles.label, { fontSize: fontSizeStyles.label, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        FanCoins
+                        Gold Coins (GC)
                     </Text>
                     <Text style={[componentStyles.fanCoinsText, { fontSize: fontSizeStyles.fanCoins, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                         {formatFanCoins(wallet.fanCoins)}

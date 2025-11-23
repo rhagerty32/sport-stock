@@ -130,7 +130,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                                 ) : (
                                     <View style={styles.positionValue}>
                                         <Text style={[styles.positionShares, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                            Holdings not disclosed
+                                            Stash not disclosed
                                         </Text>
                                     </View>
                                 )}
@@ -152,15 +152,15 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
             handleStyle={{ display: 'none' }}
             snapPoints={['92%']}
             style={{ borderRadius: 25 }}
-            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <View style={[styles.header, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]}>
+                <View style={[styles.header, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
                     <View style={styles.headerContent}>
                         <View style={styles.userInfo}>
                             {imageError || !user.photoURL ? (
-                                <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#3A3A3C' : '#E5E7EB' }]}>
+                                <View style={[styles.userAvatar, styles.avatarPlaceholder, { backgroundColor: isDark ? '#2F2F2F' : '#E5E7EB' }]}>
                                     <Ionicons
                                         name="person"
                                         size={30}
@@ -189,7 +189,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                                         styles.publicBadgeText,
                                         { color: isPublic ? '#217C0A' : '#dc2626' }
                                     ]}>
-                                        {isPublic ? 'Public Portfolio' : 'Private Portfolio'}
+                                        {isPublic ? 'Public Bag' : 'Private Bag'}
                                     </Text>
                                 </View>
                             </View>
@@ -235,7 +235,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                         <View style={styles.portfolioSummary}>
                             <View style={styles.summaryCard}>
                                 <Text style={[styles.summaryTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    Portfolio Value
+                                    Total Value
                                 </Text>
                                 <Text style={[styles.summaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                     {formatCurrency(portfolio.totalValue)}
@@ -263,7 +263,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                                 <View style={styles.summaryStats}>
                                     <View style={styles.summaryStatItem}>
                                         <Text style={[styles.summaryStatLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                            Total Invested
+                                            Total Put In
                                         </Text>
                                         <Text style={[styles.summaryStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                             {formatCurrency(portfolio.totalInvested)}
@@ -286,7 +286,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                 {/* Positions Section */}
                 <View style={styles.positionsSection}>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        {isPublic ? 'Portfolio Holdings' : 'Investments'} ({displayPositions.length})
+                        {isPublic ? 'Stash' : 'Bets'} ({displayPositions.length})
                     </Text>
 
                     {displayPositions.length > 0 ? (
@@ -300,7 +300,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                     ) : (
                         <View style={styles.emptyState}>
                             <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                No positions found
+                                No bets found
                             </Text>
                         </View>
                     )}

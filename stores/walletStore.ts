@@ -85,7 +85,7 @@ export const useWalletStore = create<WalletStore>()(
                     set({ isLoading: false });
                     return purchase;
                 } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : 'Failed to purchase FanCoins';
+                    const errorMessage = error instanceof Error ? error.message : 'Failed to purchase Gold Coins';
                     set({ error: errorMessage, isLoading: false });
                     throw error;
                 }

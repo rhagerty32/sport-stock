@@ -422,7 +422,7 @@ function MiniChart({
                         top: 0,
                         right: 0,
                         height: height,
-                        backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
+                        backgroundColor: isDark ? '#262626' : '#FFFFFF',
                     },
                     animatedClipStyle
                 ]}
@@ -454,7 +454,7 @@ function StockCard({
             style={[
                 styles.stockCard,
                 {
-                    backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
+                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
                     width: cardWidth,
                 },
             ]}
@@ -501,22 +501,22 @@ function StockCard({
 
 const ONBOARDING_PAGES = [
     {
-        title: '1. Pick a Stock',
-        description: "Invest in your favorite teams and watch your portfolio move as game-day legends are made. Prices pump and dump in real time—buy in, hold tight, and outplay the crowd.",
+        title: '1. Pick Your Team',
+        description: "Back your favorite teams and watch your bag move as legends are made. Prices pump and dump in real time—throw down, hold tight, and outplay the crowd.",
         icon: 'trending-up',
         iconColor: '#217C0A',
         gradientColors: ['#217C0A', '#34D399'],
     },
     {
-        title: '2. Ride the Wave',
-        description: "Fund your account and you're ready to back your teams with your sports knowledge and instinct.",
+        title: '2. Load Up',
+        description: "Add SportCash to your account and you're ready to back your teams with your sports knowledge and gut instinct.",
         icon: 'flash',
         iconColor: '#217C0A',
         gradientColors: ['#217C0A', '#60A5FA'],
     },
     {
-        title: '3. Sell Before the Crash',
-        description: "Cash Out when you feel the Downfall Coming, gain profit and prove that you know ball!",
+        title: '3. Cash Out Before the Crash',
+        description: "Sell when you smell the downfall coming, lock in your profit and prove you know ball!",
         icon: 'trophy',
         iconColor: '#217C0A',
         gradientColors: ['#217C0A', '#FBBF24'],
@@ -627,7 +627,7 @@ function ProfitPage({
             {/* Confetti is now rendered at bottom sheet level */}
             <OnboardingCard isDark={isDark} index={index} style={{ flex: 1, paddingHorizontal: 20, width: '100%' }}>
                 {/* Stock Card */}
-                <View style={[styles.profitStockCard, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', marginTop: 10 }]}>
+                <View style={[styles.profitStockCard, { backgroundColor: isDark ? '#262626' : '#FFFFFF', marginTop: 10 }]}>
                     <View style={styles.profitStockHeader}>
                         <View style={styles.profitStockInfo}>
                             <Text style={[styles.profitStockName, { color: isDark ? '#FFFFFF' : '#552583' }]}>
@@ -660,7 +660,7 @@ function ProfitPage({
                         </View>
                         <View style={styles.profitStockDetailRow}>
                             <Text style={[styles.profitStockDetailLabel, { color: '#217C0A' }]}>
-                                Total Earnings
+                                Total Winnings
                             </Text>
                             <Text style={[styles.profitStockDetailValue, { color: '#217C0A' }]}>
                                 $1,200
@@ -724,7 +724,7 @@ function OnboardingCard({
                 styles.cardWrapper,
                 style,
                 {
-                    backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
+                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
                     shadowColor: isDark ? '#000000' : '#000000',
                 },
             ]}
@@ -823,7 +823,7 @@ function PaginationDot({
                     backgroundColor: isActive
                         ? '#217C0A'
                         : isDark
-                            ? '#374151'
+                            ? '#262626'
                             : '#E5E7EB',
                 },
                 animatedStyle,
@@ -919,7 +919,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
             style={{ borderRadius: 20 }}
             backgroundStyle={{
                 borderRadius: 20,
-                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                backgroundColor: isDark ? '#1A1D21' : '#FFFFFF',
             }}
         >
             {/* Confetti - rendered at bottom sheet level to cover everything */}
@@ -985,7 +985,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                             style={[
                                 styles.navButton,
                                 styles.backButton,
-                                { backgroundColor: isDark ? '#374151' : '#F3F4F6' },
+                                { backgroundColor: isDark ? '#262626' : '#F3F4F6' },
                             ]}
                             onPress={handlePrevious}
                         >

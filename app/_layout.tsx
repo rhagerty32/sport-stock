@@ -164,8 +164,20 @@ export default function RootLayout() {
         };
     }, [checkOnboardingStatus]);
 
+    const customDarkTheme = {
+        ...DarkTheme,
+        colors: {
+            ...DarkTheme.colors,
+            background: '#0B0F13',
+            card: '#1A1D21',
+            text: '#F5F5F5',
+            border: '#262626',
+            notification: '#217C0A',
+        },
+    };
+
     return (
-        <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <BottomSheetModalProvider>
                     <NativeTabs
@@ -181,7 +193,7 @@ export default function RootLayout() {
 
                         <NativeTabs.Trigger name="investing">
                             <Icon sf={{ default: 'briefcase', selected: 'briefcase.fill' }} />
-                            <Label>Investing</Label>
+                            <Label>My Bag</Label>
                         </NativeTabs.Trigger>
 
                         <NativeTabs.Trigger name="profile">

@@ -70,7 +70,7 @@ export default function ModalScreen() {
 
     // Get team colors
     const primaryColor = stockColor?.hex || '#3B82F6';
-    const secondaryColor = isDark ? '#1F2937' : '#F9FAFB';
+    const secondaryColor = isDark ? '#1A1D21' : '#F9FAFB';
 
     const timeframes: TimePeriod[] = ['1D', '1W', '1M', '1Y', 'ALL'];
 
@@ -109,7 +109,7 @@ export default function ModalScreen() {
                                 <Text style={styles.leagueName}>{league?.name}</Text>
                             </View>
                         </View>
-                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#374151' : '#FFFFFF' }]}>
+                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#262626' : '#FFFFFF' }]}>
                             <Text style={styles.currentPrice}>{formatCurrency(currentPrice)}</Text>
                         </View>
                     </View>
@@ -135,7 +135,7 @@ export default function ModalScreen() {
                             onPress={() => handleTimeframeChange(timeframe)}
                             style={[
                                 styles.timeframeButton,
-                                selectedTimeframe === timeframe && { backgroundColor: isDark ? '#374151' : '#E5E7EB' }
+                                selectedTimeframe === timeframe && { backgroundColor: isDark ? '#262626' : '#E5E7EB' }
                             ]}
                         >
                             <Text style={[
@@ -217,7 +217,7 @@ export default function ModalScreen() {
                 <View style={styles.actionButtons}>
                     <TouchableOpacity
                         onPress={handleBuy}
-                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                     >
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Buy/Short
@@ -226,7 +226,7 @@ export default function ModalScreen() {
 
                     <TouchableOpacity
                         onPress={handleFollow}
-                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
                     >
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Follow
