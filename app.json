@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ryanhagerty.SportStock"
+      "bundleIdentifier": "com.thesportstock.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {

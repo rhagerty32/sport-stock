@@ -422,7 +422,7 @@ function MiniChart({
                         top: 0,
                         right: 0,
                         height: height,
-                        backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                        backgroundColor: isDark ? '#1E2225' : '#FFFFFF',
                     },
                     animatedClipStyle
                 ]}
@@ -454,7 +454,7 @@ function StockCard({
             style={[
                 styles.stockCard,
                 {
-                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                    backgroundColor: isDark ? '#1E2225' : '#FFFFFF',
                     width: cardWidth,
                 },
             ]}
@@ -566,7 +566,7 @@ function StockCarouselPage({
     }));
 
     return (
-        <OnboardingCard isDark={isDark} index={1} style={{ paddingHorizontal: 0 }}>
+        <OnboardingCard index={1} style={{ paddingHorizontal: 0 }}>
             <Text
                 style={[
                     styles.title,
@@ -625,9 +625,9 @@ function ProfitPage({
     return (
         <View style={{ flex: 1, position: 'relative' }}>
             {/* Confetti is now rendered at bottom sheet level */}
-            <OnboardingCard isDark={isDark} index={index} style={{ flex: 1, paddingHorizontal: 20, width: '100%' }}>
+            <OnboardingCard index={index} style={{ flex: 1, paddingHorizontal: 20, width: '100%' }}>
                 {/* Stock Card */}
-                <View style={[styles.profitStockCard, { backgroundColor: isDark ? '#262626' : '#FFFFFF', marginTop: 10 }]}>
+                <View style={[styles.profitStockCard, { backgroundColor: isDark ? '#1E2225' : '#FFFFFF', marginTop: 10 }]}>
                     <View style={styles.profitStockHeader}>
                         <View style={styles.profitStockInfo}>
                             <Text style={[styles.profitStockName, { color: isDark ? '#FFFFFF' : '#552583' }]}>
@@ -708,12 +708,10 @@ function ProfitPage({
 // Card Component with shadow
 function OnboardingCard({
     children,
-    isDark,
     style,
     index
 }: {
     children: React.ReactNode;
-    isDark: boolean;
     style?: StyleProp<ViewStyle>;
     index: number;
 }) {
@@ -724,8 +722,8 @@ function OnboardingCard({
                 styles.cardWrapper,
                 style,
                 {
-                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
-                    shadowColor: isDark ? '#000000' : '#000000',
+                    backgroundColor: 'transparent',
+                    shadowColor: '#000000',
                 },
             ]}
         >
@@ -748,7 +746,7 @@ function FirstPageContent({
     const [imageLoaded, setImageLoaded] = useState(false);
 
     return (
-        <OnboardingCard isDark={isDark} index={index} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+        <OnboardingCard index={index} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
             <View style={styles.imageContainer}>
                 {!imageError ? (
                     <Image
@@ -985,7 +983,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                             style={[
                                 styles.navButton,
                                 styles.backButton,
-                                { backgroundColor: isDark ? '#262626' : '#F3F4F6' },
+                                { backgroundColor: isDark ? '#1E2225' : '#F3F4F6' },
                             ]}
                             onPress={handlePrevious}
                         >
