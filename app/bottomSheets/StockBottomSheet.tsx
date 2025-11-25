@@ -3,13 +3,12 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { brightenColor, isDarkColor } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { colors, leagues, priceHistory, stocks, userPortfolios, users } from '@/lib/dummy-data';
+import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
-import { FriendInvested } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import BuySellBottomSheet from './BuySellBottomSheet';
 
 type StockBottomSheetProps = {
@@ -17,7 +16,7 @@ type StockBottomSheetProps = {
 };
 
 export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomSheetProps) {
-    const { activeStockId, setActiveStockId, friends, setActiveUserId } = useStockStore();
+    const { activeStockId, setActiveStockId } = useStockStore();
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
     const { buySellBottomSheetOpen, setBuySellBottomSheetOpen } = useStockStore();
 
@@ -50,34 +49,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const league = leagues.find(l => l.id === stock?.leagueID);
     const stockColor = colors.find(c => c.stockID === stock?.id.toString());
     const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
-
-    // Find friends who are invested in this stock
-    const friendsInvested = useMemo((): FriendInvested[] => {
-        if (!stock) return [];
-
-        return friends
-            .map(friendId => {
-                const friend = users.find(u => u.id === friendId);
-                const friendPortfolio = userPortfolios[friendId];
-
-                if (!friend || !friendPortfolio) return null;
-
-                // Check if friend has a position in this stock
-                const position = friendPortfolio.positions.find(
-                    pos => pos.stock.id === stock.id
-                );
-
-                if (position) {
-                    return {
-                        user: friend,
-                        position,
-                    };
-                }
-
-                return null;
-            })
-            .filter((item): item is FriendInvested => item !== null);
-    }, [stock, friends]);
 
     // Don't render anything if no stock is selected
     if (!activeStockId || !stock) {
@@ -119,84 +90,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const handleBuy = () => {
         lightImpact();
         setBuySellBottomSheetOpen(true);
-    };
-
-    const handleFriendPress = (userId: number) => {
-        setActiveUserId(userId);
-        setActiveStockId(null); // Close stock sheet when opening user sheet
-        selection();
-    };
-
-    // Avatar component with fallback
-    const FriendAvatar = ({ user }: { user: typeof users[0] }) => {
-        const [imageError, setImageError] = useState(false);
-        const hasPhoto = user.photoURL && !imageError;
-        const initials = `${user.firstName[0]}${user.lastName[0]}`;
-
-        if (hasPhoto) {
-            return (
-                <Image
-                    source={{ uri: user.photoURL }}
-                    style={styles.friendAvatar}
-                    onError={() => setImageError(true)}
-                />
-            );
-        }
-
-        return (
-            <View style={[styles.friendAvatar, styles.friendAvatarPlaceholder, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]}>
-                {user.photoURL ? (
-                    <Ionicons
-                        name="person"
-                        size={30}
-                        color={isDark ? '#9CA3AF' : '#6B7280'}
-                    />
-                ) : (
-                    <Text style={[styles.friendAvatarInitials, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        {initials}
-                    </Text>
-                )}
-            </View>
-        );
-    };
-
-    const renderFriendCard = ({ item }: { item: FriendInvested }) => {
-        return (
-            <TouchableOpacity
-                onPress={() => handleFriendPress(item.user.id)}
-            >
-                <GlassCard style={styles.friendCard}>
-                    <View style={styles.friendCardContent}>
-                        <View style={styles.friendCardHeader}>
-                            <FriendAvatar user={item.user} />
-                            <View style={styles.friendCardInfo}>
-                                <Text style={[styles.friendName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {item.user.firstName} {item.user.lastName}
-                                </Text>
-                                <Text style={[styles.friendShares, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {item.position.shares} shares
-                                </Text>
-                                <View style={styles.friendValueContainer}>
-                                    <Text style={[styles.friendValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {formatCurrency(item.position.currentValue)}
-                                    </Text>
-                                    {item.user.public && (
-                                        <Text
-                                            style={[
-                                                styles.friendGainLoss,
-                                                { color: item.position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626' }
-                                            ]}
-                                        >
-                                            {formatPercentage(item.position.gainLossPercentage)}
-                                        </Text>
-                                    )}
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                </GlassCard>
-            </TouchableOpacity>
-        );
     };
 
     return (
@@ -254,16 +147,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Buy/Sell
                         </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => lightImpact()}
-                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
-                    >
-                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Follow
-                        </Text>
-                        <Ionicons name="heart-outline" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
                     </TouchableOpacity>
                 </View>
 
@@ -330,33 +213,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                             </View>
                         </View>
                     </GlassCard>
-                </View>
-
-                {/* Friends Invested Section */}
-                <View style={styles.friendsContainer}>
-                    <Text style={[styles.friendsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Squad In ({friendsInvested.length})
-                    </Text>
-                    {friendsInvested.length > 0 ? (
-                        <FlatList
-                            data={friendsInvested}
-                            renderItem={renderFriendCard}
-                            keyExtractor={(item) => item.user.id.toString()}
-                            scrollEnabled={false}
-                            contentContainerStyle={styles.friendsList}
-                        />
-                    ) : (
-                        <View style={styles.noFriendsContainer}>
-                            <Text style={[styles.noFriendsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                No one in your squad is backing this team
-                            </Text>
-                            {friends.length > 0 && (
-                                <Text style={[styles.noFriendsHint, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-                                    You have {friends.length} friend{friends.length !== 1 ? 's' : ''}, but none are in on {stock.name}
-                                </Text>
-                            )}
-                        </View>
-                    )}
                 </View>
 
                 {/* Bottom Spacing */}
@@ -512,9 +368,6 @@ const styles = StyleSheet.create({
     buyButton: {
         // Styling handled by backgroundColor
     },
-    followButton: {
-        // Styling handled by backgroundColor
-    },
     actionButtonText: {
         fontSize: 16,
         fontWeight: '600',
@@ -526,83 +379,5 @@ const styles = StyleSheet.create({
         fontSize: 18,
         textAlign: 'center',
         marginTop: 100,
-    },
-    friendsContainer: {
-        marginHorizontal: 20,
-        marginBottom: 24,
-    },
-    friendsTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    friendsList: {
-        gap: 12,
-        paddingHorizontal: 4,
-    },
-    friendCard: {
-        padding: 16,
-        marginBottom: 12,
-        marginHorizontal: 4,
-    },
-    friendCardContent: {
-        flex: 1,
-    },
-    friendCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    friendAvatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-    },
-    friendAvatarPlaceholder: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    friendAvatarInitials: {
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    friendCardInfo: {
-        flex: 1,
-        gap: 4,
-    },
-    friendName: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    friendShares: {
-        fontSize: 14,
-    },
-    friendValueContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 4,
-    },
-    friendValue: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    friendGainLoss: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    noFriendsContainer: {
-        paddingVertical: 16,
-        alignItems: 'center',
-        gap: 8,
-    },
-    noFriendsText: {
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    noFriendsHint: {
-        fontSize: 12,
-        textAlign: 'center',
-        fontStyle: 'italic',
     },
 });

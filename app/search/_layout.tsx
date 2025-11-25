@@ -32,7 +32,7 @@ function SearchLayoutContent() {
                     ),
                     headerSearchBarOptions: {
                         placement: 'automatic',
-                        placeholder: 'Search teams, leagues, users...',
+                        placeholder: 'Search teams...',
                         onChangeText: (event) => {
                             setSearchQuery(event.nativeEvent.text);
                         },

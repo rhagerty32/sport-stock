@@ -3,21 +3,20 @@ import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { colors, leagues, priceHistory, stocks, userPortfolios, users } from '@/lib/dummy-data';
+import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
-import { FriendInvested, TimePeriod } from '@/types';
+import { TimePeriod } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function StockDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const { lightImpact, selection } = useHaptics();
-    const { friends, setActiveUserId } = useStockStore();
+    const { lightImpact } = useHaptics();
 
     const [selectedTimeframe, setSelectedTimeframe] = useState<TimePeriod>('1D');
 
@@ -26,54 +25,6 @@ export default function StockDetailScreen() {
     const league = leagues.find(l => l.id === stock?.leagueID);
     const stockColor = colors.find(c => c.stockID === stock?.id.toString());
     const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
-
-    // Find friends who are invested in this stock
-    const friendsInvested = useMemo((): FriendInvested[] => {
-        console.log('STOCK:', stock);
-        if (!stock) return [];
-
-        const result = friends
-            .map(friendId => {
-                const friend = users.find(u => u.id === friendId);
-                const friendPortfolio = userPortfolios[friendId];
-
-                if (!friend) {
-                    console.log(`Friend ${friendId} not found in users`);
-                    return null;
-                }
-
-                if (!friendPortfolio) {
-                    console.log(`Portfolio not found for friend ${friendId}`);
-                    return null;
-                }
-
-                // Check if friend has a position in this stock
-                const position = friendPortfolio.positions.find(
-                    pos => pos.stock.id === stock.id
-                );
-
-                if (position) {
-                    console.log(`✅ Friend ${friendId} (${friend.firstName} ${friend.lastName}) has ${position.shares} shares of ${stock.name}`);
-                    return {
-                        user: friend,
-                        position,
-                    };
-                } else {
-                    console.log(`❌ Friend ${friendId} (${friend.firstName} ${friend.lastName}) does NOT have ${stock.name} (ID: ${stock.id})`);
-                    console.log(`   Their positions: ${friendPortfolio.positions.map(p => `${p.stock.name} (ID: ${p.stock.id})`).join(', ')}`);
-                }
-
-                return null;
-            })
-            .filter((item): item is FriendInvested => item !== null);
-
-        console.log(`📊 Stock: ${stock.name} (ID: ${stock.id})`);
-        console.log(`👥 Friends list: [${friends.join(', ')}]`);
-        console.log(`✅ Friends invested: ${result.length}`);
-        result.forEach(f => console.log(`   - ${f.user.firstName} ${f.user.lastName}: ${f.position.shares} shares`));
-
-        return result;
-    }, [stock, friends]);
 
     if (!stock) {
         return (
@@ -133,90 +84,6 @@ export default function StockDetailScreen() {
         lightImpact();
     };
 
-    const handleFollow = () => {
-        // TODO: Implement follow functionality
-        lightImpact();
-    };
-
-    const handleFriendPress = (userId: number) => {
-        setActiveUserId(userId);
-        router.push(`/user/${userId}`);
-        selection();
-    };
-
-    // Avatar component with fallback
-    const FriendAvatar = ({ user, isDark }: { user: typeof users[0]; isDark: boolean }) => {
-        const [imageError, setImageError] = useState(false);
-        const hasPhoto = user.photoURL && !imageError;
-        const initials = `${user.firstName[0]}${user.lastName[0]}`;
-
-        if (hasPhoto) {
-            return (
-                <Image
-                    source={{ uri: user.photoURL }}
-                    style={styles.friendAvatar}
-                    onError={() => setImageError(true)}
-                />
-            );
-        }
-
-        return (
-            <View style={[styles.friendAvatar, styles.friendAvatarPlaceholder, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]}>
-                {user.photoURL ? (
-                    <Ionicons
-                        name="person"
-                        size={30}
-                        color={isDark ? '#9CA3AF' : '#6B7280'}
-                    />
-                ) : (
-                    <Text style={[styles.friendAvatarInitials, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        {initials}
-                    </Text>
-                )}
-            </View>
-        );
-    };
-
-    const renderFriendCard = ({ item }: { item: FriendInvested }) => {
-        return (
-            <TouchableOpacity
-                onPress={() => handleFriendPress(item.user.id)}
-            >
-                <GlassCard style={styles.friendCard}>
-                    <View style={styles.friendCardContent}>
-                        <View style={styles.friendCardHeader}>
-                            <FriendAvatar user={item.user} isDark={isDark} />
-                            <View style={styles.friendCardInfo}>
-                                <Text style={[styles.friendName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {item.user.firstName} {item.user.lastName}
-                                </Text>
-                                <Text style={[styles.friendShares, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {item.position.shares} shares
-                                </Text>
-                                <View style={styles.friendValueContainer}>
-                                    <Text style={[styles.friendValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {formatCurrency(item.position.currentValue)}
-                                    </Text>
-                                    {item.user.public && (
-                                        <Text
-                                            style={[
-                                                styles.friendGainLoss,
-                                                { color: item.position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626' }
-                                            ]}
-                                        >
-                                            {formatPercentage(item.position.gainLossPercentage)}
-                                        </Text>
-                                    )}
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                </GlassCard>
-            </TouchableOpacity>
-        );
-    };
-
-    console.log(friendsInvested)
 
     return (
         <ThemedView style={[styles.container, { backgroundColor: secondaryColor }]}>
@@ -352,42 +219,6 @@ export default function StockDetailScreen() {
                             Buy/Sell
                         </Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={handleFollow}
-                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
-                    >
-                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Follow
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Friends Invested Section */}
-                <View style={styles.friendsContainer}>
-                    <Text style={[styles.friendsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Squad In ({friendsInvested.length})
-                    </Text>
-                    {friendsInvested.length > 0 ? (
-                        <FlatList
-                            data={friendsInvested}
-                            renderItem={renderFriendCard}
-                            keyExtractor={(item) => item.user.id.toString()}
-                            scrollEnabled={false}
-                            contentContainerStyle={styles.friendsList}
-                        />
-                    ) : (
-                        <View style={styles.noFriendsContainer}>
-                            <Text style={[styles.noFriendsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                No one in your squad is backing this team
-                            </Text>
-                            {friends.length > 0 && (
-                                <Text style={[styles.noFriendsHint, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-                                    You have {friends.length} friend{friends.length !== 1 ? 's' : ''}, but none are in on {stock.name}
-                                </Text>
-                            )}
-                        </View>
-                    )}
                 </View>
 
                 {/* Bottom Spacing */}
@@ -541,9 +372,6 @@ const styles = StyleSheet.create({
     buyButton: {
         // Styling handled by backgroundColor
     },
-    followButton: {
-        // Styling handled by backgroundColor
-    },
     actionButtonText: {
         fontSize: 16,
         fontWeight: '600',
@@ -555,80 +383,5 @@ const styles = StyleSheet.create({
         fontSize: 18,
         textAlign: 'center',
         marginTop: 100,
-    },
-    friendsContainer: {
-        marginHorizontal: 20,
-        marginBottom: 24,
-    },
-    friendsTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    friendsList: {
-        gap: 12,
-    },
-    friendCard: {
-        padding: 16,
-    },
-    friendCardContent: {
-        flex: 1,
-    },
-    friendCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    friendAvatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-    },
-    friendAvatarPlaceholder: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    friendAvatarInitials: {
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    friendCardInfo: {
-        flex: 1,
-        gap: 4,
-    },
-    friendName: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    friendShares: {
-        fontSize: 14,
-    },
-    friendValueContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 4,
-    },
-    friendValue: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    friendGainLoss: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    noFriendsContainer: {
-        paddingVertical: 16,
-        alignItems: 'center',
-        gap: 8,
-    },
-    noFriendsText: {
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    noFriendsHint: {
-        fontSize: 12,
-        textAlign: 'center',
-        fontStyle: 'italic',
     },
 });

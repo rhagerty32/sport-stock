@@ -13,9 +13,9 @@ type UserBottomSheetProps = {
 };
 
 export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetProps) {
-    const { activeUserId, setActiveUserId, setActiveStockId, addFriend, removeFriend, isFriend } = useStockStore();
+    const { activeUserId, setActiveUserId, setActiveStockId } = useStockStore();
     const { isDark } = useTheme();
-    const { lightImpact, selection } = useHaptics();
+    const { selection } = useHaptics();
     const [imageError, setImageError] = useState(false);
 
     // Reset image error when user changes
@@ -66,17 +66,6 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
         setActiveUserId(null); // Close user sheet when opening stock sheet
     };
 
-    const handleFriendToggle = () => {
-        if (!activeUserId) return;
-        lightImpact();
-        if (isFriend(activeUserId)) {
-            removeFriend(activeUserId);
-        } else {
-            addFriend(activeUserId);
-        }
-    };
-
-    const isFriendly = activeUserId ? isFriend(activeUserId) : false;
 
     const renderPositionCard = ({ item: position }: { item: typeof displayPositions[0] }) => {
         const league = leagues.find(l => l.id === position.stock.leagueID);
@@ -195,38 +184,6 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                             </View>
                         </View>
                     </View>
-                </View>
-
-                {/* Friend Button */}
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        onPress={handleFriendToggle}
-                        style={[
-                            styles.actionButton,
-                            styles.friendButton,
-                            {
-                                backgroundColor: isFriendly
-                                    ? (isDark ? 'rgba(220, 38, 38, 0.15)' : 'rgba(220, 38, 38, 0.1)')
-                                    : (isDark ? 'rgba(33, 124, 10, 0.15)' : 'rgba(33, 124, 10, 0.1)'),
-                                borderWidth: 1,
-                                borderColor: isFriendly
-                                    ? (isDark ? 'rgba(220, 38, 38, 0.3)' : 'rgba(220, 38, 38, 0.2)')
-                                    : (isDark ? 'rgba(33, 124, 10, 0.3)' : 'rgba(33, 124, 10, 0.2)'),
-                            }
-                        ]}
-                    >
-                        <Ionicons
-                            name={isFriendly ? "person-remove-outline" : "person-add-outline"}
-                            size={22}
-                            color={isFriendly ? '#dc2626' : '#217C0A'}
-                        />
-                        <Text style={[
-                            styles.actionButtonText,
-                            { color: isFriendly ? '#dc2626' : '#217C0A' }
-                        ]}>
-                            {isFriendly ? 'Unfriend' : 'Add Friend'}
-                        </Text>
-                    </TouchableOpacity>
                 </View>
 
                 {/* Portfolio Summary - only show if public */}
@@ -483,28 +440,6 @@ const styles = StyleSheet.create({
     },
     emptyStateText: {
         fontSize: 16,
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        gap: 12,
-        marginTop: 12,
-    },
-    actionButton: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 10,
-        paddingVertical: 16,
-        borderRadius: 12,
-    },
-    friendButton: {
-        // Styling handled by backgroundColor
-    },
-    actionButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
     },
     bottomSpacing: {
         height: 50,
