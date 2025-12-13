@@ -5,7 +5,13 @@ export type Stock = {
     leagueID: number;
     photoURL: string;
     price: number;
+    about: string;
+    ticker: string;
+    coach: string;
+    founded: number;
+    topThreePlayers: string[];
     volume: number;
+    color: string;
     createdAt: Date;
     updatedAt: Date;
 };

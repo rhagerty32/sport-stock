@@ -3,10 +3,9 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, positions, user } from '@/lib/dummy-data';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import WalletBalance from '@/components/wallet/WalletBalance';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -40,15 +39,15 @@ export default function ProfileScreen() {
     };
 
     const accountActions = [
-        { title: 'Buy Gold Coins', icon: 'add-circle-outline', color: '#217C0A', action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
-        { title: 'How It Works', icon: 'information-circle-outline', color: '#217C0A', action: () => setWalletSystemBottomSheetOpen(true) },
+        { title: 'Buy Gold Coins', icon: 'add-circle-outline', color: '#00C853', action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
+        { title: 'How It Works', icon: 'information-circle-outline', color: '#00C853', action: () => setWalletSystemBottomSheetOpen(true) },
     ];
 
     const settingsSections = [
         {
             title: 'Account',
             items: [
-                                { title: 'Profile', iconName: 'person-outline' },
+                { title: 'Profile', iconName: 'person-outline' },
                 { title: 'Light/Dark Mode', iconName: 'moon-outline' },
                 { title: 'Reset Onboarding', iconName: 'refresh-outline' },
             ]
@@ -67,35 +66,23 @@ export default function ProfileScreen() {
     return (
         <ThemedView style={styles.container}>
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Profile
-                    </Text>
-                </View>
-
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
-                    <GlassCard style={styles.profileCard}>
-                        <View style={styles.profileContent}>
-                            <View style={[styles.profilePhoto, { backgroundColor: '#217C0A' }]}>
-                                <Text style={styles.profileInitials}>
-                                    {user.firstName[0]}{user.lastName[0]}
-                                </Text>
-                            </View>
-                            <View style={styles.profileInfo}>
-                                <Text style={[styles.profileName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {`${user.firstName} ${user.lastName}`}
-                                </Text>
-                                <Text style={[styles.profileEmail, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    {user.email}
-                                </Text>
-                            </View>
-                            <View style={styles.walletBalanceContainer}>
-                                <WalletBalance showFanCoins={true} size="medium" />
-                            </View>
+                    <View style={styles.profileContent}>
+                        <View style={[styles.profilePhoto, { backgroundColor: '#00C853' }]}>
+                            <Text style={styles.profileInitials}>
+                                {user.firstName[0]}{user.lastName[0]}
+                            </Text>
                         </View>
-                    </GlassCard>
+                        <View style={styles.profileInfo}>
+                            <Text style={[styles.profileName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                {`${user.firstName} ${user.lastName}`}
+                            </Text>
+                            <Text style={[styles.profileEmail, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                {user.email}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
 
                 {/* My Holdings Visual */}
@@ -105,73 +92,72 @@ export default function ProfileScreen() {
                     </Text>
                     <GlassCard style={styles.holdingsCard}>
                         <View style={styles.holdingsContent}>
-                            <View style={styles.holdingsGrid}>
-                                {(() => {
-                                    // Calculate portfolio percentages for all positions
-                                    const positionsWithPercentages = positions.slice(0, 6).map((position) => {
-                                        const portfolioPercentage = portfolio.totalValue > 0 
-                                            ? (position.currentValue / portfolio.totalValue) * 100 
-                                            : 0;
-                                        return { position, portfolioPercentage };
-                                    });
-                                    
-                                    // Find min and max percentages to normalize
-                                    const percentages = positionsWithPercentages.map(p => p.portfolioPercentage);
-                                    const minPercent = Math.min(...percentages);
-                                    const maxPercent = Math.max(...percentages);
-                                    const percentRange = maxPercent - minPercent || 1; // Avoid division by zero
-                                    
-                                    // Size range: 30px to 80px for more noticeable differences
-                                    const minSize = 30;
-                                    const maxSize = 80;
-                                    
-                                    return positionsWithPercentages.map(({ position, portfolioPercentage }, index) => {
-                                        // Normalize percentage to 0-1 range, then scale to size range
-                                        // This ensures the smallest holding is minSize and largest is maxSize
-                                        const normalizedPercent = percentRange > 0 
-                                            ? (portfolioPercentage - minPercent) / percentRange 
-                                            : 0.5;
-                                        
-                                        // Use square root for more pronounced differences
-                                        const bubbleSize = minSize + Math.sqrt(normalizedPercent) * (maxSize - minSize);
-                                        
-                                        // Font size scales with bubble size
-                                        const fontSize = Math.max(10, Math.min(18, bubbleSize * 0.25));
-                                        
-                                        return (
-                                            <View key={position.stock.id} style={styles.holdingItem}>
-                                                <View style={[
-                                                    styles.holdingLogo,
-                                                    {
-                                                        width: bubbleSize,
-                                                        height: bubbleSize,
-                                                        borderRadius: bubbleSize / 2,
-                                                        backgroundColor: position.gainLossPercentage >= 0 ? '#217C0A' : '#dc2626',
-                                                        opacity: Math.abs(position.gainLossPercentage) / 10 + 0.3
-                                                    }
-                                                ]}>
-                                                    <Text style={[styles.holdingLogoText, { fontSize }]}>
-                                                        {position.stock.name.split(' ').map(word => word[0]).join('')}
-                                                    </Text>
+                            {(() => {
+                                // Limit to max 9 teams
+                                const displayPositions = positions.slice(0, 9);
+
+                                // Calculate dynamic column count (max 3 columns)
+                                const getColumnCount = (count: number): number => {
+                                    if (count <= 1) return 1;
+                                    if (count === 2) return 2;
+                                    if (count === 3) return 3;
+                                    if (count === 4) return 2;
+                                    return 3; // 5-9 teams use 3 columns
+                                };
+
+                                const columnCount = getColumnCount(displayPositions.length);
+                                const itemWidthPercent = 100 / columnCount;
+
+                                // Calculate portfolio percentages for all positions
+                                const positionsWithPercentages = displayPositions.map((position) => {
+                                    const portfolioPercentage = portfolio.totalValue > 0
+                                        ? (position.currentValue / portfolio.totalValue) * 100
+                                        : 0;
+                                    return { position, portfolioPercentage };
+                                });
+
+                                return (
+                                    <View style={styles.holdingsGrid}>
+                                        {positionsWithPercentages.map(({ position, portfolioPercentage }) => {
+                                            const borderColor = position.gainLossPercentage >= 0 ? '#00C853' : '#dc2626';
+                                            const teamColor = position.colors[0]?.hex || '#00C853';
+                                            const isPositive = position.gainLossPercentage >= 0;
+                                            const trendIcon = isPositive ? 'trending-up' : 'trending-down';
+
+                                            return (
+                                                <View
+                                                    key={position.stock.id}
+                                                    style={[styles.holdingItem, { width: `${itemWidthPercent}%` }]}
+                                                >
+                                                    <View style={[
+                                                        styles.holdingLogo,
+                                                        {
+                                                            backgroundColor: teamColor,
+                                                            borderWidth: 3,
+                                                            borderColor: borderColor,
+                                                        }
+                                                    ]}>
+                                                        <Text style={styles.holdingLogoText}>
+                                                            {position.stock.name.split(' ').map(word => word[0]).join('')}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.holdingPercentageContainer}>
+                                                        <Ionicons
+                                                            name={trendIcon as any}
+                                                            size={12}
+                                                            color={borderColor}
+                                                            style={styles.trendIcon}
+                                                        />
+                                                        <Text style={[styles.holdingPercentage, { color: borderColor }]}>
+                                                            {formatPercentage(position.gainLossPercentage)}
+                                                        </Text>
+                                                    </View>
                                                 </View>
-                                                <Text style={[styles.holdingPercentage, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                                    {formatPercentage(portfolioPercentage)}
-                                                </Text>
-                                            </View>
-                                        );
-                                    });
-                                })()}
-                                {positions.length > 6 && (
-                                    <TouchableOpacity
-                                        style={styles.seeAllButton}
-                                        onPress={() => lightImpact()}
-                                    >
-                                        <Text style={[styles.seeAllText, { color: '#217C0A' }]}>
-                                            See All
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
+                                            );
+                                        })}
+                                    </View>
+                                );
+                            })()}
                         </View>
                     </GlassCard>
                 </View>
@@ -200,7 +186,7 @@ export default function ProfileScreen() {
                                 <Text
                                     style={[
                                         styles.metricValue,
-                                        { color: portfolio.totalGainLossPercentage >= 0 ? '#217C0A' : '#dc2626' }
+                                        { color: portfolio.totalGainLossPercentage >= 0 ? '#00C853' : '#dc2626' }
                                     ]}
                                 >
                                     {formatPercentage(portfolio.totalGainLossPercentage)}
@@ -253,7 +239,7 @@ export default function ProfileScreen() {
                                         key={itemIndex}
                                         style={[
                                             styles.settingsItem,
-                                            itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#262626' : '#E5E7EB' } : {},
+                                            itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#242428' : '#E5E7EB' } : {},
                                         ]}
                                         onPress={async () => {
                                             lightImpact()
@@ -326,6 +312,7 @@ const styles = StyleSheet.create({
     profileHeader: {
         paddingHorizontal: 20,
         marginBottom: 24,
+        marginTop: 84,
     },
     profileCard: {
         minHeight: 200,
@@ -379,35 +366,39 @@ const styles = StyleSheet.create({
     holdingsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
+        alignItems: 'flex-start',
     },
     holdingItem: {
-        width: '30%',
         alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 16,
     },
     holdingLogo: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
     },
     holdingLogoText: {
+        fontSize: 14,
         fontWeight: 'bold',
         color: '#FFFFFF',
     },
-    holdingPercentage: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    seeAllButton: {
-        width: '30%',
+    holdingPercentageContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 50,
+        marginTop: 6,
+        gap: 4,
     },
-    seeAllText: {
-        fontSize: 14,
-        fontWeight: '500',
+    trendIcon: {
+        marginRight: 2,
+    },
+    holdingPercentage: {
+        fontSize: 11,
+        fontWeight: '600',
     },
     metricsContainer: {
         paddingHorizontal: 20,

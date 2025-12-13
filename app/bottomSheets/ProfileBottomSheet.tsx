@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useState } from 'react';
-import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type ProfileBottomSheetProps = {
     profileBottomSheetRef: React.RefObject<BottomSheetModal>;
@@ -84,7 +84,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -105,7 +105,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -126,7 +126,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -149,7 +149,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -161,37 +161,12 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                             keyboardType="phone-pad"
                         />
                     </View>
-
-                    {/* Public Account Toggle */}
-                    <View style={styles.inputGroup}>
-                        <View style={styles.switchContainer}>
-                            <View style={styles.switchLabelContainer}>
-                                <Text style={[styles.label, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    Public Account
-                                </Text>
-                                <Text style={[styles.switchDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Let others see your profile and bag
-                                </Text>
-                            </View>
-                            <Switch
-                                value={isPublicAccount}
-                                onValueChange={handlePublicToggle}
-                                {...(Platform.OS === 'ios' ? {
-                                    trackColor: { false: isDark ? '#2F2F2F' : '#E5E7EB', true: '#217C0A' },
-                                    thumbColor: '#FFFFFF',
-                                } : {
-                                    trackColor: { false: '#767577', true: '#217C0A' },
-                                    thumbColor: isPublicAccount ? '#FFFFFF' : '#f4f3f4',
-                                })}
-                            />
-                        </View>
-                    </View>
                 </View>
 
                 {/* Save Button */}
                 <View style={styles.saveButtonContainer}>
                     <TouchableOpacity
-                        style={[styles.saveButton, { backgroundColor: '#10B981' }]}
+                        style={[styles.saveButton, { backgroundColor: '#00C853' }]}
                         onPress={handleSave}
                     >
                         <Text style={styles.saveButtonText}>Save Changes</Text>

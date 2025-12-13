@@ -3,7 +3,8 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { Image } from 'expo-image';
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
@@ -44,6 +45,14 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
             style: 'currency',
             currency: 'USD',
         }).format(amount);
+    };
+
+    const formatGoldCoins = (coins: number) => {
+        if (coins >= 1000) {
+            const thousands = coins / 1000;
+            return `${thousands.toFixed(1)}k`;
+        }
+        return coins.toLocaleString();
     };
 
     const handleAmountSelect = (amount: number) => {
@@ -130,9 +139,10 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
             handleStyle={{ display: 'none' }}
             enableOverDrag={true}
             style={{ borderRadius: 20 }}
+            snapPoints={['90%']}
             backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
-            <BottomSheetView style={styles.scrollView}>
+            <BottomSheetScrollView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -154,38 +164,109 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
 
                 {/* Amount Selection Grid */}
                 <View style={styles.amountGrid}>
-                    {PRESET_AMOUNTS.map((amount) => (
-                        <TouchableOpacity
-                            key={amount}
-                            style={[
-                                styles.amountButton,
-                                {
-                                    backgroundColor: selectedAmount === amount
-                                        ? '#217C0A'
-                                        : (isDark ? '#262626' : '#F3F4F6')
-                                }
-                            ]}
-                            onPress={() => handleAmountSelect(amount)}
-                        >
-                            <Text style={[
-                                styles.amountText,
-                                {
-                                    color: selectedAmount === amount
-                                        ? '#FFFFFF'
-                                        : (isDark ? '#FFFFFF' : '#000000')
-                                }
-                            ]}>
-                                {formatCurrency(amount)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    {PRESET_AMOUNTS.map((amount) => {
+                        const coinsForAmount = amount * GOLD_COINS_PER_DOLLAR;
+                        return (
+                            <TouchableOpacity
+                                key={amount}
+                                style={[
+                                    styles.offerCard,
+                                    {
+                                        backgroundColor: selectedAmount === amount
+                                            ? '#217C0A'
+                                            : (isDark ? '#242428' : '#F3F4F6')
+                                    }
+                                ]}
+                                onPress={() => handleAmountSelect(amount)}
+                            >
+                                {/* Free SportCash Section */}
+                                <View style={styles.offerCardTopSection}>
+                                    <View style={styles.sportCashRow}>
+                                        <View style={[styles.sportCashIcon, { backgroundColor: '#00C853' }]}>
+                                            <Text style={styles.sportCashIconText}>S</Text>
+                                        </View>
+                                        <Text style={[
+                                            styles.sportCashAmount,
+                                            {
+                                                color: selectedAmount === amount
+                                                    ? '#FFFFFF'
+                                                    : (isDark ? '#FFFFFF' : '#000000')
+                                            }
+                                        ]}>
+                                            {amount.toFixed(2)}
+                                        </Text>
+                                    </View>
+                                    <Text style={[
+                                        styles.sportCashLabel,
+                                        {
+                                            color: selectedAmount === amount
+                                                ? '#FFFFFF'
+                                                : (isDark ? '#FFFFFF' : '#000000')
+                                        }
+                                    ]}>
+                                        Free SportCash
+                                    </Text>
+                                </View>
+
+                                {/* Gold Coins Section */}
+                                <View style={styles.offerCardMiddleSection}>
+                                    <View style={styles.coinIconContainer}>
+                                        <Image
+                                            source={require('@/assets/images/goldCoin.png')}
+                                            style={styles.offerCardCoinIcon}
+                                            contentFit="contain"
+                                        />
+                                        <View style={styles.plusIconOverlay}>
+                                            <Ionicons name="add" size={16} color="#00C853" />
+                                        </View>
+                                    </View>
+                                    <Text style={[
+                                        styles.goldCoinsAmount,
+                                        {
+                                            color: selectedAmount === amount
+                                                ? '#FFFFFF'
+                                                : (isDark ? '#FFFFFF' : '#000000')
+                                        }
+                                    ]}>
+                                        {coinsForAmount.toLocaleString()}
+                                    </Text>
+                                    <Text style={[
+                                        styles.goldCoinsLabel,
+                                        {
+                                            color: selectedAmount === amount
+                                                ? '#FFFFFF'
+                                                : (isDark ? '#FFFFFF' : '#000000')
+                                        }
+                                    ]}>
+                                        Gold Coins
+                                    </Text>
+                                </View>
+
+                                {/* Purchase Button */}
+                                <View style={[
+                                    styles.offerCardPurchaseButton,
+                                    {
+                                        backgroundColor: selectedAmount === amount
+                                            ? '#E3F9EC'
+                                            : '#0066CC'
+                                    }
+                                ]}>
+                                    <Text style={[styles.offerCardPurchaseButtonText, { color: selectedAmount === amount ? '#217C0A' : '#FFFFFF' }]}>
+                                        {formatCurrency(amount)}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
                     <TouchableOpacity
-                        style={[styles.amountButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                        style={[styles.offerCard, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                         onPress={handleCustomAmountPress}
                     >
-                        <Text style={[styles.amountText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                            Custom
-                        </Text>
+                        <View style={styles.offerCardMiddleSection}>
+                            <Text style={[styles.goldCoinsLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                Custom
+                            </Text>
+                        </View>
                     </TouchableOpacity>
                 </View>
 
@@ -200,7 +281,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                             style={[
                                 styles.customAmountInput,
                                 {
-                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -215,7 +296,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                         />
                         <View style={styles.customAmountButtons}>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                                 onPress={handleCustomAmountCancel}
                             >
                                 <Text style={[styles.customAmountButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -248,17 +329,39 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                 <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                                     Gold Coins (GC)
                                 </Text>
-                                <Text style={[styles.bonusValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {goldCoinsToReceive.toLocaleString()}
-                                </Text>
+                                <View style={styles.bonusValueContainer}>
+                                    <AnimatedRollingNumber
+                                        value={goldCoinsToReceive}
+                                        useGrouping={true}
+                                        enableCompactNotation={true}
+                                        textStyle={[styles.bonusValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                        spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
+                                    />
+                                    <Image
+                                        source={require('@/assets/images/goldCoin.png')}
+                                        style={styles.coinIcon}
+                                        contentFit="contain"
+                                    />
+                                </View>
                             </View>
                             <View style={styles.bonusRow}>
                                 <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                                     SportCash (SC)
                                 </Text>
-                                <Text style={[styles.bonusValue, { color: '#217C0A', fontWeight: 'bold' }]}>
-                                    {formatCurrency(sportCashToReceive)}
-                                </Text>
+                                <View style={styles.bonusValueContainer}>
+                                    <Text style={{ color: '#217C0A', fontWeight: 'bold', fontSize: 14 }}>$</Text>
+                                    <AnimatedRollingNumber
+                                        value={sportCashToReceive}
+                                        useGrouping={true}
+                                        enableCompactNotation={true}
+                                        compactToFixed={2}
+                                        textStyle={{ color: '#217C0A', fontWeight: 'bold', fontSize: 14 }}
+                                        spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
+                                    />
+                                    <View style={[styles.bonusSportCashIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }]}>
+                                        <Text style={styles.bonusSportCashIconText}>S</Text>
+                                    </View>
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -302,7 +405,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
 
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
-            </BottomSheetView>
+            </BottomSheetScrollView>
         </BottomSheetModal>
     );
 }
@@ -346,18 +449,99 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         gap: 12,
     },
-    amountButton: {
-        width: '30%',
-        aspectRatio: 1.2,
+    offerCard: {
+        width: '48%',
+        borderRadius: 16,
+        padding: 12,
         display: 'flex',
-        alignSelf: 'center',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 200,
+    },
+    offerCardTopSection: {
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    sportCashRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginBottom: 4,
+    },
+    sportCashIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
     },
-    amountText: {
-        fontSize: 16,
+    sportCashIconText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    sportCashAmount: {
+        fontSize: 18,
         fontWeight: '600',
+    },
+    sportCashLabel: {
+        fontSize: 11,
+        fontWeight: '500',
+        opacity: 0.9,
+    },
+    offerCardMiddleSection: {
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'center',
+        marginVertical: 8,
+    },
+    coinIconContainer: {
+        position: 'relative',
+        marginBottom: 8,
+    },
+    offerCardCoinIcon: {
+        width: 48,
+        height: 48,
+    },
+    plusIconOverlay: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    goldCoinsAmount: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    goldCoinsLabel: {
+        fontSize: 11,
+        fontWeight: '500',
+        opacity: 0.9,
+    },
+    offerCardPurchaseButton: {
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+    },
+    offerCardPurchaseButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     customAmountContainer: {
         marginBottom: 30,
@@ -429,6 +613,27 @@ const styles = StyleSheet.create({
     bonusValue: {
         fontSize: 14,
         fontWeight: '600',
+    },
+    bonusValueContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    coinIcon: {
+        width: 20,
+        height: 20,
+    },
+    bonusSportCashIcon: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bonusSportCashIconText: {
+        color: '#00C853',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
     firstTimeBadge: {
         flexDirection: 'row',

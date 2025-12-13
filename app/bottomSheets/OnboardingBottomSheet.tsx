@@ -155,7 +155,7 @@ function SimpleConfetti({ isActive }: { isActive: boolean }) {
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
     const confettiCount = 100; // Increased from 50 to 100 for more confetti
-    const colors = ['#217C0A', '#34D399', '#FBBF24', '#60A5FA', '#FF6B6B', '#4ECDC4', '#FFD700', '#FF69B4'];
+    const colors = ['#00C853', '#34D399', '#FBBF24', '#60A5FA', '#FF6B6B', '#4ECDC4', '#FFD700', '#FF69B4'];
 
     if (!isActive) return null;
 
@@ -476,9 +476,9 @@ function StockCard({
                         <Ionicons
                             name={isPositive ? 'arrow-up' : 'arrow-down'}
                             size={12}
-                            color={isPositive ? '#217C0A' : '#dc2626'}
+                            color={isPositive ? '#00C853' : '#dc2626'}
                         />
-                        <Text style={[styles.stockCardChangeText, { color: isPositive ? '#217C0A' : '#dc2626' }]}>
+                        <Text style={[styles.stockCardChangeText, { color: isPositive ? '#00C853' : '#dc2626' }]}>
                             {Math.abs(stock.changePercent).toFixed(2)}%
                         </Text>
                     </View>
@@ -487,7 +487,7 @@ function StockCard({
             <View style={styles.stockChartContainer}>
                 <MiniChart
                     data={priceData}
-                    color={isPositive ? '#217C0A' : '#dc2626'}
+                    color={isPositive ? '#00C853' : '#dc2626'}
                     isDark={isDark}
                     chartId={stock.id}
                     shouldAnimate={shouldAnimate}
@@ -501,25 +501,32 @@ function StockCard({
 
 const ONBOARDING_PAGES = [
     {
-        title: '1. Pick Your Team',
-        description: "Back your favorite teams and watch your bag move as legends are made. Prices pump and dump in real time—throw down, hold tight, and outplay the crowd.",
+        title: '1. Pick Your Teams',
+        description: "Use your sports knowledge and instincts to buy SportStock in teams you believe are hot -  or about to heat up.",
         icon: 'trending-up',
-        iconColor: '#217C0A',
-        gradientColors: ['#217C0A', '#34D399'],
+        iconColor: '#00C853',
+        gradientColors: ['#00C853', '#34D399'],
     },
     {
-        title: '2. Load Up',
-        description: "Add SportCash to your account and you're ready to back your teams with your sports knowledge and gut instinct.",
+        title: '2. Follow You Teams',
+        description: "SportStock prices rise when people buy and fall when people sell.",
         icon: 'flash',
-        iconColor: '#217C0A',
-        gradientColors: ['#217C0A', '#60A5FA'],
+        iconColor: '#00C853',
+        gradientColors: ['#00C853', '#60A5FA'],
     },
     {
-        title: '3. Cash Out Before the Crash',
-        description: "Sell when you smell the downfall coming, lock in your profit and prove you know ball!",
+        title: '3. What Effects You Buying?',
+        description: "SportStock is a Performance Market - Win/Loss Record (Rankings), --Expectation, --Momentum, --Injuries, --Media Buzz & Fan Hype, --Coach and Player Trades, --Betting Odds, --Prediction Markets, Everything Matters",
+        icon: 'stats-chart',
+        iconColor: '#00C853',
+        gradientColors: ['#00C853', '#60A5FA'],
+    },
+    {
+        title: '3. Sell and Profit',
+        description: "Sell your SportStocks at any time when you believe the downfall is coming. Cash out the profits. Prove you know ball!",
         icon: 'trophy',
-        iconColor: '#217C0A',
-        gradientColors: ['#217C0A', '#FBBF24'],
+        iconColor: '#00C853',
+        gradientColors: ['#00C853', '#FBBF24'],
     },
 ];
 
@@ -659,10 +666,10 @@ function ProfitPage({
                             </Text>
                         </View>
                         <View style={styles.profitStockDetailRow}>
-                            <Text style={[styles.profitStockDetailLabel, { color: '#217C0A' }]}>
+                            <Text style={[styles.profitStockDetailLabel, { color: '#00C853' }]}>
                                 Total Winnings
                             </Text>
-                            <Text style={[styles.profitStockDetailValue, { color: '#217C0A' }]}>
+                            <Text style={[styles.profitStockDetailValue, { color: '#00C853' }]}>
                                 $1,200
                             </Text>
                         </View>
@@ -819,9 +826,9 @@ function PaginationDot({
                 styles.paginationDot,
                 {
                     backgroundColor: isActive
-                        ? '#217C0A'
+                        ? '#00C853'
                         : isDark
-                            ? '#262626'
+                            ? '#2C2C2C'
                             : '#E5E7EB',
                 },
                 animatedStyle,
@@ -1000,7 +1007,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                             styles.navButton,
                             styles.nextButton,
                             {
-                                backgroundColor: '#217C0A',
+                                backgroundColor: '#00C853',
                                 flex: currentPage === 0 ? 1 : 0.85,
                             },
                         ]}
@@ -1314,7 +1321,7 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     buyButton: {
-        backgroundColor: '#217C0A',
+        backgroundColor: '#00C853',
     },
     sellButton: {
         backgroundColor: '#dc2626',

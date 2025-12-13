@@ -1,12 +1,12 @@
+import WalletBalance from '@/components/wallet/WalletBalance';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import React, { useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
-import WalletBalance from '@/components/wallet/WalletBalance';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 type WalletSystemBottomSheetProps = {
     walletSystemBottomSheetRef: React.RefObject<BottomSheetModal>;
@@ -65,7 +65,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
 
                 {/* Current Balances */}
                 {wallet && (
-                    <View style={[styles.balanceCard, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
+                    <View style={[styles.balanceCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                         <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Your Current Balances
                         </Text>
@@ -76,7 +76,11 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                 {/* Gold Coins Explanation */}
                 <View style={styles.section}>
                     <View style={styles.iconContainer}>
-                        <Ionicons name="cash" size={32} color="#FFD700" />
+                        <Image
+                            source={require('@/assets/images/goldCoin.png')}
+                            style={{ width: 32, height: 32 }}
+                            resizeMode="contain"
+                        />
                     </View>
                     <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                         What Are Gold Coins?
@@ -89,8 +93,8 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                 {/* SportCash Explanation */}
                 <View style={styles.section}>
                     <View style={styles.iconContainer}>
-                        <Image 
-                            source={require('@/assets/images/icon.png')} 
+                        <Image
+                            source={require('@/assets/images/icon.png')}
                             style={{ width: 32, height: 32 }}
                             resizeMode="contain"
                         />
@@ -99,7 +103,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                         What Is SportCash?
                     </Text>
                     <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                        SportCash (SC) is bonus money we give you when you buy Gold Coins. Use it to back sports teams, build your bag, and make plays on SportStock.
+                        SportCash (SC) is bonus money we give you when you buy Gold Coins. Use it to back sports teams, build your portfolio, and make plays on SportStock.
                     </Text>
                 </View>
 
@@ -114,7 +118,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                     <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                         When you buy Gold Coins, you get 100 Gold Coins (GC) for every $1 you spend. Gold Coins are just for fun with no real value. For every dollar you spend, you also get $1 in SportCash (SC) to back sports teams.
                     </Text>
-                    <View style={[styles.bonusTiers, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
+                    <View style={[styles.bonusTiers, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                         <View style={styles.tierRow}>
                             <Text style={[styles.tierAmount, { color: isDark ? '#FFFFFF' : '#000000' }]}>Example: $100 Buy</Text>
                         </View>

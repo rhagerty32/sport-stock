@@ -1,9 +1,10 @@
 import Chart from '@/components/chart';
+import { Ticker } from '@/components/Ticker';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { brightenColor, isDarkColor } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
+import { leagues, priceHistory, stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -47,7 +48,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     // Find the stock by ID from the store
     const stock = stocks.find(s => s.id === activeStockId);
     const league = leagues.find(l => l.id === stock?.leagueID);
-    const stockColor = colors.find(c => c.stockID === stock?.id.toString());
     const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
 
     // Don't render anything if no stock is selected
@@ -83,7 +83,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const priceChangePercentage = (priceChange / previousPrice) * 100;
 
     // Get team colors
-    const primaryColor = stockColor?.hex || '#3B82F6';
+    const primaryColor = stock.color || '#3B82F6';
     const isDarkBackground = isDarkColor(primaryColor);
     const brightenedPrimaryColor = brightenColor(primaryColor);
 
@@ -109,13 +109,11 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                 <View style={[styles.header, { backgroundColor: primaryColor }]}>
                     <View style={styles.headerContent}>
                         <View style={styles.stockInfo}>
-                            <View style={[styles.stockLogo, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}>
-                                <Text style={[styles.stockLogoText, { color: '#fff' }]}>
-                                    {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                </Text>
-                            </View>
                             <View style={styles.stockDetails}>
-                                <Text style={styles.stockName}>{stock.name}</Text>
+                                <View style={styles.stockNameRow}>
+                                    <Text style={styles.stockName}>{stock.name}</Text>
+                                    <Ticker ticker={stock.ticker} color={stock.color} size="small" />
+                                </View>
                                 <Text style={styles.leagueName}>{league?.name}</Text>
                             </View>
                         </View>
@@ -141,7 +139,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                 <View style={styles.actionButtons}>
                     <TouchableOpacity
                         onPress={handleBuy}
-                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                     >
                         <Ionicons name="cart-outline" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -215,6 +213,63 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                     </GlassCard>
                 </View>
 
+                {/* About Section */}
+                <View style={styles.statsContainer}>
+                    <GlassCard style={styles.statsCard}>
+                        <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            About
+                        </Text>
+
+                        <View style={styles.aboutContent}>
+                            {/* About Text */}
+                            {stock.about && (
+                                <Text style={[styles.aboutText, { color: isDark ? '#D1D5DB' : '#374151' }]}>
+                                    {stock.about}
+                                </Text>
+                            )}
+
+                            {/* Coach */}
+                            <View style={styles.aboutItem}>
+                                <Text style={[styles.aboutLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Coach
+                                </Text>
+                                <Text style={[styles.aboutValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    {stock.coach}
+                                </Text>
+                            </View>
+
+                            {/* Founded Year */}
+                            <View style={styles.aboutItem}>
+                                <Text style={[styles.aboutLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    Founded
+                                </Text>
+                                <Text style={[styles.aboutValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    {stock.founded}
+                                </Text>
+                            </View>
+
+                            {/* Top Three Players */}
+                            {stock.topThreePlayers && stock.topThreePlayers.length > 0 && (
+                                <View style={styles.aboutItem}>
+                                    <Text style={[styles.aboutLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        Top Players
+                                    </Text>
+                                    <View style={styles.playersList}>
+                                        {stock.topThreePlayers.map((player, index) => (
+                                            <Text
+                                                key={index}
+                                                style={[styles.playerName, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                            >
+                                                {index + 1}. {player}
+                                            </Text>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    </GlassCard>
+                </View>
+
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
             </BottomSheetScrollView>
@@ -271,11 +326,16 @@ const styles = StyleSheet.create({
     stockDetails: {
         flex: 1,
     },
+    stockNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
     stockName: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        marginBottom: 4,
     },
     leagueName: {
         fontSize: 16,
@@ -349,6 +409,34 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    aboutContent: {
+        gap: 16,
+    },
+    aboutText: {
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 8,
+    },
+    aboutItem: {
+        marginBottom: 12,
+    },
+    aboutLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginBottom: 4,
+    },
+    aboutValue: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    playersList: {
+        gap: 8,
+        marginTop: 4,
+    },
+    playerName: {
+        fontSize: 14,
+        fontWeight: '500',
     },
     actionButtons: {
         flexDirection: 'row',

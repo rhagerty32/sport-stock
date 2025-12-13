@@ -1,26 +1,37 @@
 import Chart from '@/components/chart';
 import { ThemedView } from '@/components/themed-view';
+import { TopMoversBanner } from '@/components/TopMoversBanner';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
-import WalletBalance from '@/components/wallet/WalletBalance';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+
+type SortType = 'percentage' | 'value' | null;
 
 export default function HomeScreen() {
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
-    const router = useRouter();
     const [activePage, setActivePage] = useState(0);
-    const pageCount = Math.ceil(portfolio.positions.length / 3);
-    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen } = useStockStore();
+    const [sortType, setSortType] = useState<SortType>(null);
+    const [showSortDropdown, setShowSortDropdown] = useState(false);
+    const [isSortDropdownVisible, setIsSortDropdownVisible] = useState(false);
+    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen } = useStockStore();
     const { wallet, loadWallet, initializeWallet } = useWalletStore();
+    const sortDropdownRef = useRef<View>(null);
+
+    // Animation values for sort dropdown
+    const sortDropdownOpacity = useSharedValue(0);
+    const sortDropdownScale = useSharedValue(0.8);
 
     // Initialize wallet on mount
     useEffect(() => {
@@ -43,6 +54,13 @@ export default function HomeScreen() {
         return `${sign}${percentage.toFixed(2)}%`;
     };
 
+    const formatNumber = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    };
+
     const handlePageChange = (page: number) => {
         setActivePage(Math.round(page / (styles.stockPage.width + (styles.stockPage.marginRight / 2))));
     };
@@ -52,39 +70,324 @@ export default function HomeScreen() {
         setActiveStockId(stockId);
     };
 
+    // Sort positions based on selected sort type
+    const sortedPositions = React.useMemo(() => {
+        const positions = [...portfolio.positions];
+        if (sortType === 'percentage') {
+            return positions.sort((a, b) => b.gainLossPercentage - a.gainLossPercentage);
+        } else if (sortType === 'value') {
+            return positions.sort((a, b) => b.currentValue - a.currentValue);
+        }
+        return positions;
+    }, [sortType]);
+
+    const pageCount = Math.ceil(sortedPositions.length / 3);
+
+    const handleSortSelect = (type: SortType) => {
+        setSortType(type);
+        setShowSortDropdown(false);
+        lightImpact();
+        setActivePage(0); // Reset to first page when sorting changes
+    };
+
+    // Animate sort dropdown when visibility changes
+    useEffect(() => {
+        if (showSortDropdown) {
+            setIsSortDropdownVisible(true);
+            sortDropdownOpacity.value = withSpring(1, {
+                damping: 150,
+                stiffness: 500,
+                mass: 0.8,
+            });
+            sortDropdownScale.value = withSpring(1, {
+                damping: 150,
+                stiffness: 500,
+                mass: 0.8,
+            });
+        } else {
+            sortDropdownOpacity.value = withSpring(0, {
+                damping: 200,
+                stiffness: 300,
+                mass: 0.6,
+            });
+            sortDropdownScale.value = withSpring(0.8, {
+                damping: 200,
+                stiffness: 300,
+                mass: 0.6,
+            });
+            // Hide component after animation completes
+            const timer = setTimeout(() => {
+                setIsSortDropdownVisible(false);
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [showSortDropdown]);
+
+    // Animated style for sort dropdown
+    const sortDropdownAnimatedStyle = useAnimatedStyle(() => {
+        'worklet';
+        // Round scale to avoid subpixel rendering blur (round to 2 decimal places)
+        const roundedScale = Math.round(sortDropdownScale.value * 100) / 100;
+        return {
+            opacity: sortDropdownOpacity.value,
+            transform: [{ scale: roundedScale }],
+        };
+    }, []);
+
+    const [showWalletDropdown, setShowWalletDropdown] = useState(false);
+    const [selectedCurrency, setSelectedCurrency] = useState<'GC' | 'SC'>('SC');
+    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
+    // Animation values for dropdown
+    const dropdownOpacity = useSharedValue(0);
+    const dropdownScale = useSharedValue(0.8);
+
+    // Animation values for coin icon fade
+    const gcIconOpacity = useSharedValue(selectedCurrency === 'GC' ? 1 : 0);
+    const scIconOpacity = useSharedValue(selectedCurrency === 'SC' ? 1 : 0);
+
+    // Load selected currency from AsyncStorage on mount
+    useEffect(() => {
+        const loadSelectedCurrency = async () => {
+            try {
+                const saved = await AsyncStorage.getItem('selectedCurrency');
+                if (saved === 'GC' || saved === 'SC') {
+                    setSelectedCurrency(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load selected currency:', error);
+            }
+        };
+        loadSelectedCurrency();
+    }, []);
+
+    // Animate dropdown when visibility changes
+    useEffect(() => {
+        if (showWalletDropdown) {
+            setIsDropdownVisible(true);
+            dropdownOpacity.value = withSpring(1, {
+                damping: 150,
+                stiffness: 500,
+                mass: 0.8,
+            });
+            dropdownScale.value = withSpring(1, {
+                damping: 150,
+                stiffness: 500,
+                mass: 0.8,
+            });
+        } else {
+            dropdownOpacity.value = withSpring(0, {
+                damping: 200,
+                stiffness: 300,
+                mass: 0.6,
+            });
+            dropdownScale.value = withSpring(0.8, {
+                damping: 200,
+                stiffness: 300,
+                mass: 0.6,
+            });
+            // Hide component after animation completes
+            const timer = setTimeout(() => {
+                setIsDropdownVisible(false);
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [showWalletDropdown]);
+
+    // Animate coin icon fade when currency changes
+    useEffect(() => {
+        if (selectedCurrency === 'GC') {
+            gcIconOpacity.value = withSpring(1, {
+                damping: 20,
+                stiffness: 300,
+            });
+            scIconOpacity.value = withSpring(0, {
+                damping: 20,
+                stiffness: 300,
+            });
+        } else {
+            gcIconOpacity.value = withSpring(0, {
+                damping: 20,
+                stiffness: 300,
+            });
+            scIconOpacity.value = withSpring(1, {
+                damping: 20,
+                stiffness: 300,
+            });
+        }
+    }, [selectedCurrency]);
+
+    // Save selected currency to AsyncStorage when it changes
+    const handleCurrencySelect = async (currency: 'GC' | 'SC') => {
+        setSelectedCurrency(currency);
+        setShowWalletDropdown(false);
+        lightImpact();
+        try {
+            await AsyncStorage.setItem('selectedCurrency', currency);
+        } catch (error) {
+            console.error('Failed to save selected currency:', error);
+        }
+    };
+
+    // Animated style for dropdown
+    const dropdownAnimatedStyle = useAnimatedStyle(() => {
+        'worklet';
+        // Round scale to avoid subpixel rendering blur (round to 2 decimal places)
+        const roundedScale = Math.round(dropdownScale.value * 100) / 100;
+        return {
+            opacity: dropdownOpacity.value,
+            transform: [{ scale: roundedScale }],
+        };
+    }, []);
+
+    // Animated styles for coin icons
+    const gcIconAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: gcIconOpacity.value,
+        };
+    }, []);
+
+    const scIconAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: scIconOpacity.value,
+        };
+    }, []);
+
+    const WalletDropdownMenu = () => {
+        if (!wallet) return null;
+
+        const dropdownBgColor = isDark ? '#1A1A1A' : '#FFFFFF';
+
+        return (
+            <Animated.View
+                style={[styles.dropdownWrapper, dropdownAnimatedStyle]}
+                needsOffscreenAlphaCompositing={false}
+                collapsable={false}
+            >
+                {/* Triangle pointer */}
+                <Animated.View
+                    style={[styles.dropdownTriangle, { borderBottomColor: dropdownBgColor }, dropdownAnimatedStyle]}
+                    needsOffscreenAlphaCompositing={false}
+                    collapsable={false}
+                />
+                <Animated.View
+                    style={[styles.walletDropdownMenu, { backgroundColor: dropdownBgColor }, dropdownAnimatedStyle]}
+                    needsOffscreenAlphaCompositing={false}
+                    collapsable={false}
+                >
+                    {/* GC Option */}
+                    <TouchableOpacity
+                        style={[styles.currencyOption, { backgroundColor: selectedCurrency === 'GC' ? isDark ? '#242428' : '#F3F4F6' : 'transparent' }]}
+                        onPress={() => handleCurrencySelect('GC')}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[styles.currencyAmount, { color: isDark ? '#D1D5DB' : '#374151' }]}>
+                            {formatNumber(wallet.fanCoins)}
+                        </Text>
+                        <View style={styles.currencyRight}>
+                            <Image
+                                source={require('@/assets/images/goldCoin.png')}
+                                style={styles.coinIconImage}
+                                contentFit="contain"
+                            />
+                            <Text style={[styles.currencyCode, { color: isDark ? '#D1D5DB' : '#374151' }]}>GC</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* SC Option */}
+                    <TouchableOpacity
+                        style={[styles.currencyOption, { backgroundColor: selectedCurrency === 'SC' ? isDark ? '#242428' : '#F3F4F6' : 'transparent' }]}
+                        onPress={() => handleCurrencySelect('SC')}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[styles.currencyAmount, { color: isDark ? '#D1D5DB' : '#374151' }]}>
+                            {formatNumber(wallet.tradingCredits)}
+                        </Text>
+                        <View style={styles.currencyRight}>
+                            <View style={[styles.coinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }]}>
+                                <Text style={[styles.coinIconText, { color: '#00C853' }]}>S</Text>
+                            </View>
+                            <Text style={[styles.currencyCode, { color: isDark ? '#D1D5DB' : '#374151' }]}>SC</Text>
+                        </View>
+                    </TouchableOpacity>
+                </Animated.View>
+            </Animated.View>
+        );
+    };
 
     return (
         <ThemedView style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <View style={styles.header}>
+
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
+                {/* Header - Absolutely positioned above everything */}
+                <View style={[styles.header, { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' }]}>
                     <View style={styles.headerTop}>
                         <Text style={[styles.logo, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             SportStock
                         </Text>
-                        <TouchableOpacity
-                            onPress={() => {
-                                setPurchaseFanCoinsBottomSheetOpen(true);
-                                lightImpact();
-                            }}
-                        >
-                            {wallet ? (
-                                <View style={styles.balanceContainer}>
-                                    <Text style={[styles.balance, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {formatCurrency(wallet.tradingCredits)}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+                            <TouchableOpacity
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 0 }}
+                                onPress={() => {
+                                    setShowWalletDropdown(!showWalletDropdown);
+                                    lightImpact();
+                                }}
+                            >
+                                {wallet ? (
+                                    <View
+                                        style={[styles.balanceContainer, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
+                                    >
+                                        <View style={styles.balanceSubContainer}>
+                                            <View style={styles.balanceAmountContainer}>
+                                                <AnimatedRollingNumber
+                                                    value={selectedCurrency === 'GC' ? wallet.fanCoins : wallet.tradingCredits}
+                                                    useGrouping={true}
+                                                    enableCompactNotation={false}
+                                                    compactToFixed={2}
+                                                    textStyle={[styles.balance, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                                    spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
+                                                />
+                                                <View style={styles.coinIconContainer}>
+                                                    <Animated.View style={[styles.coinIconWrapper, gcIconAnimatedStyle]}>
+                                                        <Image
+                                                            source={require('@/assets/images/goldCoin.png')}
+                                                            style={styles.balanceCoinIcon}
+                                                            contentFit="contain"
+                                                        />
+                                                    </Animated.View>
+                                                    <Animated.View style={[styles.coinIconWrapper, styles.scCoinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }, scIconAnimatedStyle]}>
+                                                        <Text style={[styles.coinIconText, { color: '#00C853' }]}>S</Text>
+                                                    </Animated.View>
+                                                </View>
+                                            </View>
+                                        </View>
+                                        <Ionicons name="chevron-down" size={20} color={selectedCurrency === 'GC' ? '#F7CE37' : '#00C853'} style={{ marginLeft: 8 }} />
+                                    </View>
+                                ) : (
+                                    <Text style={[styles.balance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        Loading...
                                     </Text>
-                                    <Text style={[styles.balanceLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        SportCash (SC)
-                                    </Text>
-                                </View>
-                            ) : (
-                                <Text style={[styles.balance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Loading...
-                                </Text>
-                            )}
-                        </TouchableOpacity>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                style={{ backgroundColor: '#00C853', padding: 3, borderRadius: 10 }}
+                                onPress={() => {
+                                    setShowWalletDropdown(false);
+                                    setPurchaseFanCoinsBottomSheetOpen(true);
+                                    lightImpact();
+                                }}
+                            >
+                                <Ionicons name="add" size={24} color={isDark ? '#0B0F13' : '#fff'} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
+                    {isDropdownVisible && wallet && <WalletDropdownMenu />}
                 </View>
+
+                {/* Top Movers Banner */}
+                <TopMoversBanner onStockPress={handleStockPress} />
+
 
                 {/* Portfolio Summary Card */}
                 <View style={styles.cardContainer}>
@@ -136,7 +439,7 @@ export default function HomeScreen() {
                         <View style={styles.investmentsContent}>
                             {/* My Investments Header */}
                             <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                My Bets
+                                My Portfolio
                             </Text>
 
                             {/* Investment Overview */}
@@ -163,7 +466,7 @@ export default function HomeScreen() {
                             </View>
 
                             {/* Divider */}
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]} />
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
 
                             {/* Summary Details */}
                             <View style={styles.summaryDetails}>
@@ -187,22 +490,100 @@ export default function HomeScreen() {
                             </View>
 
                             {/* Divider */}
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]} />
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
 
                             {/* Stocks Owned Section */}
                             <View style={styles.stocksOwnedHeader}>
                                 <View style={styles.stocksOwnedLeft}>
-                                <Text style={[styles.stocksOwnedTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    Teams Backed
-                                </Text>
-                                <Text style={[styles.stocksOwnedSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Total Bag Value
-                                </Text>
-                                </View>
-                                <View style={[styles.sortButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
-                                    <Text style={[styles.sortButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        Sort by
+                                    <Text style={[styles.stocksOwnedTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        My Teams
                                     </Text>
+                                </View>
+                                <View style={styles.sortButtonContainer} ref={sortDropdownRef}>
+                                    <TouchableOpacity
+                                        style={[styles.sortButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
+                                        onPress={() => {
+                                            setShowSortDropdown(!showSortDropdown);
+                                            lightImpact();
+                                        }}
+                                        onPressIn={() => {
+                                            // Ensure touch is captured
+                                        }}
+                                        activeOpacity={0.7}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        delayPressIn={0}
+                                    >
+                                        <Text style={[styles.sortButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
+                                        </Text>
+                                        <Ionicons
+                                            name={showSortDropdown ? 'chevron-up' : 'chevron-down'}
+                                            size={14}
+                                            color={isDark ? '#FFFFFF' : '#000000'}
+                                            style={{ marginLeft: 4 }}
+                                        />
+                                    </TouchableOpacity>
+                                    {isSortDropdownVisible && (
+                                        <Animated.View
+                                            style={styles.sortDropdownWrapper}
+                                            needsOffscreenAlphaCompositing={false}
+                                            collapsable={false}
+                                        >
+                                            {/* Triangle pointer */}
+                                            <Animated.View
+                                                style={[
+                                                    styles.sortDropdownTriangle,
+                                                    { borderBottomColor: isDark ? '#1A1D21' : '#FFFFFF' },
+                                                    sortDropdownAnimatedStyle
+                                                ]}
+                                                needsOffscreenAlphaCompositing={false}
+                                                collapsable={false}
+                                            />
+                                            <Animated.View
+                                                style={[
+                                                    styles.sortDropdown,
+                                                    { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' },
+                                                    sortDropdownAnimatedStyle
+                                                ]}
+                                                needsOffscreenAlphaCompositing={false}
+                                                collapsable={false}
+                                            >
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.sortOption,
+                                                        sortType === 'percentage' && { backgroundColor: isDark ? '#242428' : '#F3F4F6' }
+                                                    ]}
+                                                    onPress={() => handleSortSelect('percentage')}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[styles.sortOptionText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                        Percentage
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.sortOption,
+                                                        sortType === 'value' && { backgroundColor: isDark ? '#242428' : '#F3F4F6' }
+                                                    ]}
+                                                    onPress={() => handleSortSelect('value')}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[styles.sortOptionText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                        Value
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.sortOption}
+                                                    onPress={() => handleSortSelect(null)}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[styles.sortOptionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                                        Reset
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </Animated.View>
+                                        </Animated.View>
+                                    )}
                                 </View>
                             </View>
 
@@ -217,23 +598,26 @@ export default function HomeScreen() {
                                 onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
                                 style={styles.stockScrollView}
                                 contentContainerStyle={styles.stockScrollContent}
+                                scrollEventThrottle={16}
+                                nestedScrollEnabled={true}
                             >
-                                {Array.from({ length: Math.ceil(portfolio.positions.length / 3) }, (_, pageIndex) => (
+                                {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
                                     <View key={pageIndex} style={styles.stockPage}>
-                                        {portfolio.positions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
+                                        {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
                                             <TouchableOpacity
                                                 key={position.stock.id}
                                                 style={styles.stockItem}
                                                 onPress={() => {
-                                                    console.log('TouchableOpacity pressed for stock:', position.stock.id);
-                                                    console.log('About to call handleStockPress...');
                                                     handleStockPress(position.stock.id);
-                                                    console.log('handleStockPress called');
+                                                }}
+                                                onPressIn={() => {
+                                                    // Ensure touch is captured
                                                 }}
                                                 activeOpacity={0.7}
                                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                delayPressIn={0}
                                             >
-                                                <View style={styles.stockIcon}>
+                                                <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
                                                     <Text style={styles.stockIconText}>
                                                         {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                     </Text>
@@ -241,10 +625,29 @@ export default function HomeScreen() {
                                                 <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                                     {position.stock.name}
                                                 </Text>
-                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
-                                                    <Text style={[styles.stockValueText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                        {formatCurrency(position.currentValue)}
-                                                    </Text>
+                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                    {sortType === 'percentage' ? (
+                                                        <View style={styles.stockValueContent}>
+                                                            <Ionicons
+                                                                name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
+                                                                size={14}
+                                                                color={position.gainLossPercentage >= 0 ? '#00C853' : '#FF1744'}
+                                                            />
+                                                            <Text style={[
+                                                                styles.stockValueText,
+                                                                { color: position.gainLossPercentage >= 0 ? '#00C853' : '#FF1744' }
+                                                            ]}>
+                                                                {formatPercentage(position.gainLossPercentage)}
+                                                            </Text>
+                                                        </View>
+                                                    ) : (
+                                                        <Text style={[
+                                                            styles.stockValueText,
+                                                            { color: position.gainLossPercentage >= 0 ? '#00C853' : '#FF1744' }
+                                                        ]}>
+                                                            {formatCurrency(position.currentValue)}
+                                                        </Text>
+                                                    )}
                                                 </View>
                                             </TouchableOpacity>
                                         ))}
@@ -255,7 +658,7 @@ export default function HomeScreen() {
                             {/* Pagination Dots */}
                             <View style={styles.paginationDots}>
                                 {Array.from({ length: pageCount }, (_, index) => (
-                                    <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? '#777' : '#ccc' }]} />
+                                    <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
                                 ))}
                             </View>
                         </View>
@@ -277,9 +680,15 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
         paddingTop: 60,
         paddingHorizontal: 20,
         paddingBottom: 20,
+        zIndex: 1000,
+        elevation: 1000,
     },
     headerTop: {
         flexDirection: 'row',
@@ -291,11 +700,43 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     balanceContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 6,
+        borderRadius: 10,
+    },
+    balanceSubContainer: {
         alignItems: 'flex-end',
     },
     balance: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    balanceAmountContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 6,
+    },
+    coinIconContainer: {
+        position: 'relative',
+        width: 20,
+        height: 20,
+    },
+    coinIconWrapper: {
+        position: 'absolute',
+        width: 20,
+        height: 20,
+    },
+    balanceCoinIcon: {
+        width: 20,
+        height: 20,
+    },
+    scCoinIcon: {
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     balanceLabel: {
         fontSize: 11,
@@ -303,6 +744,7 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     cardContainer: {
+        marginTop: -25,
         marginBottom: 24,
     },
     portfolioCard: {
@@ -505,13 +947,57 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '400',
     },
+    sortButtonContainer: {
+        position: 'relative',
+    },
     sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 8,
     },
     sortButtonText: {
         fontSize: 12,
+        fontWeight: '500',
+    },
+    sortDropdownWrapper: {
+        position: 'absolute',
+        top: 35,
+        right: 0,
+        zIndex: 1000,
+        alignItems: 'flex-end',
+    },
+    sortDropdownTriangle: {
+        width: 0,
+        height: 0,
+        backgroundColor: 'transparent',
+        borderStyle: 'solid',
+        borderLeftWidth: 8,
+        borderRightWidth: 8,
+        borderBottomWidth: 8,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        marginBottom: -1,
+        marginRight: 20,
+    },
+    sortDropdown: {
+        borderRadius: 10,
+        padding: 4,
+        minWidth: 120,
+        shadowColor: 'rgba(0, 0, 0, 0.5)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    sortOption: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 6,
+    },
+    sortOptionText: {
+        fontSize: 14,
         fontWeight: '500',
     },
     stockScrollView: {
@@ -551,6 +1037,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
     },
+    stockValueContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
     stockValue: {
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -572,5 +1063,72 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         backgroundColor: '#6B7280',
         marginHorizontal: 4,
+    },
+    dropdownWrapper: {
+        position: 'absolute',
+        top: 100,
+        right: 20,
+        zIndex: 1000,
+        alignItems: 'flex-end',
+    },
+    dropdownTriangle: {
+        width: 0,
+        height: 0,
+        backgroundColor: 'transparent',
+        borderStyle: 'solid',
+        borderLeftWidth: 8,
+        borderRightWidth: 8,
+        borderBottomWidth: 8,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        marginBottom: -1,
+        marginRight: 20,
+    },
+    walletDropdownMenu: {
+        borderRadius: 10,
+        padding: 12,
+        shadowColor: 'rgba(0, 0, 0, 0.5)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+        minWidth: 200,
+    },
+    currencyOption: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+    },
+    currencyAmount: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    currencyRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    coinIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    coinIconImage: {
+        width: 24,
+        height: 24,
+    },
+    coinIconText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    currencyCode: {
+        fontSize: 14,
+        fontWeight: '500',
     },
 });

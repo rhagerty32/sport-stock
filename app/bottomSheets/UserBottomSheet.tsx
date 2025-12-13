@@ -145,7 +145,7 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
         >
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <View style={[styles.header, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
+                <View style={[styles.header, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
                     <View style={styles.headerContent}>
                         <View style={styles.userInfo}>
                             {imageError || !user.photoURL ? (
@@ -170,17 +170,6 @@ export default function UserBottomSheet({ userBottomSheetRef }: UserBottomSheetP
                                 <Text style={[styles.userEmail, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                                     {user.email}
                                 </Text>
-                                <View style={[
-                                    styles.publicBadge,
-                                    { backgroundColor: isPublic ? (isDark ? 'rgba(33, 124, 10, 0.2)' : 'rgba(33, 124, 10, 0.1)') : (isDark ? 'rgba(220, 38, 38, 0.2)' : 'rgba(220, 38, 38, 0.1)') }
-                                ]}>
-                                    <Text style={[
-                                        styles.publicBadgeText,
-                                        { color: isPublic ? '#217C0A' : '#dc2626' }
-                                    ]}>
-                                        {isPublic ? 'Public Bag' : 'Private Bag'}
-                                    </Text>
-                                </View>
                             </View>
                         </View>
                     </View>

@@ -834,7 +834,7 @@ const Chart: React.FC<ChartProps> = ({
                                                         : '#FFFFFF'),
                                                 borderColor:
                                                     isDark
-                                                        ? '#262626'
+                                                        ? '#242428'
                                                         : '#E5E7EB',
                                                 borderWidth: 1,
                                             },

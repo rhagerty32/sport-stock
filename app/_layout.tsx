@@ -171,7 +171,7 @@ export default function RootLayout() {
             background: '#0B0F13',
             card: '#1A1D21',
             text: '#F5F5F5',
-            border: '#262626',
+            border: '#2C2C2C',
             notification: '#217C0A',
         },
     };
@@ -181,19 +181,14 @@ export default function RootLayout() {
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <BottomSheetModalProvider>
                     <NativeTabs
-                        tintColor={DynamicColorIOS({ dark: '#217C0A', light: '#217C0A' })}
+                        tintColor={DynamicColorIOS({ dark: '#00C853', light: '#00C853' })}
                         labelStyle={{
-                            color: DynamicColorIOS({ dark: 'white', light: 'black' }),
+                            color: DynamicColorIOS({ dark: isDark ? '#ccc' : 'black', light: isDark ? '#ccc' : 'black' }),
                         }}
                     >
                         <NativeTabs.Trigger name="index">
                             <Icon sf={{ default: 'chart.line.uptrend.xyaxis', selected: 'chart.line.uptrend.xyaxis' }} />
                             <Label>Home</Label>
-                        </NativeTabs.Trigger>
-
-                        <NativeTabs.Trigger name="investing">
-                            <Icon sf={{ default: 'briefcase', selected: 'briefcase.fill' }} />
-                            <Label>My Bag</Label>
                         </NativeTabs.Trigger>
 
                         <NativeTabs.Trigger name="profile">

@@ -109,7 +109,7 @@ export default function ModalScreen() {
                                 <Text style={styles.leagueName}>{league?.name}</Text>
                             </View>
                         </View>
-                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#262626' : '#FFFFFF' }]}>
+                        <View style={[styles.priceContainer, { backgroundColor: isDark ? '#242428' : '#FFFFFF' }]}>
                             <Text style={styles.currentPrice}>{formatCurrency(currentPrice)}</Text>
                         </View>
                     </View>
@@ -135,7 +135,7 @@ export default function ModalScreen() {
                             onPress={() => handleTimeframeChange(timeframe)}
                             style={[
                                 styles.timeframeButton,
-                                selectedTimeframe === timeframe && { backgroundColor: isDark ? '#262626' : '#E5E7EB' }
+                                selectedTimeframe === timeframe && { backgroundColor: isDark ? '#242428' : '#E5E7EB' }
                             ]}
                         >
                             <Text style={[
@@ -217,7 +217,7 @@ export default function ModalScreen() {
                 <View style={styles.actionButtons}>
                     <TouchableOpacity
                         onPress={handleBuy}
-                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                     >
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Buy/Short
@@ -226,7 +226,7 @@ export default function ModalScreen() {
 
                     <TouchableOpacity
                         onPress={handleFollow}
-                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                        style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                     >
                         <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                             Follow

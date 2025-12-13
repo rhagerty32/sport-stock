@@ -3,8 +3,8 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
@@ -185,7 +185,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 {
                                     backgroundColor: selectedAmount === amount
                                         ? '#bbb'
-                                        : (isDark ? '#262626' : '#F3F4F6')
+                                        : (isDark ? '#242428' : '#F3F4F6')
                                 }
                             ]}
                             onPress={() => handleAmountSelect(amount)}
@@ -203,7 +203,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         </TouchableOpacity>
                     ))}
                     <TouchableOpacity
-                        style={[styles.amountButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                        style={[styles.amountButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                         onPress={handleCustomAmountPress}
                     >
                         <Text style={[styles.amountText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -223,7 +223,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             style={[
                                 styles.customAmountInput,
                                 {
-                                    backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: isDark ? '#FFFFFF' : '#000000',
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
@@ -238,7 +238,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         />
                         <View style={styles.customAmountButtons}>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}
+                                style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                                 onPress={handleCustomAmountCancel}
                             >
                                 <Text style={[styles.customAmountButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>

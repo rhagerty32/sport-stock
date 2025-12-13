@@ -89,7 +89,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                 </View>
 
                 {/* Tab List */}
-                <View style={[styles.tabsList, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
+                <View style={[styles.tabsList, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
                     {themeOptions.map((option) => (
                         <TouchableOpacity
                             key={option.value}
@@ -131,7 +131,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                 {/* Tab Content */}
                 <View style={styles.tabContent}>
                     {theme === 'light' && (
-                        <View style={[styles.contentCard, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
+                        <View style={[styles.contentCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                             <View style={styles.contentHeader}>
                                 <Ionicons name="sunny" size={24} color="#F59E0B" />
                                 <Text style={[styles.contentTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -158,7 +158,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                     )}
 
                     {theme === 'dark' && (
-                        <View style={[styles.contentCard, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
+                        <View style={[styles.contentCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                             <View style={styles.contentHeader}>
                                 <Ionicons name="moon" size={24} color="#8B5CF6" />
                                 <Text style={[styles.contentTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -169,15 +169,15 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                                 Always use dark mode regardless of your device settings. Great for low-light environments and reducing eye strain.
                             </Text>
                             <View style={styles.previewContainer}>
-                                <View style={[styles.previewCard, { backgroundColor: '#1A1D21', borderColor: '#262626' }]}>
+                                <View style={[styles.previewCard, { backgroundColor: '#1A1D21', borderColor: '#242428' }]}>
                                     <View style={styles.previewHeader}>
                                         <View style={[styles.previewDot, { backgroundColor: '#EF4444' }]} />
                                         <View style={[styles.previewDot, { backgroundColor: '#F59E0B' }]} />
                                         <View style={[styles.previewDot, { backgroundColor: '#10B981' }]} />
                                     </View>
                                     <View style={styles.previewContent}>
-                                        <View style={[styles.previewLine, { backgroundColor: '#262626', width: '80%' }]} />
-                                        <View style={[styles.previewLine, { backgroundColor: '#262626', width: '60%' }]} />
+                                        <View style={[styles.previewLine, { backgroundColor: '#242428', width: '80%' }]} />
+                                        <View style={[styles.previewLine, { backgroundColor: '#242428', width: '60%' }]} />
                                     </View>
                                 </View>
                             </View>
@@ -185,7 +185,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                     )}
 
                     {theme === 'system' && (
-                        <View style={[styles.contentCard, { backgroundColor: isDark ? '#262626' : '#F9FAFB' }]}>
+                        <View style={[styles.contentCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                             <View style={styles.contentHeader}>
                                 <Ionicons name="phone-portrait" size={24} color="#6B7280" />
                                 <Text style={[styles.contentTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -208,15 +208,15 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                                             <View style={[styles.previewLine, { backgroundColor: '#F3F4F6', width: '60%' }]} />
                                         </View>
                                     </View>
-                                    <View style={[styles.previewCard, { backgroundColor: '#1A1D21', borderColor: '#262626' }]}>
+                                    <View style={[styles.previewCard, { backgroundColor: '#1A1D21', borderColor: '#242428' }]}>
                                         <View style={styles.previewHeader}>
                                             <View style={[styles.previewDot, { backgroundColor: '#EF4444' }]} />
                                             <View style={[styles.previewDot, { backgroundColor: '#F59E0B' }]} />
                                             <View style={[styles.previewDot, { backgroundColor: '#10B981' }]} />
                                         </View>
                                         <View style={styles.previewContent}>
-                                            <View style={[styles.previewLine, { backgroundColor: '#262626', width: '80%' }]} />
-                                            <View style={[styles.previewLine, { backgroundColor: '#262626', width: '60%' }]} />
+                                            <View style={[styles.previewLine, { backgroundColor: '#242428', width: '80%' }]} />
+                                            <View style={[styles.previewLine, { backgroundColor: '#242428', width: '60%' }]} />
                                         </View>
                                     </View>
                                 </View>
