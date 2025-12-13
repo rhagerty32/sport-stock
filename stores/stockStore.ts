@@ -1,3 +1,4 @@
+import { Transaction } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -9,6 +10,8 @@ type StockStore = {
     setActiveUserId: (userId: number | null) => void;
     buySellBottomSheetOpen: boolean;
     setBuySellBottomSheetOpen: (open: boolean) => void;
+    buySellMode: 'buy' | 'sell';
+    setBuySellMode: (mode: 'buy' | 'sell') => void;
     profileBottomSheetOpen: boolean;
     setProfileBottomSheetOpen: (open: boolean) => void;
     lightDarkBottomSheetOpen: boolean;
@@ -17,6 +20,14 @@ type StockStore = {
     setPurchaseFanCoinsBottomSheetOpen: (open: boolean) => void;
     walletSystemBottomSheetOpen: boolean;
     setWalletSystemBottomSheetOpen: (open: boolean) => void;
+    transactionDetailBottomSheetOpen: boolean;
+    setTransactionDetailBottomSheetOpen: (open: boolean) => void;
+    activeTransaction: Transaction | null;
+    setActiveTransaction: (transaction: Transaction | null) => void;
+    followedStockIds: number[];
+    addFollow: (stockId: number) => void;
+    removeFollow: (stockId: number) => void;
+    isFollowing: (stockId: number) => boolean;
 };
 
 export const useStockStore = create<StockStore>()(
@@ -28,6 +39,8 @@ export const useStockStore = create<StockStore>()(
             setActiveUserId: (userId) => set({ activeUserId: userId }),
             buySellBottomSheetOpen: false,
             setBuySellBottomSheetOpen: (open) => set({ buySellBottomSheetOpen: open }),
+            buySellMode: 'buy',
+            setBuySellMode: (mode) => set({ buySellMode: mode }),
             profileBottomSheetOpen: false,
             setProfileBottomSheetOpen: (open) => set({ profileBottomSheetOpen: open }),
             lightDarkBottomSheetOpen: false,
@@ -36,6 +49,25 @@ export const useStockStore = create<StockStore>()(
             setPurchaseFanCoinsBottomSheetOpen: (open) => set({ purchaseFanCoinsBottomSheetOpen: open }),
             walletSystemBottomSheetOpen: false,
             setWalletSystemBottomSheetOpen: (open) => set({ walletSystemBottomSheetOpen: open }),
+            transactionDetailBottomSheetOpen: false,
+            setTransactionDetailBottomSheetOpen: (open) => set({ transactionDetailBottomSheetOpen: open }),
+            activeTransaction: null,
+            setActiveTransaction: (transaction) => set({ activeTransaction: transaction }),
+            followedStockIds: [],
+            addFollow: (stockId: number) => {
+                const { followedStockIds } = get();
+                if (!followedStockIds.includes(stockId)) {
+                    set({ followedStockIds: [...followedStockIds, stockId] });
+                }
+            },
+            removeFollow: (stockId: number) => {
+                const { followedStockIds } = get();
+                set({ followedStockIds: followedStockIds.filter(id => id !== stockId) });
+            },
+            isFollowing: (stockId: number) => {
+                const { followedStockIds } = get();
+                return followedStockIds.includes(stockId);
+            },
         }),
         {
             name: 'stock-storage',
@@ -43,6 +75,7 @@ export const useStockStore = create<StockStore>()(
             // Don't persist bottom sheet states as they should reset on app restart
             partialize: (state) => ({
                 activeStockId: state.activeStockId,
+                followedStockIds: state.followedStockIds,
             }),
         }
     )

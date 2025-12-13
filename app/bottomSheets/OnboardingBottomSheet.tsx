@@ -508,7 +508,7 @@ const ONBOARDING_PAGES = [
         gradientColors: ['#00C853', '#34D399'],
     },
     {
-        title: '2. Follow You Teams',
+        title: '2. Follow Your Teams',
         description: "SportStock prices rise when people buy and fall when people sell.",
         icon: 'flash',
         iconColor: '#00C853',
@@ -522,7 +522,7 @@ const ONBOARDING_PAGES = [
         gradientColors: ['#00C853', '#60A5FA'],
     },
     {
-        title: '3. Sell and Profit',
+        title: '4. Sell and Profit',
         description: "Sell your SportStocks at any time when you believe the downfall is coming. Cash out the profits. Prove you know ball!",
         icon: 'trophy',
         iconColor: '#00C853',
@@ -615,14 +615,228 @@ function StockCarouselPage({
     );
 }
 
-// Profit Page Component (Third page)
-function ProfitPage({
+// Factors that affect stock prices with colors
+const priceFactors = [
+    { text: 'Rivalries', color: '#FF6B6B', gradient: ['#FF6B6B', '#FF8E8E'] },
+    { text: 'AP Polls', color: '#4ECDC4', gradient: ['#4ECDC4', '#6EDDD6'] },
+    { text: 'Playoffs', color: '#FFD93D', gradient: ['#FFD93D', '#FFE66D'] },
+    { text: 'Win/Loss', color: '#95E1D3', gradient: ['#95E1D3', '#B5EDE3'] },
+    { text: 'Momentum', color: '#F38181', gradient: ['#F38181', '#F9A5A5'] },
+    { text: 'Rankings', color: '#AA96DA', gradient: ['#AA96DA', '#C4B5E8'] },
+    { text: 'Injuries', color: '#FCBAD3', gradient: ['#FCBAD3', '#FDD1E1'] },
+    { text: 'Media Buzz', color: '#A8E6CF', gradient: ['#A8E6CF', '#C4F0DD'] },
+    { text: 'Coaches', color: '#FFD3A5', gradient: ['#FFD3A5', '#FFE0C2'] },
+    { text: 'Trades', color: '#C7CEEA', gradient: ['#C7CEEA', '#D9DFF0'] },
+    { text: 'Betting Odds', color: '#FF8B94', gradient: ['#FF8B94', '#FFA8AF'] },
+    { text: 'Game Performance', color: '#B8E6B8', gradient: ['#B8E6B8', '#D1F0D1'] },
+    { text: 'Fan Hype', color: '#FFB6C1', gradient: ['#FFB6C1', '#FFCED6'] },
+    { text: 'Prediction Markets', color: '#DDA0DD', gradient: ['#DDA0DD', '#E8BEE8'] },
+    { text: 'Expectation', color: '#87CEEB', gradient: ['#87CEEB', '#A8DDF0'] },
+];
+
+// Factors Page Component (Third page)
+function FactorsPage({
     page,
     isDark,
     index,
     isActive
 }: {
     page: typeof ONBOARDING_PAGES[2];
+    isDark: boolean;
+    index: number;
+    isActive: boolean;
+}) {
+    const scrollY = useSharedValue(0);
+    const screenWidth = Dimensions.get('window').width;
+    const badgeWidth = (screenWidth - 60) / 3; // 3 columns with padding
+    const badgeHeight = 50;
+    const badgeGap = 10;
+    const rowHeight = badgeHeight + badgeGap;
+
+    // Duplicate factors for seamless infinite scroll
+    const duplicatedFactors = [...priceFactors, ...priceFactors, ...priceFactors];
+    // Scroll distance for one set of factors (for seamless looping)
+    const oneSetRows = Math.ceil(priceFactors.length / 3);
+    const scrollDistance = oneSetRows * rowHeight;
+
+    // Badge colors for variety
+    const badgeColors = [
+        ['#FF6B6B', '#FF8E8E'],
+        ['#4ECDC4', '#6EDDD6'],
+        ['#FFD93D', '#FFE66D'],
+        ['#95E1D3', '#B5EDE3'],
+        ['#F38181', '#F9A5A5'],
+        ['#AA96DA', '#C4B5E8'],
+        ['#FCBAD3', '#FDD1E1'],
+        ['#A8E6CF', '#C4F0DD'],
+        ['#FFD3A5', '#FFE0C2'],
+        ['#C7CEEA', '#D9DFF0'],
+        ['#FF8B94', '#FFA8AF'],
+        ['#B8E6B8', '#D1F0D1'],
+        ['#FFB6C1', '#FFCED6'],
+        ['#DDA0DD', '#E8BEE8'],
+        ['#87CEEB', '#A8DDF0'],
+    ];
+
+    useEffect(() => {
+        if (isActive) {
+            scrollY.value = 0;
+            scrollY.value = withRepeat(
+                withTiming(scrollDistance, {
+                    duration: 30000, // 30 seconds for slow movement
+                    easing: Easing.linear,
+                }),
+                -1,
+                false
+            );
+        } else {
+            scrollY.value = 0;
+        }
+    }, [isActive, scrollDistance]);
+
+    const animatedScrollStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: -scrollY.value }],
+    }));
+
+    return (
+        <OnboardingCard index={index} style={{ flex: 1, paddingHorizontal: 20, width: '100%' }}>
+            <Text
+                style={[
+                    styles.title,
+                    {
+                        color: isDark ? '#FFFFFF' : '#000000',
+                        marginBottom: 24,
+                        marginTop: 30,
+                    },
+                ]}
+            >
+                {page.title}
+            </Text>
+
+            {/* Badges Visualization - Redesigned with gradients */}
+            <View style={[styles.badgesContainer, { height: 220 }]}>
+                {/* Top Fade Mask with gradient */}
+                <View
+                    style={[
+                        styles.fadeMask,
+                        styles.fadeMaskTop,
+                    ]}
+                    pointerEvents="none"
+                >
+                    <Svg style={StyleSheet.absoluteFill} height="100%" width="100%">
+                        <Defs>
+                            <LinearGradient id={`topFade-${index}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <Stop offset="0%" stopColor={isDark ? '#1A1D21' : '#FFFFFF'} stopOpacity="1" />
+                                <Stop offset="100%" stopColor={isDark ? '#1A1D21' : '#FFFFFF'} stopOpacity="0" />
+                            </LinearGradient>
+                        </Defs>
+                        <Path
+                            d={`M 0 0 L ${screenWidth - 40} 0 L ${screenWidth - 40} 50 L 0 50 Z`}
+                            fill={`url(#topFade-${index})`}
+                        />
+                    </Svg>
+                </View>
+
+                {/* Scrolling Badges with gradients */}
+                <View style={styles.badgesScrollWrapper}>
+                    <Animated.View style={[styles.badgesScrollContent, animatedScrollStyle, { width: screenWidth - 40 }]}>
+                        {duplicatedFactors.map((factor, factorIndex) => {
+                            const row = Math.floor(factorIndex / 3);
+                            const col = factorIndex % 3;
+                            const factorData = typeof factor === 'string'
+                                ? { text: factor, gradient: badgeColors[factorIndex % badgeColors.length] }
+                                : factor;
+
+                            return (
+                                <View
+                                    key={`${factorData.text}-${factorIndex}`}
+                                    style={[
+                                        styles.badge,
+                                        {
+                                            backgroundColor: isDark ? '#1E2225' : '#FFFFFF',
+                                            width: badgeWidth,
+                                            height: badgeHeight,
+                                            position: 'absolute',
+                                            left: col * (badgeWidth + badgeGap),
+                                            top: row * rowHeight,
+                                        },
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.badgeText,
+                                            {
+                                                color: isDark ? '#FFFFFF' : '#333333',
+                                            },
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {factorData.text}
+                                    </Text>
+                                </View>
+                            );
+                        })}
+                    </Animated.View>
+                </View>
+
+                {/* Bottom Fade Mask with gradient */}
+                <View
+                    style={[
+                        styles.fadeMask,
+                        styles.fadeMaskBottom,
+                    ]}
+                    pointerEvents="none"
+                >
+                    <Svg style={StyleSheet.absoluteFill} height="100%" width="100%">
+                        <Defs>
+                            <LinearGradient id={`bottomFade-${index}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <Stop offset="0%" stopColor={isDark ? '#1A1D21' : '#FFFFFF'} stopOpacity="0" />
+                                <Stop offset="100%" stopColor={isDark ? '#1A1D21' : '#FFFFFF'} stopOpacity="1" />
+                            </LinearGradient>
+                        </Defs>
+                        <Path
+                            d={`M 0 0 L ${screenWidth - 40} 0 L ${screenWidth - 40} 50 L 0 50 Z`}
+                            fill={`url(#bottomFade-${index})`}
+                        />
+                    </Svg>
+                </View>
+            </View>
+
+            {/* Bullet Points Section - Redesigned */}
+            <View style={styles.bulletPointsContainer}>
+                <View style={[styles.bulletPointCard, { backgroundColor: isDark ? '#1E2225' : '#F8F9FA' }]}>
+                    <View style={styles.bulletPointHeader}>
+                        <View style={[styles.bulletPointIcon, { backgroundColor: '#00C85320' }]}>
+                            <Ionicons name="trending-up" size={16} color="#00C853" />
+                        </View>
+                        <Text style={[styles.bulletPointLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            SportStock is a Performance Market
+                        </Text>
+                    </View>
+                    {/* Everything Matters - Redesigned */}
+                    <View style={styles.everythingMattersContainer}>
+                        <View style={[styles.everythingMattersBadge, { backgroundColor: isDark ? '#7c2d12' : '#ffedd5' }]}>
+                            <Ionicons name="alert-circle-outline" size={18} color={isDark ? '#fbbf24' : '#f59e0b'} />
+                            <Text style={[styles.everythingMattersText, { color: isDark ? '#fbbf24' : '#f59e0b' }]}>
+                                So Everything Matters
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+        </OnboardingCard>
+    );
+}
+
+// Profit Page Component (Fourth page)
+function ProfitPage({
+    page,
+    isDark,
+    index,
+    isActive
+}: {
+    page: typeof ONBOARDING_PAGES[3];
     isDark: boolean;
     index: number;
     isActive: boolean;
@@ -841,7 +1055,11 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact, success } = useHaptics();
     const { completeOnboarding } = useSettingsStore();
-    const [currentPage, setCurrentPage] = useState(0);
+
+    // Dev variable: Set to 0-3 to start at a specific step (0 = first page, 1 = second, etc.)
+    const DEV_START_PAGE = 0;
+
+    const [currentPage, setCurrentPage] = useState(DEV_START_PAGE);
     const translateX = useSharedValue(0);
 
     const renderBackdrop = useCallback(
@@ -858,9 +1076,10 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
     );
 
     useEffect(() => {
-        // Reset to first page when sheet opens
-        setCurrentPage(0);
-        translateX.value = 0;
+        // Reset to dev start page when sheet opens
+        setCurrentPage(DEV_START_PAGE);
+        const pageWidth = getPageWidth();
+        translateX.value = -DEV_START_PAGE * (pageWidth + CARD_GAP);
     }, []);
 
     const handleNext = () => {
@@ -920,6 +1139,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
             enablePanDownToClose={false}
             backdropComponent={renderBackdrop}
             handleStyle={{ display: 'none' }}
+            snapPoints={['90%']}
             enableOverDrag={false}
             style={{ borderRadius: 20 }}
             backgroundStyle={{
@@ -928,7 +1148,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
             }}
         >
             {/* Confetti - rendered at bottom sheet level to cover everything */}
-            {currentPage === 2 && <SimpleConfetti isActive={currentPage === 2} />}
+            {currentPage === 3 && <SimpleConfetti isActive={currentPage === 3} />}
             <BottomSheetView style={styles.container}>
                 {/* Content Container */}
                 <View style={styles.contentContainer}>
@@ -957,8 +1177,16 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                                             isDark={isDark}
                                             isActive={currentPage === 1}
                                         />
+                                    ) : index === 2 ? (
+                                        // Third page with factors and badges
+                                        <FactorsPage
+                                            page={page}
+                                            isDark={isDark}
+                                            index={index}
+                                            isActive={currentPage === 2}
+                                        />
                                     ) : (
-                                        // Third page with stock card and buy/sell buttons
+                                        // Fourth page with stock card and buy/sell buttons
                                         <ProfitPage
                                             page={page}
                                             isDark={isDark}
@@ -1162,7 +1390,7 @@ const styles = StyleSheet.create({
     stocksCarouselWrapper: {
         width: Dimensions.get('window').width, // Full screen width
         overflow: 'hidden', // Keep hidden for carousel effect
-        marginBottom: 20,
+        marginVertical: 20,
         marginLeft: -12, // Negative margin to extend to edge (compensate for container padding)
         marginRight: -12, // Negative margin to extend to edge
         paddingBottom: 4, // Add padding to prevent bottom cutoff
@@ -1339,6 +1567,128 @@ const styles = StyleSheet.create({
         bottom: 0,
         zIndex: 0,
         pointerEvents: 'none',
+    },
+    bulletPointsContainer: {
+        width: '100%',
+    },
+    bulletPointCard: {
+        borderRadius: 16,
+        padding: 16,
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        marginBottom: 24,
+    },
+    bulletPointHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    bulletPointIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bulletPointLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    bulletPointMainText: {
+        fontSize: 16,
+        fontWeight: '700',
+        lineHeight: 24,
+    },
+    factorTags: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    factorTag: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    factorTagText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    badgesContainer: {
+        width: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        marginBottom: 24,
+        borderRadius: 20,
+    },
+    badgesScrollWrapper: {
+        flex: 1,
+        overflow: 'hidden',
+    },
+    badgesScrollContent: {
+        position: 'relative',
+    },
+    badge: {
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#FFFFFF',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    badgeText: {
+        fontSize: 13,
+        fontWeight: '700',
+        textAlign: 'center',
+        position: 'relative',
+        zIndex: 1,
+    },
+    fadeMask: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        height: 50,
+        zIndex: 10,
+        width: '100%',
+    },
+    fadeMaskTop: {
+        top: 0,
+    },
+    fadeMaskBottom: {
+        bottom: 0,
+    },
+    everythingMattersContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    everythingMattersBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 24,
+        gap: 8,
+    },
+    everythingMattersText: {
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
 });
 

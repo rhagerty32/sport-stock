@@ -40,5 +40,6 @@ app-example
 
 # generated native folders
 
+.env
 
 build

@@ -10,7 +10,23 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Set up Mapbox API key (for location features)
+
+   Create a `.env` file in the root directory (not `.env.local`) and add your Mapbox access token:
+
+   ```bash
+   EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoieW91cnVzZXJuYW1lIiwiYSI6ImNsc...
+   ```
+
+   **Important:**
+   - The file must be named `.env` (Expo also supports `.env.local`, but `.env` is more reliable)
+   - The variable MUST be prefixed with `EXPO_PUBLIC_` to be accessible in the app
+   - You MUST restart your Expo dev server after adding/changing environment variables
+   - You can get your Mapbox access token from [Mapbox Account](https://account.mapbox.com/access-tokens/)
+
+   **Note:** The location feature will still work without the Mapbox token (using IP-based geolocation), but the state information will not be available.
+
+3. Start the app
 
    ```bash
    npx expo start

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Font from 'expo-font';
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { DynamicColorIOS, LogBox } from 'react-native';
@@ -9,15 +10,19 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useLocation } from '@/hooks/useLocation';
+import { isStateBlocked } from '@/lib/state-restrictions';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import BlockedStateScreen from './BlockedStateScreen';
 import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
 import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
 import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSheet';
 import StockBottomSheet from './bottomSheets/StockBottomSheet';
+import TransactionDetailBottomSheet from './bottomSheets/TransactionDetailBottomSheet';
 import UserBottomSheet from './bottomSheets/UserBottomSheet';
 import WalletSystemBottomSheet from './bottomSheets/WalletSystemBottomSheet';
 
@@ -31,8 +36,30 @@ export default function RootLayout() {
     const purchaseFanCoinsBottomSheetRef = useRef<BottomSheetModal>(null);
     const walletSystemBottomSheetRef = useRef<BottomSheetModal>(null);
     const onboardingBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen } = useStockStore();
+    const transactionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
+    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen, transactionDetailBottomSheetOpen } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
+
+    // Check user location for state restrictions
+    const { locationInfo, loading: locationLoading } = useLocation();
+    // Only block if we successfully determined the state AND it's blocked
+    // If location check fails, allow app to continue (fail open)
+    const isBlocked = locationInfo?.state && !locationInfo.error ? isStateBlocked(locationInfo.state) : false;
+
+    // Keep splash screen visible until location check is complete
+    useEffect(() => {
+        // Prevent auto-hiding the splash screen
+        SplashScreen.preventAutoHideAsync();
+
+        // Only hide splash screen once location check is complete AND we know what to show
+        if (!locationLoading) {
+            // Small delay for smooth transition
+            const timer = setTimeout(() => {
+                SplashScreen.hideAsync();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [locationLoading]);
 
     useEffect(() => {
         if (activeStockId) {
@@ -87,6 +114,14 @@ export default function RootLayout() {
             walletSystemBottomSheetRef.current?.dismiss();
         }
     }, [walletSystemBottomSheetOpen]);
+
+    useEffect(() => {
+        if (transactionDetailBottomSheetOpen) {
+            transactionDetailBottomSheetRef.current?.present();
+        } else {
+            transactionDetailBottomSheetRef.current?.dismiss();
+        }
+    }, [transactionDetailBottomSheetOpen]);
 
     useEffect(() => {
         // Load Ionicons font
@@ -176,6 +211,26 @@ export default function RootLayout() {
         },
     };
 
+    // While location is loading, don't render anything (splash screen stays visible)
+    if (locationLoading) {
+        return (
+            <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
+                <StatusBar style="auto" />
+            </ThemeProvider>
+        );
+    }
+
+    // Show blocked screen if user is in a restricted state
+    if (isBlocked) {
+        return (
+            <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
+                <BlockedStateScreen detectedState={locationInfo?.state || null} />
+                <StatusBar style="auto" />
+            </ThemeProvider>
+        );
+    }
+
+    // Location check complete and user is allowed - show the app
     return (
         <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
             <GestureHandlerRootView style={{ flex: 1 }}>
@@ -211,6 +266,7 @@ export default function RootLayout() {
                     <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <PurchaseFanCoinsBottomSheet purchaseFanCoinsBottomSheetRef={purchaseFanCoinsBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <WalletSystemBottomSheet walletSystemBottomSheetRef={walletSystemBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <TransactionDetailBottomSheet transactionDetailBottomSheetRef={transactionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
 
                     <StatusBar style="auto" />
                 </BottomSheetModalProvider>
