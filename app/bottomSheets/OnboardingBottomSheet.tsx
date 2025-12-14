@@ -865,7 +865,7 @@ function ProfitPage({
                     <View style={styles.profitStockDetails}>
                         <View style={styles.profitStockDetailRow}>
                             <Text style={[styles.profitStockDetailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                Shares Sold
+                                Entries Sold
                             </Text>
                             <Text style={[styles.profitStockDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                 10
@@ -873,7 +873,7 @@ function ProfitPage({
                         </View>
                         <View style={styles.profitStockDetailRow}>
                             <Text style={[styles.profitStockDetailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                Price per Share
+                                Price per Entry
                             </Text>
                             <Text style={[styles.profitStockDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                 $120
@@ -971,7 +971,7 @@ function FirstPageContent({
             <View style={styles.imageContainer}>
                 {!imageError ? (
                     <Image
-                        source={require('@/assets/images/sportStockBattle.png')}
+                        source={require('@/assets/images/helmets.png')}
                         style={styles.battleImage}
                         contentFit="contain"
                         onError={() => {
@@ -1383,8 +1383,8 @@ const styles = StyleSheet.create({
     },
     battleImage: {
         width: '100%',
-        height: 220,
-        maxWidth: 300,
+        height: 240,
+        maxWidth: 320,
         marginVertical: 0,
     },
     stocksCarouselWrapper: {

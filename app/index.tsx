@@ -414,7 +414,11 @@ export default function HomeScreen() {
                         </Text>
                         <View style={styles.currencyRight}>
                             <View style={[styles.coinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }]}>
-                                <Text style={[styles.coinIconText, { color: '#00C853' }]}>S</Text>
+                                <Image
+                                    source={require('@/assets/images/sportstockLogo.png')}
+                                    style={styles.coinIconImage}
+                                    contentFit="contain"
+                                />
                             </View>
                             <Text style={[styles.currencyCode, { color: isDark ? '#D1D5DB' : '#374151' }]}>SC</Text>
                         </View>
@@ -465,7 +469,11 @@ export default function HomeScreen() {
                                                         />
                                                     </Animated.View>
                                                     <Animated.View style={[styles.coinIconWrapper, styles.scCoinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }, scIconAnimatedStyle]}>
-                                                        <Text style={[styles.coinIconText, { color: '#00C853' }]}>S</Text>
+                                                        <Image
+                                                            source={require('@/assets/images/sportstockLogo.png')}
+                                                            style={styles.balanceCoinIcon}
+                                                            contentFit="contain"
+                                                        />
                                                     </Animated.View>
                                                 </View>
                                             </View>

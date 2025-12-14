@@ -93,8 +93,8 @@ export type Portfolio = {
 
 export type Position = {
     stock: Stock;
-    shares: number;
-    avgCostPerShare: number;
+    entries: number;
+    avgEntryPrice: number;
     currentValue: number;
     totalGainLoss: number;
     gainLossPercentage: number;

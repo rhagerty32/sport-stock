@@ -383,7 +383,7 @@ export default function ProfileScreen() {
                                         </View>
                                         <View style={styles.tradeHistoryItemRight}>
                                             <Text style={[styles.tradeHistoryQuantity, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                {transaction.quantity.toFixed(1)} shares
+                                                {transaction.quantity.toFixed(1)} entries
                                             </Text>
                                             <Text style={[styles.tradeHistoryTotal, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                                 {formatCurrency(transaction.totalPrice)}

@@ -408,8 +408,8 @@ export const users: User[] = [
 export const positions: Position[] = [
     {
         stock: stocks[0], // Kansas City Chiefs
-        shares: 15.5,
-        avgCostPerShare: 118.25,
+        entries: 15.5,
+        avgEntryPrice: 118.25,
         currentValue: 1945.25,
         totalGainLoss: 112.50,
         gainLossPercentage: 6.14,
@@ -417,8 +417,8 @@ export const positions: Position[] = [
     },
     {
         stock: stocks[10], // Los Angeles Lakers
-        shares: 8.0,
-        avgCostPerShare: 145.80,
+        entries: 8.0,
+        avgEntryPrice: 145.80,
         currentValue: 1254.40,
         totalGainLoss: 88.00,
         gainLossPercentage: 7.54,
@@ -426,8 +426,8 @@ export const positions: Position[] = [
     },
     {
         stock: stocks[1], // Buffalo Bills
-        shares: 12.0,
-        avgCostPerShare: 95.50,
+        entries: 12.0,
+        avgEntryPrice: 95.50,
         currentValue: 1185.00,
         totalGainLoss: 39.00,
         gainLossPercentage: 3.40,
@@ -435,8 +435,8 @@ export const positions: Position[] = [
     },
     {
         stock: stocks[20], // New York Yankees
-        shares: 20.0,
-        avgCostPerShare: 85.25,
+        entries: 20.0,
+        avgEntryPrice: 85.25,
         currentValue: 1795.00,
         totalGainLoss: 90.00,
         gainLossPercentage: 5.28,
@@ -444,8 +444,8 @@ export const positions: Position[] = [
     },
     {
         stock: stocks[11], // Golden State Warriors
-        shares: 6.5,
-        avgCostPerShare: 135.20,
+        entries: 6.5,
+        avgEntryPrice: 135.20,
         currentValue: 926.25,
         totalGainLoss: -47.55,
         gainLossPercentage: -4.89,
@@ -706,19 +706,19 @@ const generateUserPortfolio = (userId: number, stockIds: number[]): Portfolio =>
             console.warn(`Stock with ID ${stockId} not found`);
             return null;
         }
-        const shares = Math.random() * 20 + 5; // Random shares between 5-25
-        const avgCostPerShare = stock.price * (0.9 + Math.random() * 0.2); // Random cost between 90-110% of current price
-        const currentValue = shares * stock.price;
-        const totalGainLoss = currentValue - (shares * avgCostPerShare);
-        const gainLossPercentage = (totalGainLoss / (shares * avgCostPerShare)) * 100;
+        const entries = Math.random() * 20 + 5; // Random entries between 5-25
+        const avgEntryPrice = stock.price * (0.9 + Math.random() * 0.2); // Random cost between 90-110% of current price
+        const currentValue = entries * stock.price;
+        const totalGainLoss = currentValue - (entries * avgEntryPrice);
+        const gainLossPercentage = (totalGainLoss / (entries * avgEntryPrice)) * 100;
 
         // Find color by stockID string
         const stockColor = colors.find(c => c.stockID === stockId.toString());
 
         return {
             stock,
-            shares: Math.round(shares * 10) / 10,
-            avgCostPerShare: Math.round(avgCostPerShare * 100) / 100,
+            entries: Math.round(entries * 10) / 10,
+            avgEntryPrice: Math.round(avgEntryPrice * 100) / 100,
             currentValue: Math.round(currentValue * 100) / 100,
             totalGainLoss: Math.round(totalGainLoss * 100) / 100,
             gainLossPercentage: Math.round(gainLossPercentage * 100) / 100,
@@ -727,7 +727,7 @@ const generateUserPortfolio = (userId: number, stockIds: number[]): Portfolio =>
     }).filter((pos): pos is Position => pos !== null);
 
     const totalValue = userPositions.reduce((sum, pos) => sum + pos.currentValue, 0);
-    const totalInvested = userPositions.reduce((sum, pos) => sum + (pos.shares * pos.avgCostPerShare), 0);
+    const totalInvested = userPositions.reduce((sum, pos) => sum + (pos.entries * pos.avgEntryPrice), 0);
     const totalGainLoss = totalValue - totalInvested;
     const totalGainLossPercentage = (totalGainLoss / totalInvested) * 100;
 

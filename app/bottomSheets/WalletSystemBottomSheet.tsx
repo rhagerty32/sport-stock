@@ -94,7 +94,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                 <View style={styles.section}>
                     <View style={styles.iconContainer}>
                         <Image
-                            source={require('@/assets/images/icon.png')}
+                            source={require('@/assets/images/sportstockLogo.png')}
                             style={{ width: 32, height: 32 }}
                             resizeMode="contain"
                         />

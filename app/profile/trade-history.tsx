@@ -104,7 +104,7 @@ export default function TradeHistoryScreen() {
                                         </View>
                                         <View style={styles.transactionItemRight}>
                                             <Text style={[styles.transactionQuantity, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                {transaction.quantity.toFixed(1)} shares
+                                                {transaction.quantity.toFixed(1)} entries
                                             </Text>
                                             <Text style={[styles.transactionPrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
                                                 @ {formatCurrency(transaction.price)}

@@ -105,13 +105,13 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
             return null;
         }
 
-        const avgCostPerShare = totalCost / matchedQuantity;
+        const avgEntryPrice = totalCost / matchedQuantity;
         const totalRevenue = activeTransaction.totalPrice;
         const profit = totalRevenue - totalCost;
         const profitPercentage = (profit / totalCost) * 100;
 
         return {
-            avgCostPerShare,
+            avgEntryPrice,
             totalCost,
             totalRevenue,
             profit,
@@ -227,12 +227,12 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                             </View>
                         </View>
 
-                        {/* Shares */}
+                        {/* Entries */}
                         <View style={styles.detailRow}>
                             <View style={styles.detailLabelContainer}>
                                 <Ionicons name="layers-outline" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
                                 <Text style={[styles.detailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Shares
+                                    Entries
                                 </Text>
                             </View>
                             <Text style={[styles.detailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -240,12 +240,12 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                             </Text>
                         </View>
 
-                        {/* Price per Share */}
+                        {/* Price per Entry */}
                         <View style={styles.detailRow}>
                             <View style={styles.detailLabelContainer}>
                                 <Ionicons name="cash-outline" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
                                 <Text style={[styles.detailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Price per Share
+                                    Price per Entry
                                 </Text>
                             </View>
                             <Text style={[styles.detailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
@@ -284,10 +284,10 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                             {/* Average Cost */}
                             <View style={styles.returnRow}>
                                 <Text style={[styles.returnLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                    Average Cost Basis
+                                    Average Entry Price
                                 </Text>
                                 <Text style={[styles.returnValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    {formatCurrency(transactionReturns.avgCostPerShare)}
+                                    {formatCurrency(transactionReturns.avgEntryPrice)}
                                 </Text>
                             </View>
 
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 24,
         paddingHorizontal: 20,
         borderTopLeftRadius: 25,

@@ -182,8 +182,12 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                 {/* Free SportCash Section */}
                                 <View style={styles.offerCardTopSection}>
                                     <View style={styles.sportCashRow}>
-                                        <View style={[styles.sportCashIcon, { backgroundColor: '#00C853' }]}>
-                                            <Text style={styles.sportCashIconText}>S</Text>
+                                        <View style={styles.sportCashIcon}>
+                                            <Image
+                                                source={require('@/assets/images/sportstockLogo.png')}
+                                                style={styles.sportCashIconImage}
+                                                contentFit="contain"
+                                            />
                                         </View>
                                         <Text style={[
                                             styles.sportCashAmount,
@@ -359,7 +363,11 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                         spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
                                     />
                                     <View style={[styles.bonusSportCashIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }]}>
-                                        <Text style={styles.bonusSportCashIconText}>S</Text>
+                                        <Image
+                                            source={require('@/assets/images/sportstockLogo.png')}
+                                            style={styles.bonusSportCashIconImage}
+                                            contentFit="contain"
+                                        />
                                     </View>
                                 </View>
                             </View>
@@ -480,6 +488,10 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    sportCashIconImage: {
+        width: 24,
+        height: 24,
     },
     sportCashAmount: {
         fontSize: 18,
@@ -634,6 +646,10 @@ const styles = StyleSheet.create({
         color: '#00C853',
         fontSize: 12,
         fontWeight: 'bold',
+    },
+    bonusSportCashIconImage: {
+        width: 14,
+        height: 14,
     },
     firstTimeBadge: {
         flexDirection: 'row',

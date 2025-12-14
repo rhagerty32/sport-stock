@@ -264,10 +264,10 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
                                 <View style={styles.positionMetricCard}>
                                     <Text style={[styles.positionMetricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        Shares
+                                        Entries
                                     </Text>
                                     <Text style={[styles.positionMetricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {userPosition.shares.toFixed(1)}
+                                        {userPosition.entries.toFixed(1)}
                                     </Text>
                                 </View>
                             </View>
@@ -345,10 +345,10 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                             <View style={styles.positionSecondaryMetrics}>
                                 <View style={styles.positionSecondaryMetric}>
                                     <Text style={[styles.positionSecondaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                                        Avg Cost
+                                        Avg Entry Price
                                     </Text>
                                     <Text style={[styles.positionSecondaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                        {formatCurrency(userPosition.avgCostPerShare)}
+                                        {formatCurrency(userPosition.avgEntryPrice)}
                                     </Text>
                                 </View>
                                 <View style={styles.positionSecondaryDivider} />
@@ -405,7 +405,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                                                     Quantity:
                                                 </Text>
                                                 <Text style={[styles.transactionDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                    {transaction.quantity.toFixed(1)} shares
+                                                    {transaction.quantity.toFixed(1)} entries
                                                 </Text>
                                             </View>
                                             <View style={styles.transactionDetailRow}>

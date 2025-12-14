@@ -8,7 +8,6 @@ import { useEffect, useRef } from 'react';
 import { DynamicColorIOS, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
-
 import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from '@/hooks/useLocation';
 import { isStateBlocked } from '@/lib/state-restrictions';
@@ -23,16 +22,14 @@ import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
 import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSheet';
 import StockBottomSheet from './bottomSheets/StockBottomSheet';
 import TransactionDetailBottomSheet from './bottomSheets/TransactionDetailBottomSheet';
-import UserBottomSheet from './bottomSheets/UserBottomSheet';
 import WalletSystemBottomSheet from './bottomSheets/WalletSystemBottomSheet';
 
 export default function RootLayout() {
-    const { theme, isDark } = useTheme();
+    const { isDark } = useTheme();
     const stockBottomSheetRef = useRef<BottomSheetModal>(null);
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null);
     const profileBottomSheetRef = useRef<BottomSheetModal>(null);
     const lightDarkBottomSheetRef = useRef<BottomSheetModal>(null);
-    const userBottomSheetRef = useRef<BottomSheetModal>(null);
     const purchaseFanCoinsBottomSheetRef = useRef<BottomSheetModal>(null);
     const walletSystemBottomSheetRef = useRef<BottomSheetModal>(null);
     const onboardingBottomSheetRef = useRef<BottomSheetModal>(null);
@@ -64,7 +61,6 @@ export default function RootLayout() {
     useEffect(() => {
         if (activeStockId) {
             stockBottomSheetRef.current?.present();
-            userBottomSheetRef.current?.dismiss(); // Close user sheet when opening stock sheet
         } else {
             stockBottomSheetRef.current?.dismiss();
         }
@@ -72,10 +68,7 @@ export default function RootLayout() {
 
     useEffect(() => {
         if (activeUserId) {
-            userBottomSheetRef.current?.present();
             stockBottomSheetRef.current?.dismiss(); // Close stock sheet when opening user sheet
-        } else {
-            userBottomSheetRef.current?.dismiss();
         }
     }, [activeUserId]);
 
@@ -260,7 +253,6 @@ export default function RootLayout() {
                     {/* Bottom Sheets */}
                     <OnboardingBottomSheet onboardingBottomSheetRef={onboardingBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <StockBottomSheet stockBottomSheetRef={stockBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <UserBottomSheet userBottomSheetRef={userBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <ProfileBottomSheet profileBottomSheetRef={profileBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
