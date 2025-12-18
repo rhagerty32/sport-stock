@@ -33,14 +33,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
 
-    const handlePublicToggle = (value: boolean) => {
-        setIsPublicAccount(value);
-        lightImpact();
-    };
-
     const handleSave = () => {
-        // TODO: Implement save functionality
-        console.log('Saving profile:', { firstName, lastName, email, phone });
         lightImpact();
         closeModal();
     };

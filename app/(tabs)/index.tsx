@@ -10,6 +10,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
@@ -18,9 +19,17 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring } from '
 
 type SortType = 'percentage' | 'value' | null;
 
+const leagueButtons = [
+    { id: 'proFootball', image: require('@/assets/images/leagues/proFootball.png') },
+    { id: 'proBasketball', image: require('@/assets/images/leagues/proBasketball.png') },
+    { id: 'collegeFootball', image: require('@/assets/images/leagues/collegeFootball.png') },
+    { id: 'collegeBasketball', image: require('@/assets/images/leagues/collegeBasketball.png') },
+];
+
 export default function HomeScreen() {
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
+    const router = useRouter();
     const [activePage, setActivePage] = useState(0);
     const [highestVolumePage, setHighestVolumePage] = useState(0);
     const [onTheRisePage, setOnTheRisePage] = useState(0);
@@ -773,6 +782,27 @@ export default function HomeScreen() {
                     </GlassCard>
                 </View>
 
+                {/* League Buttons */}
+                <View style={styles.leagueButtonsContainer}>
+                    {leagueButtons.map((league) => (
+                        <TouchableOpacity
+                            key={league.id}
+                            style={styles.leagueButton}
+                            onPress={() => {
+                                lightImpact();
+                                router.push(`/league/${league.id}`);
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Image
+                                source={league.image}
+                                style={styles.leagueButtonImage}
+                                contentFit="contain"
+                            />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
                 {/* Highest Volume Section */}
                 <View style={styles.section}>
                     <GlassCard style={styles.investmentsCard} padding={0}>
@@ -1282,6 +1312,22 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 100,
+    },
+    leagueButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingHorizontal: 20,
+        marginBottom: 24,
+    },
+    leagueButton: {
+        width: 70,
+        height: 70,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    leagueButtonImage: {
+        width: '100%',
+        height: '100%',
     },
     // Investments Card Styles
     investmentsCard: {

@@ -16,7 +16,7 @@ export default function ProfileScreen() {
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
-    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, setActiveTransaction, setTransactionDetailBottomSheetOpen } = useStockStore();
+    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, setActiveTransaction, setTransactionDetailBottomSheetOpen, setActivePosition, setPositionDetailBottomSheetOpen } = useStockStore();
     const { wallet, initializeWallet, loadWallet } = useWalletStore();
     const { resetOnboarding } = useSettingsStore();
     const { locationInfo, loading: locationLoading } = useLocation();
@@ -187,9 +187,15 @@ export default function ProfileScreen() {
                                             const trendIcon = isPositive ? 'trending-up' : 'trending-down';
 
                                             return (
-                                                <View
+                                                <TouchableOpacity
                                                     key={position.stock.id}
                                                     style={[styles.holdingItem, { width: `${itemWidthPercent}%` }]}
+                                                    onPress={() => {
+                                                        mediumImpact();
+                                                        setActivePosition(position);
+                                                        setPositionDetailBottomSheetOpen(true);
+                                                    }}
+                                                    activeOpacity={0.7}
                                                 >
                                                     <View style={[
                                                         styles.holdingLogo,
@@ -214,7 +220,7 @@ export default function ProfileScreen() {
                                                             {formatPercentage(position.gainLossPercentage)}
                                                         </Text>
                                                     </View>
-                                                </View>
+                                                </TouchableOpacity>
                                             );
                                         })}
                                     </View>
@@ -226,9 +232,6 @@ export default function ProfileScreen() {
 
                 {/* Account Metrics */}
                 <View style={styles.metricsContainer}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                        Stats
-                    </Text>
                     <View style={styles.metricsGrid}>
                         <GlassCard style={styles.metricCard}>
                             <View style={styles.metricContent}>
@@ -238,7 +241,7 @@ export default function ProfileScreen() {
                                     minimumFontScale={0.8}
                                     style={[styles.metricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}
                                 >
-                                    Current Winnings
+                                    Portfolio Value
                                 </Text>
                                 <Text
                                     adjustsFontSizeToFit={true}
@@ -692,15 +695,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: 0,
     },
     metricCard: {
         width: '31%',
         minHeight: 80,
+        padding: 0,
     },
     metricContent: {
         alignItems: 'center',
         justifyContent: 'center',
+        aspectRatio: 1,
         gap: 6,
         paddingVertical: 8,
         paddingHorizontal: 4,
@@ -711,7 +716,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     metricValue: {
-        fontSize: 16,
+        fontSize: 24,
         fontWeight: 'bold',
         textAlign: 'center',
         flexShrink: 1,

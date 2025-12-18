@@ -5,11 +5,6 @@ import * as Location from 'expo-location';
 
 const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
-// Debug: Log if token is available (first 10 chars only for security)
-if (__DEV__) {
-    console.log('Mapbox token configured:', MAPBOX_ACCESS_TOKEN ? `${MAPBOX_ACCESS_TOKEN.substring(0, 10)}...` : 'NOT SET');
-}
-
 export interface LocationInfo {
     ipAddress: string | null;
     coordinates: {
@@ -30,18 +25,12 @@ async function getDeviceLocation(): Promise<{ longitude: number; latitude: numbe
     try {
         // Check if location services are enabled
         const servicesEnabled = await Location.hasServicesEnabledAsync();
-        if (!servicesEnabled) {
-            if (__DEV__) console.log('Location services are disabled');
-            return null;
-        }
+        if (!servicesEnabled) return null;
 
         // Request foreground location permissions
         const { status } = await Location.requestForegroundPermissionsAsync();
 
-        if (status !== 'granted') {
-            if (__DEV__) console.log('Location permission denied');
-            return null;
-        }
+        if (status !== 'granted') return null;
 
         // Get current position with balanced accuracy (good balance of speed and accuracy)
         const location = await Location.getCurrentPositionAsync({
@@ -53,9 +42,7 @@ async function getDeviceLocation(): Promise<{ longitude: number; latitude: numbe
             longitude: location.coords.longitude,
         };
     } catch (error) {
-        if (__DEV__) {
-            console.error('Error getting device location:', error);
-        }
+        if (__DEV__) console.error('Error getting device location:', error);
         return null;
     }
 }
@@ -117,10 +104,6 @@ async function reverseGeocode(
         // The API returns one feature per type by default, which is what we want
         const url = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${longitude}&latitude=${latitude}&types=region,place,country&access_token=${MAPBOX_ACCESS_TOKEN}`;
 
-        if (__DEV__) {
-            console.log('Calling Mapbox reverse geocoding API...');
-        }
-
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -130,10 +113,6 @@ async function reverseGeocode(
         }
 
         const data = await response.json();
-
-        if (__DEV__) {
-            console.log('Mapbox response received:', data.features?.length || 0, 'features');
-        }
 
         if (!data.features || data.features.length === 0) {
             return { state: null, city: null, country: null };

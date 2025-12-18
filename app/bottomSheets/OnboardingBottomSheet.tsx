@@ -816,7 +816,6 @@ function FactorsPage({
                     {/* Everything Matters - Redesigned */}
                     <View style={styles.everythingMattersContainer}>
                         <View style={[styles.everythingMattersBadge, { backgroundColor: isDark ? '#7c2d12' : '#ffedd5' }]}>
-                            <Ionicons name="alert-circle-outline" size={18} color={isDark ? '#fbbf24' : '#f59e0b'} />
                             <Text style={[styles.everythingMattersText, { color: isDark ? '#fbbf24' : '#f59e0b' }]}>
                                 So Everything Matters
                             </Text>
@@ -1686,7 +1685,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     everythingMattersText: {
-        fontSize: 16,
+        fontSize: 24,
         fontWeight: '700',
         letterSpacing: 0.5,
     },

@@ -12,6 +12,7 @@ export type Stock = {
     topThreePlayers: string[];
     volume: number;
     color: string;
+    secondaryColor: string;
     createdAt: Date;
     updatedAt: Date;
 };
@@ -98,7 +99,7 @@ export type Position = {
     currentValue: number;
     totalGainLoss: number;
     gainLossPercentage: number;
-    colors: Color[];
+    colors: { hex: string }[];
 };
 
 export type PriceHistory = {

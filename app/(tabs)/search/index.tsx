@@ -177,6 +177,7 @@ const styles = StyleSheet.create({
     },
     filterContainer: {
         marginBottom: 20,
+        marginTop: 10
     },
     filterScroll: {
         paddingLeft: 20,

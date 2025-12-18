@@ -1,23 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import * as Font from 'expo-font';
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
-import { DynamicColorIOS, LogBox } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import 'react-native-reanimated';
 import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from '@/hooks/useLocation';
 import { isStateBlocked } from '@/lib/state-restrictions';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
+import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as Font from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useRef } from 'react';
+import { LogBox } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-reanimated';
 import BlockedStateScreen from './BlockedStateScreen';
 import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
 import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
+import PositionDetailBottomSheet from './bottomSheets/PositionDetailBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
 import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSheet';
 import StockBottomSheet from './bottomSheets/StockBottomSheet';
@@ -34,7 +35,8 @@ export default function RootLayout() {
     const walletSystemBottomSheetRef = useRef<BottomSheetModal>(null);
     const onboardingBottomSheetRef = useRef<BottomSheetModal>(null);
     const transactionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen, transactionDetailBottomSheetOpen } = useStockStore();
+    const positionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
+    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen, transactionDetailBottomSheetOpen, positionDetailBottomSheetOpen } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
 
     // Check user location for state restrictions
@@ -71,8 +73,6 @@ export default function RootLayout() {
             stockBottomSheetRef.current?.dismiss(); // Close stock sheet when opening user sheet
         }
     }, [activeUserId]);
-
-    console.log(profileBottomSheetOpen)
 
     useEffect(() => {
         if (profileBottomSheetOpen) {
@@ -115,6 +115,14 @@ export default function RootLayout() {
             transactionDetailBottomSheetRef.current?.dismiss();
         }
     }, [transactionDetailBottomSheetOpen]);
+
+    useEffect(() => {
+        if (positionDetailBottomSheetOpen) {
+            positionDetailBottomSheetRef.current?.present();
+        } else {
+            positionDetailBottomSheetRef.current?.dismiss();
+        }
+    }, [positionDetailBottomSheetOpen]);
 
     useEffect(() => {
         // Load Ionicons font
@@ -228,27 +236,16 @@ export default function RootLayout() {
         <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <BottomSheetModalProvider>
-                    <NativeTabs
-                        tintColor={DynamicColorIOS({ dark: '#00C853', light: '#00C853' })}
-                        labelStyle={{
-                            color: DynamicColorIOS({ dark: isDark ? '#ccc' : 'black', light: isDark ? '#ccc' : 'black' }),
-                        }}
-                    >
-                        <NativeTabs.Trigger name="index">
-                            <Icon sf={{ default: 'chart.line.uptrend.xyaxis', selected: 'chart.line.uptrend.xyaxis' }} />
-                            <Label>Home</Label>
-                        </NativeTabs.Trigger>
-
-                        <NativeTabs.Trigger name="profile">
-                            <Icon sf={{ default: 'person', selected: 'person.fill' }} />
-                            <Label>Profile</Label>
-                        </NativeTabs.Trigger>
-
-                        <NativeTabs.Trigger role='search' name="search">
-                            <Icon sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }} />
-                            <Label>Search</Label>
-                        </NativeTabs.Trigger>
-                    </NativeTabs>
+                    <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen
+                            name="(tabs)"
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="league/[id]"
+                            options={{ headerShown: false, presentation: 'card' }}
+                        />
+                    </Stack>
 
                     {/* Bottom Sheets */}
                     <OnboardingBottomSheet onboardingBottomSheetRef={onboardingBottomSheetRef as React.RefObject<BottomSheetModal>} />
@@ -259,6 +256,7 @@ export default function RootLayout() {
                     <PurchaseFanCoinsBottomSheet purchaseFanCoinsBottomSheetRef={purchaseFanCoinsBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <WalletSystemBottomSheet walletSystemBottomSheetRef={walletSystemBottomSheetRef as React.RefObject<BottomSheetModal>} />
                     <TransactionDetailBottomSheet transactionDetailBottomSheetRef={transactionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                    <PositionDetailBottomSheet positionDetailBottomSheetRef={positionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
 
                     <StatusBar style="auto" />
                 </BottomSheetModalProvider>

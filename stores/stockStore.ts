@@ -1,4 +1,4 @@
-import { Transaction } from '@/types';
+import { Position, Transaction } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -24,6 +24,10 @@ type StockStore = {
     setTransactionDetailBottomSheetOpen: (open: boolean) => void;
     activeTransaction: Transaction | null;
     setActiveTransaction: (transaction: Transaction | null) => void;
+    positionDetailBottomSheetOpen: boolean;
+    setPositionDetailBottomSheetOpen: (open: boolean) => void;
+    activePosition: Position | null;
+    setActivePosition: (position: Position | null) => void;
     followedStockIds: number[];
     addFollow: (stockId: number) => void;
     removeFollow: (stockId: number) => void;
@@ -53,6 +57,10 @@ export const useStockStore = create<StockStore>()(
             setTransactionDetailBottomSheetOpen: (open) => set({ transactionDetailBottomSheetOpen: open }),
             activeTransaction: null,
             setActiveTransaction: (transaction) => set({ activeTransaction: transaction }),
+            positionDetailBottomSheetOpen: false,
+            setPositionDetailBottomSheetOpen: (open) => set({ positionDetailBottomSheetOpen: open }),
+            activePosition: null,
+            setActivePosition: (position) => set({ activePosition: position }),
             followedStockIds: [],
             addFollow: (stockId: number) => {
                 const { followedStockIds } = get();

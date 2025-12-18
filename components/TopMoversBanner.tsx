@@ -134,7 +134,7 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
             <View style={styles.moverCard}>
                 <GlassCard style={styles.card} padding={12} standard={true}>
                     <View style={styles.cardContent}>
-                        <Ticker ticker={stock.ticker} color={stock.color} />
+                        <Ticker ticker={stock.ticker} color={stock.secondaryColor} />
                         <View style={styles.priceRow}>
                             <Text style={[styles.price, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                 {formatCurrency(stock.price)}

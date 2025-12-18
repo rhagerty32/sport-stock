@@ -5,20 +5,17 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
 import { TimePeriod } from '@/types';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ModalScreen() {
     const { stockId } = useLocalSearchParams<{ stockId: string }>();
-    const router = useRouter();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const { lightImpact } = useHaptics();
 
     const [selectedTimeframe, setSelectedTimeframe] = useState<TimePeriod>('1D');
-
-    console.log('Modal loaded with stockId:', stockId);
 
     // Find the stock by ID
     const stock = stocks.find(s => s.id === parseInt(stockId || '0'));

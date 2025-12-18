@@ -54,10 +54,8 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
     ];
 
     const handleThemeSelect = (selectedTheme: ThemeOption) => {
-        console.log('Setting theme to:', selectedTheme);
         setTheme(selectedTheme);
         lightImpact();
-        console.log('Theme set successfully');
     };
 
     const closeModal = () => {
