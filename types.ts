@@ -2,6 +2,7 @@
 export type Stock = {
     id: number;
     name: string;
+    fullName: string;
     leagueID: number;
     photoURL: string;
     price: number;

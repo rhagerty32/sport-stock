@@ -6,6 +6,7 @@ import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -24,6 +25,16 @@ import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSh
 import StockBottomSheet from './bottomSheets/StockBottomSheet';
 import TransactionDetailBottomSheet from './bottomSheets/TransactionDetailBottomSheet';
 import WalletSystemBottomSheet from './bottomSheets/WalletSystemBottomSheet';
+
+// Create a QueryClient instance
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+        },
+    },
+});
 
 export default function RootLayout() {
     const { isDark } = useTheme();
@@ -233,34 +244,36 @@ export default function RootLayout() {
 
     // Location check complete and user is allowed - show the app
     return (
-        <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-                <BottomSheetModalProvider>
-                    <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen
-                            name="(tabs)"
-                            options={{ headerShown: false }}
-                        />
-                        <Stack.Screen
-                            name="league/[id]"
-                            options={{ headerShown: false, presentation: 'card' }}
-                        />
-                    </Stack>
+        <QueryClientProvider client={queryClient}>
+            <ThemeProvider value={isDark ? customDarkTheme : DefaultTheme}>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                    <BottomSheetModalProvider>
+                        <Stack screenOptions={{ headerShown: false }}>
+                            <Stack.Screen
+                                name="(tabs)"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="league/[id]"
+                                options={{ headerShown: false, presentation: 'card' }}
+                            />
+                        </Stack>
 
-                    {/* Bottom Sheets */}
-                    <OnboardingBottomSheet onboardingBottomSheetRef={onboardingBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <StockBottomSheet stockBottomSheetRef={stockBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <ProfileBottomSheet profileBottomSheetRef={profileBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <PurchaseFanCoinsBottomSheet purchaseFanCoinsBottomSheetRef={purchaseFanCoinsBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <WalletSystemBottomSheet walletSystemBottomSheetRef={walletSystemBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <TransactionDetailBottomSheet transactionDetailBottomSheetRef={transactionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
-                    <PositionDetailBottomSheet positionDetailBottomSheetRef={positionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        {/* Bottom Sheets */}
+                        <OnboardingBottomSheet onboardingBottomSheetRef={onboardingBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <StockBottomSheet stockBottomSheetRef={stockBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <ProfileBottomSheet profileBottomSheetRef={profileBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <LightDarkBottomSheet lightDarkBottomSheetRef={lightDarkBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <PurchaseFanCoinsBottomSheet purchaseFanCoinsBottomSheetRef={purchaseFanCoinsBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <WalletSystemBottomSheet walletSystemBottomSheetRef={walletSystemBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <TransactionDetailBottomSheet transactionDetailBottomSheetRef={transactionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <PositionDetailBottomSheet positionDetailBottomSheetRef={positionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
 
-                    <StatusBar style="auto" />
-                </BottomSheetModalProvider>
-            </GestureHandlerRootView>
-        </ThemeProvider>
+                        <StatusBar style="auto" />
+                    </BottomSheetModalProvider>
+                </GestureHandlerRootView>
+            </ThemeProvider>
+        </QueryClientProvider>
     );
 }
