@@ -6,10 +6,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { leagues, portfolio, priceHistory, stocks, transactions } from '@/lib/dummy-data';
 import { getSportKey, useGameOdds } from '@/lib/odds-api';
+import { usePolymarketData } from '@/lib/polymarket-api';
 import { useStockStore } from '@/stores/stockStore';
+import { PolymarketEvent, PolymarketMarket } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
@@ -56,6 +58,154 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     // Get team name and sport key for odds API
     const apiTeamName = useMemo(() => stock?.fullName || null, [stock]);
     const sportKey = useMemo(() => league ? getSportKey(league.name, league.sport) : null, [league]);
+
+    const PredictionMarkets = () => {
+        const [allEvents, setAllEvents] = useState<PolymarketEvent[]>([]);
+        const { data: playoffData, isLoading: playoffLoading } = usePolymarketData({
+            q: league?.playoffQuery || null
+        });
+        const { data: divisionData, isLoading: divisionLoading } = usePolymarketData({
+            q: league?.divisionQuery || null
+        });
+        const { data: conferenceData, isLoading: conferenceLoading } = usePolymarketData({
+            q: league?.conferenceQuery || null
+        });
+        const { data: championData, isLoading: championLoading } = usePolymarketData({
+            q: league?.championQuery || null
+        });
+
+        useEffect(() => {
+            if (!playoffLoading && !divisionLoading && !conferenceLoading && !championLoading) {
+                // Ensure all data are arrays or default to empty array
+                const safePlayoffData = Array.isArray(playoffData) ? playoffData : [];
+                const safeDivisionData = Array.isArray(divisionData) ? divisionData : [];
+                const safeConferenceData = Array.isArray(conferenceData) ? conferenceData : [];
+                const safeChampionData = Array.isArray(championData) ? championData : [];
+
+                const allEventsTemp = [
+                    ...safePlayoffData,
+                    ...safeDivisionData,
+                    ...safeConferenceData,
+                    ...safeChampionData
+                ];
+
+                setAllEvents(allEventsTemp);
+            }
+        }, [playoffLoading, divisionLoading, conferenceLoading, championLoading]);
+
+        const sortOrder = ['Playoffs', 'Division', 'Conference', 'Champion'];
+        const sortedEvents = allEvents.sort((a, b) => {
+            const aIndex = sortOrder.indexOf(a.title.includes('Playoffs') ? 'Playoffs' : a.title.includes('Division') ? 'Division' : a.title.includes('Conference') ? 'Conference' : a.title.includes('Champion') ? 'Champion' : a.title);
+            const bIndex = sortOrder.indexOf(b.title.includes('Playoffs') ? 'Playoffs' : b.title.includes('Division') ? 'Division' : b.title.includes('Conference') ? 'Conference' : b.title.includes('Champion') ? 'Champion' : b.title);
+            return aIndex - bIndex;
+        });
+
+        return (
+            <View style={styles.statsContainer}>
+                <GlassCard style={styles.statsCard}>
+                    <View style={styles.predictionMarketsHeader}>
+                        <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            SEASON PREDICTIONS
+                        </Text>
+                        <View style={styles.draftkingsBranding}>
+                            <Text style={[styles.draftkingsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                Straight from Polymarket
+                            </Text>
+                        </View>
+                    </View>
+
+
+                    {playoffLoading || divisionLoading || conferenceLoading || championLoading ? (
+                        <ActivityIndicator size="small" color="#000000" />
+                    ) : allEvents.length > 0 ? (
+                        <View style={styles.predictionMarketsContainer}>
+                            {sortedEvents.map((event) => {
+                                if (!stock?.name) return;
+                                const teamMarket: PolymarketMarket | undefined = event.markets.find((market) => market.question.includes(stock?.name) || market.question.includes(stock?.fullName) || market.groupItemTitle.includes(stock?.name));
+
+                                if (!teamMarket) return;
+
+                                let oddsPercent = null;
+
+                                if (JSON.parse(teamMarket.outcomes)[0] === "Yes") {
+                                    oddsPercent = JSON.parse(teamMarket.outcomePrices)[0];
+                                } else {
+                                    oddsPercent = JSON.parse(teamMarket.outcomePrices)[1];
+                                }
+
+                                return (
+                                    <View key={event.id} style={styles.predictionMarketItem}>
+                                        <Text>{event.title.includes('Playoffs') ? 'Make the Playoffs' : event.title.includes('Division') ? 'Division Champion' : event.title.includes('Conference') ? 'Conference Champion' : event.title.includes('Champion') ? `${league?.name === "NFL" ? "Super Bowl" : league?.name} Champion` : event.title}</Text>
+
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                            <Text>{Math.round(oddsPercent * 100)}%</Text>
+
+                                            {/* Small lie chart for winning percentage */}
+                                            <Svg width={28} height={28} viewBox="0 0 28 28">
+                                                {/* Green segment: percent = event.implied_prob or event.percent or fallback */}
+                                                {(() => {
+                                                    // fallback: 0.5 if can't find a percent
+                                                    const angle = oddsPercent * 360;
+                                                    // Calculate coordinates for pie arc
+                                                    const r = 14, cx = 14, cy = 14;
+                                                    const largeArcFlag = angle > 180 ? 1 : 0;
+                                                    const rad = (deg: any) => (Math.PI / 180) * deg;
+                                                    const x = cx + r * Math.cos(rad(-90 + angle));
+                                                    const y = cy + r * Math.sin(rad(-90 + angle));
+                                                    if (oddsPercent === 1) {
+                                                        return (
+                                                            <Circle
+                                                                cx={cx}
+                                                                cy={cy}
+                                                                r={r}
+                                                                fill={oddsPercent > 0.8 ? '#00C853' : oddsPercent < 0.2 ? '#EF4444' : '#E5E7EB'}
+                                                            />
+                                                        );
+                                                    }
+                                                    if (oddsPercent === 0) {
+                                                        return (
+                                                            <Circle
+                                                                cx={cx}
+                                                                cy={cy}
+                                                                r={r}
+                                                                fill={isDark ? '#1A1D21' : '#FFFFFF'}
+                                                            />
+                                                        );
+                                                    }
+                                                    return (
+                                                        <>
+                                                            {/* Gray full background */}
+                                                            <Circle cx={cx} cy={cy} r={r} fill={isDark ? '#1A1D21' : '#FFFFFF'} />
+                                                            {/* Green arc */}
+                                                            <Path
+                                                                d={`
+                                                        M ${cx} ${cy}
+                                            L ${cx} ${cy - r}
+                                            A ${r} ${r} 0 ${largeArcFlag} 1 ${x} ${y}
+                                            Z
+                                                    `}
+                                                                fill={oddsPercent > 0.8 ? '#00C853' : oddsPercent < 0.2 ? '#EF4444' : '#E5E7EB'}
+                                                            />
+                                                        </>
+                                                    );
+                                                })()}
+                                            </Svg>
+                                        </View>
+                                    </View>
+                                )
+                            })
+                            }
+                        </View >
+                    ) : (
+                        <View>
+                            <Text>No prediction markets found</Text>
+                        </View>
+                    )}
+
+                </GlassCard >
+            </View >
+        )
+    }
 
     // Fetch game odds
     const { data: gameOdds, isLoading: oddsLoading, error: oddsError } = useGameOdds(apiTeamName, sportKey);
@@ -749,7 +899,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                                 {gameOdds.moneyline.home !== null && gameOdds.moneyline.away !== null && (
                                     <View style={styles.matchupPredictorContainer}>
                                         <Text style={[styles.matchupPredictorTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                            MATCHUP PREDICTOR
+                                            TO WIN
                                         </Text>
 
                                         {(() => {
@@ -873,6 +1023,8 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                         )}
                     </GlassCard>
                 </View>
+
+                <PredictionMarkets />
 
                 {/* Team Info & About - Combined Section */}
                 <View style={styles.statsContainer}>
@@ -1588,9 +1740,32 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
+    predictionMarketsHeader: {
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+        gap: 8,
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
     draftkingsBranding: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    predictionMarketsContainer: {
+        gap: 12,
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        marginVertical: 8,
+    },
+    predictionMarketItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 12,
+        width: '100%',
+        backgroundColor: 'rgba(156, 163, 175, 0.1)',
     },
     draftkingsText: {
         fontSize: 12,

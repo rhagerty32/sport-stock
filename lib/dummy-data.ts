@@ -48,6 +48,10 @@ export const leagues: League[] = [
         sport: 'Football',
         createdAt: new Date('2020-01-01'),
         updatedAt: new Date(),
+        playoffQuery: 'nfl playoffs',
+        divisionQuery: 'nfl division champion',
+        conferenceQuery: 'nfl conference champion',
+        championQuery: 'nfl champion',
     },
     {
         id: 2,
@@ -58,29 +62,11 @@ export const leagues: League[] = [
         sport: 'Basketball',
         createdAt: new Date('2020-01-01'),
         updatedAt: new Date(),
+        playoffQuery: 'Which teams will make the NBA Playoffs',
+        championQuery: 'nba champion',
     },
     {
         id: 3,
-        name: 'MLB',
-        marketCap: 10000000000,
-        volume: 800000000,
-        photoURL: 'https://via.placeholder.com/100x100/0C2340/FFFFFF?text=MLB',
-        sport: 'Baseball',
-        createdAt: new Date('2020-01-01'),
-        updatedAt: new Date(),
-    },
-    {
-        id: 4,
-        name: 'NHL',
-        marketCap: 5000000000,
-        volume: 400000000,
-        photoURL: 'https://via.placeholder.com/100x100/003E7E/FFFFFF?text=NHL',
-        sport: 'Hockey',
-        createdAt: new Date('2020-01-01'),
-        updatedAt: new Date(),
-    },
-    {
-        id: 5,
         name: 'NCAA Basketball',
         marketCap: 2000000000,
         volume: 300000000,
@@ -88,6 +74,22 @@ export const leagues: League[] = [
         sport: 'Basketball',
         createdAt: new Date('2020-01-01'),
         updatedAt: new Date(),
+        playoffQuery: 'ncaa basketball playoffs',
+        conferenceQuery: 'ncaa basketball conference champion',
+        championQuery: 'big 10 championship basketball',
+    },
+    {
+        id: 4,
+        name: 'NCAA Football',
+        marketCap: 2000000000,
+        volume: 300000000,
+        photoURL: 'https://via.placeholder.com/100x100/1E3A8A/FFFFFF?text=NCAA',
+        sport: 'Football',
+        createdAt: new Date('2020-01-01'),
+        updatedAt: new Date(),
+        playoffQuery: 'ncaa football playoffs',
+        conferenceQuery: 'ncaa football conference champion',
+        championQuery: 'ncaa football champion',
     },
 ];
 
@@ -152,20 +154,6 @@ export const stocks: Stock[] = [
     createStock(18, 'DEN Nuggets', 'Denver Nuggets', 2, 'https://via.placeholder.com/100x100/0E2240/FFFFFF?text=DEN', 128.65, 1450000, 'The Denver Nuggets are a professional basketball team based in Denver, Colorado.', 'DEN', 'Michael Malone', 1967, ['Nikola Jokić', 'Jamal Murray', 'Michael Porter Jr.'], '#0E2240', '#FEC524'),
     createStock(19, 'MIL Bucks', 'Milwaukee Bucks', 2, 'https://via.placeholder.com/100x100/00471B/FFFFFF?text=MIL', 121.80, 1350000, 'The Milwaukee Bucks are a professional basketball team based in Milwaukee, Wisconsin.', 'MIL', 'Adrian Griffin', 1968, ['Giannis Antetokounmpo', 'Damian Lillard', 'Khris Middleton'], '#00471B', '#EEE1C6'),
     createStock(20, 'PHI 76ers', 'Philadelphia 76ers', 2, 'https://via.placeholder.com/100x100/006BB6/FFFFFF?text=PHI', 115.45, 1250000, 'The Philadelphia 76ers are a professional basketball team based in Philadelphia, Pennsylvania.', 'PHI', 'Nick Nurse', 1963, ['Joel Embiid', 'Tyrese Maxey', 'Tobias Harris'], '#006BB6', '#ED174C'),
-
-    // MLB Teams
-    createStock(21, 'NYY Yankees', 'New York Yankees', 3, 'https://via.placeholder.com/100x100/132448/FFFFFF?text=NYY', 89.75, 800000, 'The New York Yankees are a professional baseball team based in the Bronx, New York City.', 'NYY', 'Aaron Boone', 1903, ['Aaron Judge', 'Gerrit Cole', 'Giancarlo Stanton'], '#132448', '#C4CED4'),
-    createStock(22, 'LAD Dodgers', 'Los Angeles Dodgers', 3, 'https://via.placeholder.com/100x100/005A9C/FFFFFF?text=LAD', 95.20, 850000, 'The Los Angeles Dodgers are a professional baseball team based in Los Angeles, California.', 'LAD', 'Dave Roberts', 1883, ['Mookie Betts', 'Freddie Freeman', 'Clayton Kershaw'], '#005A9C', '#EF3E42'),
-    createStock(23, 'BOS Red Sox', 'Boston Red Sox', 3, 'https://via.placeholder.com/100x100/BD3039/FFFFFF?text=BOS', 78.90, 750000, 'The Boston Red Sox are a professional baseball team based in Boston, Massachusetts.', 'BOS', 'Alex Cora', 1901, ['Rafael Devers', 'Xander Bogaerts', 'Chris Sale'], '#BD3039', '#0C2340'),
-    createStock(24, 'CHC Cubs', 'Chicago Cubs', 3, 'https://via.placeholder.com/100x100/0E3386/FFFFFF?text=CHC', 82.45, 780000, 'The Chicago Cubs are a professional baseball team based in Chicago, Illinois.', 'CHC', 'Craig Counsell', 1876, ['Dansby Swanson', 'Ian Happ', 'Kyle Hendricks'], '#0E3386', '#CC3433'),
-    createStock(25, 'SF Giants', 'San Francisco Giants', 3, 'https://via.placeholder.com/100x100/FD5A1E/FFFFFF?text=SF', 76.30, 720000, 'The San Francisco Giants are a professional baseball team based in San Francisco, California.', 'SF', 'Bob Melvin', 1883, ['Logan Webb', 'Joc Pederson', 'Brandon Crawford'], '#FD5A1E', '#27251F'),
-
-    // NHL Teams
-    createStock(26, 'TOR Maple Leafs', 'Toronto Maple Leafs', 4, 'https://via.placeholder.com/100x100/003E7E/FFFFFF?text=TOR', 65.80, 600000, 'The Toronto Maple Leafs are a professional ice hockey team based in Toronto, Ontario.', 'TOR', 'Sheldon Keefe', 1917, ['Auston Matthews', 'Mitch Marner', 'William Nylander'], '#003E7E', '#FFFFFF'),
-    createStock(27, 'MTL Canadiens', 'Montreal Canadiens', 4, 'https://via.placeholder.com/100x100/AF1E2D/FFFFFF?text=MTL', 58.45, 550000, 'The Montreal Canadiens are a professional ice hockey team based in Montreal, Quebec.', 'MTL', 'Martin St. Louis', 1909, ['Nick Suzuki', 'Cole Caufield', 'Brendan Gallagher'], '#AF1E2D', '#192168'),
-    createStock(28, 'BOS Bruins', 'Boston Bruins', 4, 'https://via.placeholder.com/100x100/FFB81C/000000?text=BOS', 62.90, 580000, 'The Boston Bruins are a professional ice hockey team based in Boston, Massachusetts.', 'BOS', 'Jim Montgomery', 1924, ['Brad Marchand', 'David Pastrňák', 'Charlie McAvoy'], '#FFB81C', '#000000'),
-    createStock(29, 'NYR Rangers', 'New York Rangers', 4, 'https://via.placeholder.com/100x100/0038A8/FFFFFF?text=NYR', 59.75, 560000, 'The New York Rangers are a professional ice hockey team based in New York City.', 'NYR', 'Peter Laviolette', 1926, ['Artemi Panarin', 'Mika Zibanejad', 'Adam Fox'], '#0038A8', '#CE1126'),
-    createStock(30, 'CHI Blackhawks', 'Chicago Blackhawks', 4, 'https://via.placeholder.com/100x100/CF0A2C/FFFFFF?text=CHI', 55.20, 520000, 'The Chicago Blackhawks are a professional ice hockey team based in Chicago, Illinois.', 'CHI', 'Luke Richardson', 1926, ['Connor Bedard', 'Seth Jones', 'Tyler Johnson'], '#CF0A2C', '#FF671F'),
 
     // Mens College Basketball Teams - SEC
     createStock(31, 'ALA Crimson Tide', 'Alabama Crimson Tide', 5, 'https://via.placeholder.com/100x100/9E1B32/FFFFFF?text=ALA', 45.80, 180000, 'The Alabama Crimson Tide men\'s basketball team represents the University of Alabama.', 'ALA', 'Nate Oats', 1913, ['Brandon Miller', 'Mark Sears', 'Noah Clowney'], '#9E1B32', '#510D19'),
@@ -742,18 +730,4 @@ const generateUserPortfolio = (userId: number, stockIds: number[]): Portfolio =>
         totalGainLossPercentage: Math.round(totalGainLossPercentage * 100) / 100,
         positions: userPositions,
     };
-};
-
-// User portfolios - each user has different stock holdings
-export const userPortfolios: Record<number, Portfolio> = {
-    1: portfolio, // John Doe - use existing portfolio
-    2: generateUserPortfolio(2, [11, 12, 13, 14, 15]), // Sarah Smith - NBA focused
-    3: generateUserPortfolio(3, [1, 2, 3, 4, 5, 6, 7]), // Michael Johnson - NFL focused
-    4: generateUserPortfolio(4, [21, 22, 23, 24, 25]), // Emily Williams - MLB focused
-    5: generateUserPortfolio(5, [26, 27, 28, 29, 30]), // David Brown - NHL focused
-    6: generateUserPortfolio(6, [45, 46, 47, 48, 49]), // Jessica Davis - College Basketball
-    7: generateUserPortfolio(7, [74, 75, 76, 77, 78]), // Chris Miller - Big 12 teams
-    8: generateUserPortfolio(8, [88, 89, 90, 91, 92]), // Amanda Wilson - Pac-12 teams
-    9: generateUserPortfolio(9, [100, 101, 102, 103]), // Ryan Taylor - Big East teams
-    10: generateUserPortfolio(10, [1, 11, 21, 26, 45]), // Lisa Anderson - Mixed portfolio
 };

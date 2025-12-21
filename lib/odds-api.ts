@@ -56,10 +56,7 @@ export const SPORT_KEY_MAP: Record<string, string> = {
     'Football': 'americanfootball_nfl',
     'NBA': 'basketball_nba',
     'Basketball': 'basketball_nba',
-    'MLB': 'baseball_mlb',
     'Baseball': 'baseball_mlb',
-    'NHL': 'icehockey_nhl',
-    'Hockey': 'icehockey_nhl',
     'NCAA Basketball': 'basketball_ncaab',
 };
 

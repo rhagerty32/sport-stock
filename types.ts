@@ -28,6 +28,10 @@ export type League = {
     sport: string;
     createdAt: Date;
     updatedAt: Date;
+    playoffQuery: string;
+    divisionQuery?: string;
+    conferenceQuery?: string;
+    championQuery: string;
 };
 
 export type User = {
@@ -196,4 +200,204 @@ export type BonusInfo = {
         multiplier: number;
     }[];
     firstTimeBonus: number; // Additional bonus for first purchase (e.g., 0.2 = 20% extra)
+};
+
+export type PolymarketQuery = { q: string | null; };
+
+export type PolymarketResponse = {
+    events: PolymarketEvent[];
+    pagination: {
+        hasMore: boolean;
+        totalResults: number;
+    }
+};
+
+export type PolymarketEvent = {
+    id: string;
+    ticker: string;
+    slug: string;
+    title: string;
+    description: string;
+    startDate: string;
+    creationDate: string;
+    endDate: string;
+    image: string;
+    icon: string;
+    active: boolean;
+    closed: boolean;
+    archived: boolean;
+    new: boolean;
+    featured: boolean;
+    restricted: boolean;
+    volume: number;
+    openInterest: number;
+    createdAt: string;
+    updatedAt: string;
+    volume1wk: number;
+    volume1mo: number;
+    volume1yr: number;
+    enableOrderBook: boolean;
+    negRisk: boolean;
+    commentCount: number;
+    markets: PolymarketMarket[];
+    tags: PolymarketTag[];
+    cyom: boolean;
+    closedTime: string;
+    showAllOutcomes: boolean;
+    showMarketImages: boolean;
+    automaticallyResolved: boolean;
+    enableNegRisk: boolean;
+    automaticallyActive: boolean;
+    eventDate: string;
+    startTime: string;
+    eventWeek: number;
+    seriesSlug: string;
+    score: string;
+    elapsed: string;
+    period: string;
+    live: boolean;
+    ended: boolean;
+    finishedTimestamp: string;
+    negRiskAugmented: boolean;
+    pendingDeployment: boolean;
+    deploying: boolean;
+    requiresTranslation: boolean;
+}
+
+export type PolymarketMarket = {
+    id: string;
+    question: string;
+    conditionId: string;
+    slug: string;
+    resolutionSource: string;
+    endDate: string;
+    liquidity: number;
+    startDate: string;
+    image: string;
+    icon: string;
+    description: string;
+    outcomes: string;
+    outcomePrices: string;
+    volume: string;
+    active: boolean;
+    closed: boolean;
+    marketMakerAddress: string;
+    createdAt: string;
+    updatedAt: string;
+    new: boolean;
+    featured: boolean;
+    submitted_by: string;
+    archived: boolean;
+    resolvedBy: string;
+    restricted: boolean;
+    groupItemTitle: string;
+    groupItemThreshold: string;
+    questionID: string;
+    enableOrderBook: boolean;
+    orderPriceMinTickSize: number;
+    orderMinSize: number;
+    volumeNum: number;
+    liquidityNum: number;
+    endDateIso: string;
+    startDateIso: string;
+    hasReviewedDates: boolean;
+    volume24hr: number;
+    volume1wk: number;
+    volume1mo: number;
+    volume1yr: number;
+    gameStartTime: string;
+    secondsDelay: number;
+    clobTokenIds: string;
+    umaBond: string;
+    umaReward: string;
+    volume24hrClob: number;
+    volume1wkClob: number;
+    volume1moClob: number;
+    volume1yrClob: number;
+    volumeClob: number;
+    liquidityClob: number;
+    customLiveness: number;
+    acceptingOrders: boolean;
+    negRisk: boolean;
+    negRiskRequestID: string;
+    ready: boolean;
+    funded: boolean;
+    acceptingOrdersTimestamp: string;
+    cyom: boolean;
+    competitive: number;
+    pagerDutyNotificationEnabled: boolean;
+    approved: boolean;
+    rewardsMinSize: number;
+    rewardsMaxSpread: number;
+    spread: number;
+    lastTradePrice: number;
+    bestBid: number;
+    bestAsk: number;
+    automaticallyActive: boolean;
+    clearBookOnStart: boolean;
+    manualActivation: boolean;
+    negRiskOther: boolean;
+    sportsMarketType: string;
+    line: number;
+    umaResolutionStatuses: string;
+    pendingDeployment: boolean;
+    deploying: boolean;
+    deployingTimestamp: string;
+    rfqEnabled: boolean;
+    holdingRewardsEnabled: boolean;
+    feesEnabled: boolean;
+    requiresTranslation: boolean;
+}
+
+export type PolymarketTag = {
+    id: string;
+    label: string;
+    slug: string;
+    forceShow: boolean;
+    publishedAt: string;
+    updatedBy: number;
+    createdAt: string;
+    updatedAt: string;
+    forceHide: boolean;
+    requiresTranslation: boolean;
+}
+
+export type NormalizedGameMarket = {
+    game: string;
+    slug: string;
+    startTime: string;
+
+    moneyline?: {
+        outcomes: string[];
+        prices: number[];
+        liquidity: number;
+        volume24h: number;
+        spread: number;
+        priceChange1d?: number;
+    };
+
+    spread?: {
+        line: number;
+        outcomes: string[];
+        prices: number[];
+        liquidity: number;
+        volume24h: number;
+    };
+
+    total?: {
+        line: number;
+        outcomes: string[];
+        prices: number[];
+        liquidity: number;
+        volume24h: number;
+    };
+};
+
+export type PolymarketData = {
+    game: string;
+    slug: string;
+    startTime: string;
+    moneyline?: any;
+    spread?: any;
+    total?: any;
 };
