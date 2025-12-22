@@ -22,7 +22,7 @@ import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
 import PositionDetailBottomSheet from './bottomSheets/PositionDetailBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
 import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSheet';
-import StockBottomSheet from './bottomSheets/StockBottomSheet';
+import StockBottomSheet from './bottomSheets/StockSheet/StockBottomSheet';
 import TransactionDetailBottomSheet from './bottomSheets/TransactionDetailBottomSheet';
 import WalletSystemBottomSheet from './bottomSheets/WalletSystemBottomSheet';
 

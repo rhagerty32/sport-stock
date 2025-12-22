@@ -16,7 +16,6 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-
 type SortType = 'percentage' | 'value' | null;
 
 const leagueButtons = [
@@ -36,8 +35,7 @@ export default function HomeScreen() {
     const [upsetAlertPage, setUpsetAlertPage] = useState(0);
     const [sortType, setSortType] = useState<SortType>(null);
     const [showSortDropdown, setShowSortDropdown] = useState(false);
-    const [isSortDropdownVisible, setIsSortDropdownVisible] = useState(false);
-    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, followedStockIds } = useStockStore();
+    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen, followedStockIds } = useStockStore();
     const { wallet, loadWallet, initializeWallet } = useWalletStore();
     const sortDropdownRef = useRef<View>(null);
 
@@ -211,7 +209,6 @@ export default function HomeScreen() {
     // Animate sort dropdown when visibility changes
     useEffect(() => {
         if (showSortDropdown) {
-            setIsSortDropdownVisible(true);
             sortDropdownOpacity.value = withSpring(1, {
                 damping: 150,
                 stiffness: 500,
@@ -233,24 +230,8 @@ export default function HomeScreen() {
                 stiffness: 300,
                 mass: 0.6,
             });
-            // Hide component after animation completes
-            const timer = setTimeout(() => {
-                setIsSortDropdownVisible(false);
-            }, 200);
-            return () => clearTimeout(timer);
         }
     }, [showSortDropdown]);
-
-    // Animated style for sort dropdown
-    const sortDropdownAnimatedStyle = useAnimatedStyle(() => {
-        'worklet';
-        // Round scale to avoid subpixel rendering blur (round to 2 decimal places)
-        const roundedScale = Math.round(sortDropdownScale.value * 100) / 100;
-        return {
-            opacity: sortDropdownOpacity.value,
-            transform: [{ scale: roundedScale }],
-        };
-    }, []);
 
     const [showWalletDropdown, setShowWalletDropdown] = useState(false);
     const [selectedCurrency, setSelectedCurrency] = useState<'GC' | 'SC'>('SC');
@@ -439,7 +420,6 @@ export default function HomeScreen() {
 
     return (
         <ThemedView style={styles.container}>
-
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
                 {/* Header - Absolutely positioned above everything */}
                 <View style={[styles.header, { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' }]}>
@@ -629,11 +609,8 @@ export default function HomeScreen() {
                                     <TouchableOpacity
                                         style={[styles.sortButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                                         onPress={() => {
-                                            setShowSortDropdown(!showSortDropdown);
+                                            sortType === 'percentage' ? handleSortSelect('value') : handleSortSelect('percentage');
                                             lightImpact();
-                                        }}
-                                        onPressIn={() => {
-                                            // Ensure touch is captured
                                         }}
                                         activeOpacity={0.7}
                                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -642,65 +619,7 @@ export default function HomeScreen() {
                                         <Text style={[styles.sortButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                                             {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
                                         </Text>
-                                        <Ionicons
-                                            name={showSortDropdown ? 'chevron-up' : 'chevron-down'}
-                                            size={14}
-                                            color={isDark ? '#FFFFFF' : '#000000'}
-                                            style={{ marginLeft: 4 }}
-                                        />
                                     </TouchableOpacity>
-                                    {isSortDropdownVisible && (
-                                        <Animated.View
-                                            style={styles.sortDropdownWrapper}
-                                            needsOffscreenAlphaCompositing={false}
-                                            collapsable={false}
-                                        >
-                                            {/* Triangle pointer */}
-                                            <Animated.View
-                                                style={[
-                                                    styles.sortDropdownTriangle,
-                                                    { borderBottomColor: isDark ? '#1A1D21' : '#FFFFFF' },
-                                                    sortDropdownAnimatedStyle
-                                                ]}
-                                                needsOffscreenAlphaCompositing={false}
-                                                collapsable={false}
-                                            />
-                                            <Animated.View
-                                                style={[
-                                                    styles.sortDropdown,
-                                                    { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' },
-                                                    sortDropdownAnimatedStyle
-                                                ]}
-                                                needsOffscreenAlphaCompositing={false}
-                                                collapsable={false}
-                                            >
-                                                <TouchableOpacity
-                                                    style={[
-                                                        styles.sortOption,
-                                                        sortType === 'percentage' && { backgroundColor: isDark ? '#242428' : '#F3F4F6' }
-                                                    ]}
-                                                    onPress={() => handleSortSelect('percentage')}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Text style={[styles.sortOptionText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                        Percentage
-                                                    </Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    style={[
-                                                        styles.sortOption,
-                                                        sortType === 'value' && { backgroundColor: isDark ? '#242428' : '#F3F4F6' }
-                                                    ]}
-                                                    onPress={() => handleSortSelect('value')}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Text style={[styles.sortOptionText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                        Value
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            </Animated.View>
-                                        </Animated.View>
-                                    )}
                                 </View>
                             </View>
 
