@@ -1,6 +1,6 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { useTheme } from '@/hooks/use-theme';
+import { useColors } from '@/components/utils';
 import { useHaptics } from '@/hooks/useHaptics';
 import { stocks, transactions } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
@@ -10,7 +10,7 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function TradeHistoryScreen() {
-    const { isDark } = useTheme();
+    const Color = useColors();
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
     const { setActiveTransaction, setTransactionDetailBottomSheetOpen } = useStockStore();
@@ -40,9 +40,9 @@ export default function TradeHistoryScreen() {
                         router.back();
                     }}
                 >
-                    <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+                    <Ionicons name="chevron-back" size={24} color={Color.baseText} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[styles.headerTitle, { color: Color.baseText }]}>
                     Trade History
                 </Text>
                 <View style={styles.backButton} />
@@ -51,8 +51,8 @@ export default function TradeHistoryScreen() {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {userTransactions.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Ionicons name="document-outline" size={64} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                        <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Ionicons name="document-outline" size={64} color={Color.subText} />
+                        <Text style={[styles.emptyStateText, { color: Color.subText }]}>
                             No transactions yet
                         </Text>
                     </View>
@@ -82,16 +82,16 @@ export default function TradeHistoryScreen() {
                                             ]}>
                                                 <Text style={[
                                                     styles.transactionBadgeText,
-                                                    { color: transaction.action === 'buy' ? '#00C853' : '#FF1744' }
+                                                    { color: transaction.action === 'buy' ? Color.green : Color.red }
                                                 ]}>
                                                     {transaction.action === 'buy' ? 'BUY' : 'SELL'}
                                                 </Text>
                                             </View>
                                             <View style={styles.transactionInfo}>
-                                                <Text style={[styles.transactionStockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                <Text style={[styles.transactionStockName, { color: Color.baseText }]}>
                                                     {stock?.name || 'Unknown'}
                                                 </Text>
-                                                <Text style={[styles.transactionDate, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                                <Text style={[styles.transactionDate, { color: Color.subText }]}>
                                                     {transaction.createdAt.toLocaleDateString('en-US', {
                                                         month: 'short',
                                                         day: 'numeric',
@@ -103,13 +103,13 @@ export default function TradeHistoryScreen() {
                                             </View>
                                         </View>
                                         <View style={styles.transactionItemRight}>
-                                            <Text style={[styles.transactionQuantity, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.transactionQuantity, { color: Color.baseText }]}>
                                                 {transaction.quantity.toFixed(1)} entries
                                             </Text>
-                                            <Text style={[styles.transactionPrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                            <Text style={[styles.transactionPrice, { color: Color.subText }]}>
                                                 @ {formatCurrency(transaction.price)}
                                             </Text>
-                                            <Text style={[styles.transactionTotal, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.transactionTotal, { color: Color.baseText }]}>
                                                 {formatCurrency(transaction.totalPrice)}
                                             </Text>
                                         </View>

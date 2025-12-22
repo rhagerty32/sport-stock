@@ -1,9 +1,11 @@
+import { useColors } from '@/components/utils';
 import { SearchProvider, useSearch } from '@/contexts/SearchContext';
 import { useTheme } from '@/hooks/use-theme';
 import { Stack } from 'expo-router';
 import { Text } from 'react-native';
 
 function SearchLayoutContent() {
+    const Color = useColors();
     const { setSearchQuery } = useSearch();
     const { isDark } = useTheme();
 
@@ -14,7 +16,7 @@ function SearchLayoutContent() {
                 options={{
                     title: 'Search',
                     headerShown: true,
-                    headerStyle: { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' },
+                    headerStyle: { backgroundColor: isDark ? '#0B0F13' : Color.white },
                     // Instead of relying on headerTitleAlign (not always respected on all platforms), 
                     // make the title left-aligned manually by using a custom headerTitle component
                     headerTitle: () => (
@@ -24,7 +26,7 @@ function SearchLayoutContent() {
                             textAlign: 'left',
                             width: '100%',
                             alignSelf: 'flex-start',
-                            color: isDark ? '#FFFFFF' : '#000000'
+                            color: Color.baseText
                         }}
                         >
                             Search

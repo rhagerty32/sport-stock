@@ -1,11 +1,14 @@
+import { useColors } from '@/components/utils';
+import { useHaptics } from '@/hooks/useHaptics';
+import { useStockStore } from '@/stores/stockStore';
+import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { handleBuy, handleFollow, handleSell } from './utils';
-import { Stock } from '@/types';
 
 export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { userOwnsStock: boolean, userFollowsStock: boolean, stock: Stock }) => {
+    const Color = useColors();
     // Animated opacity for Follow/Unfollow text fade
     const followTextOpacity = useSharedValue(1);
 
@@ -15,15 +18,40 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
         };
     });
 
+    const { lightImpact } = useHaptics();
+    const { setBuySellMode, setBuySellBottomSheetOpen } = useStockStore();
+    const { removeFollow, addFollow } = useStockStore();
+
+    const handleBuy = () => {
+        lightImpact();
+        setBuySellMode('buy');
+        setBuySellBottomSheetOpen(true);
+    };
+
+    const handleSell = () => {
+        lightImpact();
+        setBuySellMode('sell');
+        setBuySellBottomSheetOpen(true);
+    };
+
+    const handleFollow = (userFollowsStock: boolean, stock: Stock) => {
+        lightImpact();
+        if (userFollowsStock) {
+            removeFollow(stock.id);
+        } else {
+            addFollow(stock.id);
+        }
+    };
+
     return (
         <View style={styles.actionButtons}>
             {/* Buy Button - Always shown */}
             <TouchableOpacity
                 onPress={handleBuy}
-                style={[styles.actionButton, { backgroundColor: '#00C853' }]}
+                style={[styles.actionButton, { backgroundColor: Color.green }]}
             >
-                <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
-                <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>
+                <Ionicons name="add-circle-outline" size={24} color={Color.white} />
+                <Text style={[styles.actionButtonText, { color: Color.white }]}>
                     Buy
                 </Text>
             </TouchableOpacity>
@@ -32,19 +60,19 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
             {userOwnsStock ? (
                 <TouchableOpacity
                     onPress={handleSell}
-                    style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+                    style={[styles.actionButton, { backgroundColor: Color.red }]}
                 >
-                    <Ionicons name="remove-circle-outline" size={24} color="#FFFFFF" />
-                    <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>
+                    <Ionicons name="remove-circle-outline" size={24} color={Color.white} />
+                    <Text style={[styles.actionButtonText, { color: Color.white }]}>
                         Sell
                     </Text>
                 </TouchableOpacity>
             ) : (
                 <TouchableOpacity
                     onPress={() => handleFollow(userFollowsStock, stock)}
-                    style={[styles.actionButton, { backgroundColor: userFollowsStock ? '#E5E7EB' : '#E5E7EB' }]}
+                    style={[styles.actionButton, { backgroundColor: Color.lightGray }]}
                 >
-                    <Ionicons name={userFollowsStock ? "heart" : "heart-outline"} size={24} color={userFollowsStock ? '#EF4444' : '#EF4444'} />
+                    <Ionicons name={userFollowsStock ? "heart" : "heart-outline"} size={24} color={Color.red} />
                     <Animated.Text style={[styles.actionButtonText, animatedTextStyle]}>
                         {userFollowsStock ? 'Unfollow' : 'Follow'}
                     </Animated.Text>

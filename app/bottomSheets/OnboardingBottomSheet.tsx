@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -151,11 +152,12 @@ function ConfettiPiece({
 
 // Simple Confetti Component using Reanimated (no Skia required)
 function SimpleConfetti({ isActive }: { isActive: boolean }) {
+    const Color = useColors();
     // Use full screen dimensions to cover everything including navigation
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
     const confettiCount = 100; // Increased from 50 to 100 for more confetti
-    const colors = ['#00C853', '#34D399', '#FBBF24', '#60A5FA', '#FF6B6B', '#4ECDC4', '#FFD700', '#FF69B4'];
+    const colors = [Color.green, '#34D399', '#FBBF24', '#60A5FA', '#FF6B6B', '#4ECDC4', Color.yellow, '#FF69B4'];
 
     if (!isActive) return null;
 
@@ -445,6 +447,7 @@ function StockCard({
     shouldAnimate: boolean;
     cardWidth: number;
 }) {
+    const Color = useColors();
     const [priceData] = useState(() => generateMiniPriceHistory(stock.id, 7));
     const isPositive = stock.changePercent >= 0;
 
@@ -466,19 +469,19 @@ function StockCard({
                     </Text>
                 </View>
                 <View style={styles.stockCardInfo}>
-                    <Text style={[styles.stockCardName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.stockCardName, { color: Color.baseText }]}>
                         {stock.name}
                     </Text>
-                    <Text style={[styles.stockCardPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.stockCardPrice, { color: Color.baseText }]}>
                         ${stock.price.toFixed(2)}
                     </Text>
                     <View style={styles.stockCardChange}>
                         <Ionicons
                             name={isPositive ? 'arrow-up' : 'arrow-down'}
                             size={12}
-                            color={isPositive ? '#00C853' : '#dc2626'}
+                            color={isPositive ? Color.green : Color.red}
                         />
-                        <Text style={[styles.stockCardChangeText, { color: isPositive ? '#00C853' : '#dc2626' }]}>
+                        <Text style={[styles.stockCardChangeText, { color: isPositive ? Color.green : Color.red }]}>
                             {Math.abs(stock.changePercent).toFixed(2)}%
                         </Text>
                     </View>
@@ -487,7 +490,7 @@ function StockCard({
             <View style={styles.stockChartContainer}>
                 <MiniChart
                     data={priceData}
-                    color={isPositive ? '#00C853' : '#dc2626'}
+                    color={isPositive ? Color.green : Color.red}
                     isDark={isDark}
                     chartId={stock.id}
                     shouldAnimate={shouldAnimate}
@@ -540,6 +543,7 @@ function StockCarouselPage({
     isDark: boolean;
     isActive: boolean;
 }) {
+    const Color = useColors();
     const carouselTranslateX = useSharedValue(0);
     const screenWidth = Dimensions.get('window').width;
     // Calculate card width: full screen width divided by 3, with gaps
@@ -578,7 +582,7 @@ function StockCarouselPage({
                 style={[
                     styles.title,
                     {
-                        color: isDark ? '#FFFFFF' : '#000000',
+                        color: Color.baseText,
                         marginBottom: 10,
                         paddingHorizontal: 20, // Add padding only to title
                     },
@@ -604,7 +608,7 @@ function StockCarouselPage({
                 style={[
                     styles.description,
                     {
-                        color: isDark ? '#9CA3AF' : '#6B7280',
+                        color: Color.subText,
                         paddingHorizontal: 20, // Add padding only to description
                     },
                 ]}
@@ -646,6 +650,7 @@ function FactorsPage({
     index: number;
     isActive: boolean;
 }) {
+    const Color = useColors();
     const scrollY = useSharedValue(0);
     const screenWidth = Dimensions.get('window').width;
     const badgeWidth = (screenWidth - 60) / 3; // 3 columns with padding
@@ -704,7 +709,7 @@ function FactorsPage({
                 style={[
                     styles.title,
                     {
-                        color: isDark ? '#FFFFFF' : '#000000',
+                        color: Color.baseText,
                         marginBottom: 24,
                         marginTop: 30,
                     },
@@ -806,10 +811,10 @@ function FactorsPage({
             <View style={styles.bulletPointsContainer}>
                 <View style={[styles.bulletPointCard, { backgroundColor: isDark ? '#1E2225' : '#F8F9FA' }]}>
                     <View style={styles.bulletPointHeader}>
-                        <View style={[styles.bulletPointIcon, { backgroundColor: '#00C85320' }]}>
-                            <Ionicons name="trending-up" size={16} color="#00C853" />
+                        <View style={[styles.bulletPointIcon, { backgroundColor: 'Color.green20' }]}>
+                            <Ionicons name="trending-up" size={16} color={Color.green} />
                         </View>
-                        <Text style={[styles.bulletPointLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.bulletPointLabel, { color: Color.subText }]}>
                             SportStock is a Performance Market
                         </Text>
                     </View>
@@ -840,7 +845,7 @@ function ProfitPage({
     index: number;
     isActive: boolean;
 }) {
-    // Simple confetti effect using Reanimated
+    const Color = useColors();
 
     return (
         <View style={{ flex: 1, position: 'relative' }}>
@@ -853,7 +858,7 @@ function ProfitPage({
                             <Text style={[styles.profitStockName, { color: isDark ? '#FFFFFF' : '#552583' }]}>
                                 LA Lakers
                             </Text>
-                            <Text style={[styles.profitStockLeague, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.profitStockLeague, { color: Color.subText }]}>
                                 Pro Basketball
                             </Text>
                         </View>
@@ -863,26 +868,26 @@ function ProfitPage({
                     </View>
                     <View style={styles.profitStockDetails}>
                         <View style={styles.profitStockDetailRow}>
-                            <Text style={[styles.profitStockDetailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.profitStockDetailLabel, { color: Color.subText }]}>
                                 Entries Sold
                             </Text>
-                            <Text style={[styles.profitStockDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.profitStockDetailValue, { color: Color.baseText }]}>
                                 10
                             </Text>
                         </View>
                         <View style={styles.profitStockDetailRow}>
-                            <Text style={[styles.profitStockDetailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.profitStockDetailLabel, { color: Color.subText }]}>
                                 Price per Entry
                             </Text>
-                            <Text style={[styles.profitStockDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.profitStockDetailValue, { color: Color.baseText }]}>
                                 $120
                             </Text>
                         </View>
                         <View style={styles.profitStockDetailRow}>
-                            <Text style={[styles.profitStockDetailLabel, { color: '#00C853' }]}>
+                            <Text style={[styles.profitStockDetailLabel, { color: Color.green }]}>
                                 Total Winnings
                             </Text>
-                            <Text style={[styles.profitStockDetailValue, { color: '#00C853' }]}>
+                            <Text style={[styles.profitStockDetailValue, { color: Color.green }]}>
                                 $1,200
                             </Text>
                         </View>
@@ -904,7 +909,7 @@ function ProfitPage({
                     style={[
                         styles.title,
                         {
-                            color: isDark ? '#FFFFFF' : '#000000',
+                            color: Color.baseText,
                             marginTop: 20,
                             marginBottom: 10,
                         },
@@ -915,7 +920,7 @@ function ProfitPage({
                 <Text
                     style={[
                         styles.description,
-                        { color: isDark ? '#9CA3AF' : '#6B7280' },
+                        { color: Color.subText },
                     ]}
                 >
                     {page.description}
@@ -962,6 +967,7 @@ function FirstPageContent({
     isDark: boolean;
     index: number;
 }) {
+    const Color = useColors();
     const [imageError, setImageError] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -987,7 +993,7 @@ function FirstPageContent({
                 style={[
                     styles.title,
                     {
-                        color: isDark ? '#FFFFFF' : '#000000',
+                        color: Color.baseText,
                         marginBottom: 10,
                         marginTop: 10,
                     },
@@ -999,7 +1005,7 @@ function FirstPageContent({
                 style={[
                     styles.description,
                     {
-                        color: isDark ? '#9CA3AF' : '#6B7280',
+                        color: Color.subText,
                         paddingHorizontal: 0,
                     },
                 ]}
@@ -1018,6 +1024,7 @@ function PaginationDot({
     isActive: boolean;
     isDark: boolean;
 }) {
+    const Color = useColors();
     const width = useSharedValue(isActive ? 24 : 8);
 
     useEffect(() => {
@@ -1039,7 +1046,7 @@ function PaginationDot({
                 styles.paginationDot,
                 {
                     backgroundColor: isActive
-                        ? '#00C853'
+                        ? Color.green
                         : isDark
                             ? '#2C2C2C'
                             : '#E5E7EB',
@@ -1051,6 +1058,7 @@ function PaginationDot({
 }
 
 export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: OnboardingBottomSheetProps) {
+    const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact, success } = useHaptics();
     const { completeOnboarding } = useSettingsStore();
@@ -1224,7 +1232,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                             <Ionicons
                                 name="chevron-back"
                                 size={20}
-                                color={isDark ? '#FFFFFF' : '#000000'}
+                                color={Color.baseText}
                             />
                         </TouchableOpacity>
                     )}
@@ -1234,7 +1242,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                             styles.navButton,
                             styles.nextButton,
                             {
-                                backgroundColor: '#00C853',
+                                backgroundColor: Color.green,
                                 flex: currentPage === 0 ? 1 : 0.85,
                             },
                         ]}
@@ -1551,7 +1559,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#00C853',
     },
     sellButton: {
-        backgroundColor: '#dc2626',
+        backgroundColor: 'EF4444',
     },
     profitButtonText: {
         color: '#FFFFFF',

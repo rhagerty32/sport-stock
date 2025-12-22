@@ -13,6 +13,7 @@ import Animated, {
     withTiming
 } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { useColors } from './utils';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CHART_WIDTH = screenWidth;
@@ -94,9 +95,10 @@ const generatePriceHistory = (
 
 const Chart: React.FC<ChartProps> = ({
     stockId,
-    color = '#00C853',
+    color = useColors()?.green,
     backgroundColor = null
 }) => {
+    const Color = useColors();
     const [priceData, setPriceData] = useState<PriceHistory[]>([]);
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('1H');
     const { isDark } = useTheme();
@@ -395,102 +397,6 @@ const Chart: React.FC<ChartProps> = ({
     }, [timePeriod, stockId]);
 
 
-
-    // Helper function to create smooth cubic bezier curve path
-    const createSmoothPath = (data: PriceHistory[]) => {
-        if (data.length < 2) return '';
-
-        const stepX = CHART_WIDTH / (data.length - 1);
-        const minPrice = Math.min(...data.map(d => d.price));
-        const maxPrice = Math.max(...data.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1;
-
-        // Calculate points
-        const points = data.map((point, index) => {
-            const x = index * stepX;
-            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
-            return { x, y };
-        });
-
-        if (points.length < 2) return '';
-
-        let path = `M ${points[0].x} ${points[0].y}`;
-
-        // For smooth curves, use cubic bezier with control points
-        // Calculate control points using cardinal spline
-        const tension = 0.5;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            const current = points[i];
-            const next = points[i + 1];
-
-            let cp1x, cp1y, cp2x, cp2y;
-
-            if (i === 0) {
-                // First segment
-                const dx = (next.x - current.x) * tension;
-                const dy = (next.y - current.y) * tension;
-                cp1x = current.x + dx * 0.3;
-                cp1y = current.y + dy * 0.3;
-                cp2x = next.x - dx * 0.7;
-                cp2y = next.y - dy * 0.7;
-            } else if (i === points.length - 2) {
-                // Last segment
-                const prev = points[i - 1];
-                const dx = (next.x - prev.x) * tension;
-                const dy = (next.y - prev.y) * tension;
-                cp1x = current.x + dx * 0.3;
-                cp1y = current.y + dy * 0.3;
-                cp2x = next.x - dx * 0.3;
-                cp2y = next.y - dy * 0.3;
-            } else {
-                // Middle segments
-                const prev = points[i - 1];
-                const nextNext = points[i + 2];
-                const dx1 = (next.x - prev.x) * tension;
-                const dy1 = (next.y - prev.y) * tension;
-                const dx2 = (nextNext.x - current.x) * tension;
-                const dy2 = (nextNext.y - current.y) * tension;
-
-                cp1x = current.x + dx1 * 0.3;
-                cp1y = current.y + dy1 * 0.3;
-                cp2x = next.x - dx2 * 0.3;
-                cp2y = next.y - dy2 * 0.3;
-            }
-
-            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
-        }
-
-        return path;
-    };
-
-    // Create SVG path for the line (sharp/straight version)
-    const createSharpPath = (data: PriceHistory[]) => {
-        if (data.length < 2) return '';
-
-        const stepX = CHART_WIDTH / (data.length - 1);
-        const minPrice = Math.min(...data.map(d => d.price));
-        const maxPrice = Math.max(...data.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1; // 10% padding
-
-        let path = '';
-
-        data.forEach((point, index) => {
-            const x = index * stepX;
-            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
-
-            if (index === 0) {
-                path += `M ${x} ${y}`;
-            } else {
-                path += ` L ${x} ${y}`;
-            }
-        });
-
-        return path;
-    };
-
     // Create interpolated path that smoothly transitions between smooth and sharp
     const createInterpolatedPath = (data: PriceHistory[], smoothnessValue: number) => {
         if (data.length < 2) return '';
@@ -561,105 +467,6 @@ const Chart: React.FC<ChartProps> = ({
             // This ensures smooth transitions without snapping
             path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
         }
-
-        return path;
-    };
-
-    // Create gradient path for area under the line (smooth version)
-    const createSmoothAreaPath = (data: PriceHistory[]) => {
-        if (data.length < 2) return '';
-
-        const stepX = CHART_WIDTH / (data.length - 1);
-        const minPrice = Math.min(...data.map(d => d.price));
-        const maxPrice = Math.max(...data.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1;
-
-        // Calculate points
-        const points = data.map((point, index) => {
-            const x = index * stepX;
-            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
-            return { x, y };
-        });
-
-        if (points.length < 2) return '';
-
-        let path = `M ${points[0].x} ${CHART_HEIGHT} L ${points[0].x} ${points[0].y}`;
-
-        // Use same smooth curve logic as line path
-        const tension = 0.5;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            const current = points[i];
-            const next = points[i + 1];
-
-            let cp1x, cp1y, cp2x, cp2y;
-
-            if (i === 0) {
-                const dx = (next.x - current.x) * tension;
-                const dy = (next.y - current.y) * tension;
-                cp1x = current.x + dx * 0.3;
-                cp1y = current.y + dy * 0.3;
-                cp2x = next.x - dx * 0.7;
-                cp2y = next.y - dy * 0.7;
-            } else if (i === points.length - 2) {
-                const prev = points[i - 1];
-                const dx = (next.x - prev.x) * tension;
-                const dy = (next.y - prev.y) * tension;
-                cp1x = current.x + dx * 0.3;
-                cp1y = current.y + dy * 0.3;
-                cp2x = next.x - dx * 0.3;
-                cp2y = next.y - dy * 0.3;
-            } else {
-                const prev = points[i - 1];
-                const nextNext = points[i + 2];
-                const dx1 = (next.x - prev.x) * tension;
-                const dy1 = (next.y - prev.y) * tension;
-                const dx2 = (nextNext.x - current.x) * tension;
-                const dy2 = (nextNext.y - current.y) * tension;
-
-                cp1x = current.x + dx1 * 0.3;
-                cp1y = current.y + dy1 * 0.3;
-                cp2x = next.x - dx2 * 0.3;
-                cp2y = next.y - dy2 * 0.3;
-            }
-
-            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
-        }
-
-        // Close the path
-        const lastX = (data.length - 1) * stepX;
-        path += ` L ${lastX} ${CHART_HEIGHT} Z`;
-
-        return path;
-    };
-
-    // Create gradient path for area under the line (sharp version)
-    const createSharpAreaPath = (data: PriceHistory[]) => {
-        if (data.length < 2) return '';
-
-        const stepX = CHART_WIDTH / (data.length - 1);
-        const minPrice = Math.min(...data.map(d => d.price));
-        const maxPrice = Math.max(...data.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1;
-
-        let path = '';
-
-        data.forEach((point, index) => {
-            const x = index * stepX;
-            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
-
-            if (index === 0) {
-                path += `M ${x} ${CHART_HEIGHT} L ${x} ${y}`;
-            } else {
-                path += ` L ${x} ${y}`;
-            }
-        });
-
-        // Close the path
-        const lastX = (data.length - 1) * stepX;
-        path += ` L ${lastX} ${CHART_HEIGHT} Z`;
 
         return path;
     };
@@ -850,7 +657,7 @@ const Chart: React.FC<ChartProps> = ({
                                                     {
                                                         color:
                                                             isDark
-                                                                ? '#9CA3AF'
+                                                                ? Color.gray500
                                                                 : Colors.light.text,
                                                     },
                                                 ]}
@@ -893,7 +700,7 @@ const Chart: React.FC<ChartProps> = ({
                                 styles.timePeriodText,
                                 isActive && styles.activeTimePeriodText,
                                 isActive && { color: backgroundColor || '#FFFFFF' },
-                                !isActive && { color: isDark ? '#9CA3AF' : '#666' }
+                                !isActive && { color: isDark ? Color.gray500 : '#666' }
                             ]}>
                                 {period}
                             </Text>

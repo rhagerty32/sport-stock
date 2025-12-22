@@ -1,3 +1,32 @@
+import { useColorScheme } from 'react-native';
+
+export const useColors = () => {
+    const scheme = useColorScheme();
+    const darkMode = scheme === 'dark';
+
+    return {
+        green: '#00C853',
+        red: '#EF4444',
+        yellow: '#FFD700',
+        blue: '#3B82F6',
+        purple: '#800080',
+        orange: '#FFA500',
+        pink: '#FFC0CB',
+        brown: '#A52A2A',
+        neutralGray: '#808080',
+        gray500: '#9CA3AF',
+        gray600: '#6B7280',
+        black: '#000000',
+        white: '#FFFFFF',
+        lightGray: '#E5E7EB',
+        offWhite: '#E5E7EB',
+        offBlack: '#1A1D21',
+
+        baseText: darkMode ? '#FFFFFF' : '#000000',
+        subText: darkMode ? '#9CA3AF' : '#6B7280',
+    };
+};
+
 /// Find if color is considered dark
 export const isDarkColor = (color: string) => {
     const rgb = color.match(/\w\w/g)?.map(hex => parseInt(hex, 16)) || [0, 0, 0];

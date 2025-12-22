@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useStockStore } from '@/stores/stockStore';
@@ -11,6 +12,7 @@ type PositionDetailBottomSheetProps = {
 };
 
 export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef }: PositionDetailBottomSheetProps) {
+    const Color = useColors();
     const { activePosition, setPositionDetailBottomSheetOpen, setActiveStockId } = useStockStore();
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
@@ -57,8 +59,8 @@ export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef
     }
 
     const isPositive = activePosition.totalGainLoss >= 0;
-    const profitLossColor = isPositive ? '#00C853' : '#FF1744';
-    const teamColor = activePosition.colors[0]?.hex || '#00C853';
+    const profitLossColor = isPositive ? Color.green : Color.red;
+    const teamColor = activePosition.colors[0]?.hex || Color.green;
 
     return (
         <BottomSheetModal
@@ -79,7 +81,7 @@ export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef
                             {activePosition.stock.name.split(' ').map(word => word[0]).join('')}
                         </Text>
                     </View>
-                    <Text style={[styles.teamName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.teamName, { color: Color.baseText }]}>
                         {activePosition.stock.name}
                     </Text>
                     <View style={[styles.percentageBadge, { backgroundColor: isPositive ? 'rgba(0, 200, 83, 0.15)' : 'rgba(255, 23, 68, 0.15)' }]}>
@@ -99,14 +101,14 @@ export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef
                     {/* Avg Cost */}
                     <View style={[styles.metricRow, { borderBottomColor: isDark ? '#242428' : '#E5E7EB' }]}>
                         <View style={styles.metricLeft}>
-                            <Text style={[styles.metricLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.metricLabel, { color: Color.baseText }]}>
                                 Avg Cost
                             </Text>
-                            <Text style={[styles.metricTooltip, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.metricTooltip, { color: Color.subText }]}>
                                 Your average buy price
                             </Text>
                         </View>
-                        <Text style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.metricValue, { color: Color.baseText }]}>
                             {formatCurrency(activePosition.avgEntryPrice)}
                         </Text>
                     </View>
@@ -114,14 +116,14 @@ export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef
                     {/* Current Price */}
                     <View style={[styles.metricRow, { borderBottomColor: isDark ? '#242428' : '#E5E7EB' }]}>
                         <View style={styles.metricLeft}>
-                            <Text style={[styles.metricLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.metricLabel, { color: Color.baseText }]}>
                                 Current Price
                             </Text>
-                            <Text style={[styles.metricTooltip, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.metricTooltip, { color: Color.subText }]}>
                                 What one share is worth right now
                             </Text>
                         </View>
-                        <Text style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.metricValue, { color: Color.baseText }]}>
                             {formatCurrency(activePosition.stock.price)}
                         </Text>
                     </View>
@@ -129,14 +131,14 @@ export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef
                     {/* Shares Held */}
                     <View style={[styles.metricRow, { borderBottomColor: isDark ? '#242428' : '#E5E7EB' }]}>
                         <View style={styles.metricLeft}>
-                            <Text style={[styles.metricLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.metricLabel, { color: Color.baseText }]}>
                                 Shares Held
                             </Text>
-                            <Text style={[styles.metricTooltip, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.metricTooltip, { color: Color.subText }]}>
                                 How many shares you own
                             </Text>
                         </View>
-                        <Text style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.metricValue, { color: Color.baseText }]}>
                             {activePosition.entries.toFixed(1)}
                         </Text>
                     </View>
@@ -144,10 +146,10 @@ export default function PositionDetailBottomSheet({ positionDetailBottomSheetRef
                     {/* Open Profit/Loss */}
                     <View style={[styles.metricRow, styles.metricRowLast]}>
                         <View style={styles.metricLeft}>
-                            <Text style={[styles.metricLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.metricLabel, { color: Color.baseText }]}>
                                 Open Profit/Loss
                             </Text>
-                            <Text style={[styles.metricTooltip, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.metricTooltip, { color: Color.subText }]}>
                                 What you'd win or lose if you sold now
                             </Text>
                         </View>

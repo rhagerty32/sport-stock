@@ -48,11 +48,11 @@ export default function WalletBalance({
     if (variant === 'compact') {
         return (
             <View style={componentStyles.container}>
-                <Text style={[componentStyles.creditsText, { fontSize: fontSizeStyles.credits, color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[componentStyles.creditsText, { fontSize: fontSizeStyles.credits, color: Color.baseText }]}>
                     {formatCurrency(wallet.tradingCredits)}
                 </Text>
                 {showFanCoins && (
-                    <Text style={[componentStyles.fanCoinsText, { fontSize: fontSizeStyles.fanCoins, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[componentStyles.fanCoinsText, { fontSize: fontSizeStyles.fanCoins, color: Color.subText }]}>
                         {formatFanCoins(wallet.fanCoins)} GC
                     </Text>
                 )}
@@ -63,19 +63,19 @@ export default function WalletBalance({
     return (
         <View style={componentStyles.container}>
             <View style={componentStyles.balanceRow}>
-                <Text style={[componentStyles.label, { fontSize: fontSizeStyles.label, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                <Text style={[componentStyles.label, { fontSize: fontSizeStyles.label, color: Color.subText }]}>
                     SportCash (SC)
                 </Text>
-                <Text style={[componentStyles.creditsText, { fontSize: fontSizeStyles.credits, color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[componentStyles.creditsText, { fontSize: fontSizeStyles.credits, color: Color.baseText }]}>
                     {formatCurrency(wallet.tradingCredits)}
                 </Text>
             </View>
             {showFanCoins && (
                 <View style={componentStyles.balanceRow}>
-                    <Text style={[componentStyles.label, { fontSize: fontSizeStyles.label, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[componentStyles.label, { fontSize: fontSizeStyles.label, color: Color.subText }]}>
                         Gold Coins (GC)
                     </Text>
-                    <Text style={[componentStyles.fanCoinsText, { fontSize: fontSizeStyles.fanCoins, color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[componentStyles.fanCoinsText, { fontSize: fontSizeStyles.fanCoins, color: Color.subText }]}>
                         {formatFanCoins(wallet.fanCoins)}
                     </Text>
                 </View>

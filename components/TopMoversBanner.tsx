@@ -1,19 +1,19 @@
 import { Ticker } from '@/components/Ticker';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { useTheme } from '@/hooks/use-theme';
 import { priceHistory, stocks } from '@/lib/dummy-data';
 import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useColors } from './utils';
 
 interface TopMoversBannerProps {
     onStockPress?: (stockId: number) => void;
 }
 
 export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
-    const { isDark } = useTheme();
+    const Color = useColors();
     const cardWidth = 132; // 120 minWidth + 12 marginRight
     const translateX = useSharedValue(0);
     const isMountedRef = useRef(true);
@@ -127,7 +127,7 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
         isGainer: boolean,
         index: number
     ) => {
-        const changeColor = isGainer ? '#00C853' : '#FF1744';
+        const changeColor = isGainer ? Color.green : Color.red;
         const iconName = isGainer ? 'trending-up' : 'trending-down';
 
         return (
@@ -136,7 +136,7 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
                     <View style={styles.cardContent}>
                         <Ticker ticker={stock.ticker} color={stock.secondaryColor} />
                         <View style={styles.priceRow}>
-                            <Text style={[styles.price, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.price, { color: Color.baseText }]}>
                                 {formatCurrency(stock.price)}
                             </Text>
                             <Ionicons name={iconName} size={16} color={changeColor} />

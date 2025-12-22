@@ -1,4 +1,5 @@
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { usePolymarketData } from '@/lib/polymarket-api';
 import { League, PolymarketEvent, PolymarketMarket, Stock } from '@/types';
@@ -7,6 +8,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 export const PredictionMarkets = ({ league, stock }: { league: League, stock: Stock }) => {
+    const Color = useColors();
     const { isDark } = useTheme();
     const [allEvents, setAllEvents] = useState<PolymarketEvent[]>([]);
     const { data: playoffData, isLoading: playoffLoading } = usePolymarketData({
@@ -52,11 +54,11 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
         <View style={styles.statsContainer}>
             <GlassCard style={styles.statsCard}>
                 <View style={styles.predictionMarketsHeader}>
-                    <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.statsTitle, { color: isDark ? Color.white : Color.black }]}>
                         SEASON PREDICTIONS
                     </Text>
                     <View style={styles.draftkingsBranding}>
-                        <Text style={[styles.draftkingsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.draftkingsText, { color: isDark ? Color.gray500 : Color.gray600 }]}>
                             Straight from Polymarket
                         </Text>
                     </View>
@@ -64,7 +66,7 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
 
 
                 {playoffLoading || divisionLoading || conferenceLoading || championLoading ? (
-                    <ActivityIndicator size="small" color="#000000" />
+                    <ActivityIndicator size="small" color={Color.black} />
                 ) : allEvents.length > 0 ? (
                     <View style={styles.predictionMarketsContainer}>
                         {sortedEvents.map((event) => {
@@ -83,10 +85,10 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
 
                             return (
                                 <View key={event.id} style={styles.predictionMarketItem}>
-                                    <Text>{event.title.includes('Playoffs') ? 'Make the Playoffs' : event.title.includes('Division') ? 'Division Champion' : event.title.includes('Conference') ? 'Conference Champion' : event.title.includes('Champion') ? `${league?.name === "NFL" ? "Super Bowl" : league?.name} Champion` : event.title}</Text>
+                                    <Text style={[styles.predictionMarketItemText, { color: Color.baseText }]}>{event.title.includes('Playoffs') ? 'Make the Playoffs' : event.title.includes('Division') ? 'Division Champion' : event.title.includes('Conference') ? 'Conference Champion' : event.title.includes('Champion') ? `${league?.name === "NFL" ? "Super Bowl" : league?.name} Champion` : event.title}</Text>
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                                        <Text>{Math.round(oddsPercent * 100)}%</Text>
+                                        <Text style={[styles.predictionMarketItemText, { color: Color.baseText }]}>{Math.round(oddsPercent * 100)}%</Text>
 
                                         {/* Small lie chart for winning percentage */}
                                         <Svg width={28} height={28} viewBox="0 0 28 28">
@@ -106,7 +108,7 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
                                                             cx={cx}
                                                             cy={cy}
                                                             r={r}
-                                                            fill={oddsPercent > 0.8 ? '#00C853' : oddsPercent < 0.2 ? '#EF4444' : '#E5E7EB'}
+                                                            fill={oddsPercent > 0.8 ? Color.green : oddsPercent < 0.2 ? Color.red : Color.offWhite}
                                                         />
                                                     );
                                                 }
@@ -116,14 +118,14 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
                                                             cx={cx}
                                                             cy={cy}
                                                             r={r}
-                                                            fill={isDark ? '#1A1D21' : '#FFFFFF'}
+                                                            fill={isDark ? Color.offBlack : Color.white}
                                                         />
                                                     );
                                                 }
                                                 return (
                                                     <>
                                                         {/* Gray full background */}
-                                                        <Circle cx={cx} cy={cy} r={r} fill={isDark ? '#1A1D21' : '#FFFFFF'} />
+                                                        <Circle cx={cx} cy={cy} r={r} fill={isDark ? Color.offBlack : Color.white} />
                                                         {/* Green arc */}
                                                         <Path
                                                             d={`
@@ -132,7 +134,7 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
                                             A ${r} ${r} 0 ${largeArcFlag} 1 ${x} ${y}
                                             Z
                                                     `}
-                                                            fill={oddsPercent > 0.8 ? '#00C853' : oddsPercent < 0.2 ? '#EF4444' : '#E5E7EB'}
+                                                            fill={oddsPercent > 0.8 ? Color.green : oddsPercent < 0.2 ? Color.red : Color.offWhite}
                                                         />
                                                     </>
                                                 );
@@ -156,6 +158,10 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
 };
 
 const styles = StyleSheet.create({
+    predictionMarketItemText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
     statsContainer: {
         marginHorizontal: 20,
         marginBottom: 24,

@@ -1,15 +1,17 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { DynamicColorIOS } from 'react-native';
 
 export default function TabsLayout() {
+    const Color = useColors();
     const { isDark } = useTheme();
 
     return (
         <NativeTabs
-            tintColor={DynamicColorIOS({ dark: '#00C853', light: '#00C853' })}
+            tintColor={DynamicColorIOS({ dark: Color.green, light: Color.green })}
             labelStyle={{
-                color: DynamicColorIOS({ dark: isDark ? '#ccc' : 'black', light: isDark ? '#ccc' : 'black' }),
+                color: DynamicColorIOS({ dark: isDark ? '#ccc' : Color.black, light: isDark ? '#ccc' : Color.black }),
             }}
         >
             <NativeTabs.Trigger name="index">

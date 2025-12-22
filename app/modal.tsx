@@ -1,6 +1,7 @@
 import Chart from '@/components/chart';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
@@ -10,6 +11,7 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ModalScreen() {
+    const Color = useColors();
     const { stockId } = useLocalSearchParams<{ stockId: string }>();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -26,11 +28,11 @@ export default function ModalScreen() {
     if (!stock) {
         return (
             <ThemedView style={styles.container}>
-                <Text style={[styles.errorText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[styles.errorText, { color: Color.baseText }]}>
                     Stock not found
                 </Text>
                 <Link href="/" dismissTo style={styles.link}>
-                    <Text style={[styles.linkText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.linkText, { color: Color.baseText }]}>
                         Go back
                     </Text>
                 </Link>
@@ -66,7 +68,7 @@ export default function ModalScreen() {
     const priceChangePercentage = (priceChange / previousPrice) * 100;
 
     // Get team colors
-    const primaryColor = stockColor?.hex || '#3B82F6';
+    const primaryColor = stockColor?.hex || Color.blue;
     const secondaryColor = isDark ? '#1A1D21' : '#F9FAFB';
 
     const timeframes: TimePeriod[] = ['1D', '1W', '1M', '1Y', 'ALL'];
@@ -96,7 +98,7 @@ export default function ModalScreen() {
                     </Link>
                     <View style={styles.headerContent}>
                         <View style={styles.stockInfo}>
-                            <View style={[styles.stockLogo, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <View style={[styles.stockLogo, { backgroundColor: Color.baseText }]}>
                                 <Text style={[styles.stockLogoText, { color: primaryColor }]}>
                                     {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                 </Text>
@@ -114,7 +116,7 @@ export default function ModalScreen() {
 
                 {/* Price Performance */}
                 <View style={styles.pricePerformance}>
-                    <Text style={[styles.priceChange, { color: priceChange >= 0 ? '#00C853' : '#FF1744' }]}>
+                    <Text style={[styles.priceChange, { color: priceChange >= 0 ? Color.green : Color.red }]}>
                         {priceChange >= 0 ? '↑' : '↓'} {formatPercentage(priceChangePercentage)}
                     </Text>
                 </View>
@@ -137,7 +139,7 @@ export default function ModalScreen() {
                         >
                             <Text style={[
                                 styles.timeframeText,
-                                { color: isDark ? '#FFFFFF' : '#000000' }
+                                { color: Color.baseText }
                             ]}>
                                 {timeframe}
                             </Text>
@@ -148,61 +150,61 @@ export default function ModalScreen() {
                 {/* Stock Stats */}
                 <View style={styles.statsContainer}>
                     <GlassCard style={styles.statsCard}>
-                        <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.statsTitle, { color: Color.baseText }]}>
                             Stock Information
                         </Text>
 
                         <View style={styles.statsGrid}>
                             <View style={styles.statItem}>
-                                <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.statLabel, { color: Color.subText }]}>
                                     Volume
                                 </Text>
-                                <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.statValue, { color: Color.baseText }]}>
                                     {formatNumber(stock.volume)}
                                 </Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.statLabel, { color: Color.subText }]}>
                                     Market Cap
                                 </Text>
-                                <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.statValue, { color: Color.baseText }]}>
                                     {formatCurrency(league?.marketCap || 0)}
                                 </Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.statLabel, { color: Color.subText }]}>
                                     League Volume
                                 </Text>
-                                <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.statValue, { color: Color.baseText }]}>
                                     {formatNumber(league?.volume || 0)}
                                 </Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.statLabel, { color: Color.subText }]}>
                                     Sport
                                 </Text>
-                                <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.statValue, { color: Color.baseText }]}>
                                     {league?.sport}
                                 </Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.statLabel, { color: Color.subText }]}>
                                     Listed
                                 </Text>
-                                <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.statValue, { color: Color.baseText }]}>
                                     {stock.createdAt.toLocaleDateString()}
                                 </Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.statLabel, { color: Color.subText }]}>
                                     Last Updated
                                 </Text>
-                                <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.statValue, { color: Color.baseText }]}>
                                     {stock.updatedAt.toLocaleDateString()}
                                 </Text>
                             </View>
@@ -216,7 +218,7 @@ export default function ModalScreen() {
                         onPress={handleBuy}
                         style={[styles.actionButton, styles.buyButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                     >
-                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.actionButtonText, { color: Color.baseText }]}>
                             Buy/Short
                         </Text>
                     </TouchableOpacity>
@@ -225,7 +227,7 @@ export default function ModalScreen() {
                         onPress={handleFollow}
                         style={[styles.actionButton, styles.followButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                     >
-                        <Text style={[styles.actionButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.actionButtonText, { color: Color.baseText }]}>
                             Follow
                         </Text>
                     </TouchableOpacity>

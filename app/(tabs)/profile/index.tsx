@@ -1,5 +1,6 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useLocation } from '@/hooks/useLocation';
@@ -13,6 +14,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
+    const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
@@ -101,8 +103,8 @@ export default function ProfileScreen() {
     };
 
     const accountActions = [
-        { title: 'Buy Gold Coins', icon: 'add-circle-outline', color: '#00C853', action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
-        { title: 'How It Works', icon: 'information-circle-outline', color: '#00C853', action: () => setWalletSystemBottomSheetOpen(true) },
+        { title: 'Buy Gold Coins', icon: 'add-circle-outline', color: Color.green, action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
+        { title: 'How It Works', icon: 'information-circle-outline', color: Color.green, action: () => setWalletSystemBottomSheetOpen(true) },
     ];
 
     const settingsSections = [
@@ -131,16 +133,16 @@ export default function ProfileScreen() {
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
                     <View style={styles.profileContent}>
-                        <View style={[styles.profilePhoto, { backgroundColor: '#00C853' }]}>
+                        <View style={[styles.profilePhoto, { backgroundColor: Color.green }]}>
                             <Text style={styles.profileInitials}>
                                 {user.firstName[0]}{user.lastName[0]}
                             </Text>
                         </View>
                         <View style={styles.profileInfo}>
-                            <Text style={[styles.profileName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.profileName, { color: Color.baseText }]}>
                                 {`${user.firstName} ${user.lastName}`}
                             </Text>
-                            <Text style={[styles.profileEmail, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.profileEmail, { color: Color.subText }]}>
                                 {user.email}
                             </Text>
                         </View>
@@ -149,7 +151,7 @@ export default function ProfileScreen() {
 
                 {/* My Holdings Visual */}
                 <View style={styles.holdingsContainer}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         My Stash
                     </Text>
                     <GlassCard style={styles.holdingsCard}>
@@ -181,8 +183,8 @@ export default function ProfileScreen() {
                                 return (
                                     <View style={styles.holdingsGrid}>
                                         {positionsWithPercentages.map(({ position, portfolioPercentage }) => {
-                                            const borderColor = position.gainLossPercentage >= 0 ? '#00C853' : '#dc2626';
-                                            const teamColor = position.colors[0]?.hex || '#00C853';
+                                            const borderColor = position.gainLossPercentage >= 0 ? Color.green : Color.red;
+                                            const teamColor = position.colors[0]?.hex || Color.green;
                                             const isPositive = position.gainLossPercentage >= 0;
                                             const trendIcon = isPositive ? 'trending-up' : 'trending-down';
 
@@ -239,7 +241,7 @@ export default function ProfileScreen() {
                                     numberOfLines={2}
                                     adjustsFontSizeToFit={true}
                                     minimumFontScale={0.8}
-                                    style={[styles.metricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}
+                                    style={[styles.metricLabel, { color: Color.subText }]}
                                 >
                                     Portfolio Value
                                 </Text>
@@ -247,7 +249,7 @@ export default function ProfileScreen() {
                                     adjustsFontSizeToFit={true}
                                     minimumFontScale={0.6}
                                     numberOfLines={1}
-                                    style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                    style={[styles.metricValue, { color: Color.baseText }]}
                                 >
                                     {formatCurrency(portfolio.totalGainLoss)}
                                 </Text>
@@ -257,7 +259,7 @@ export default function ProfileScreen() {
                             <View style={styles.metricContent}>
                                 <Text
                                     numberOfLines={1}
-                                    style={[styles.metricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}
+                                    style={[styles.metricLabel, { color: Color.subText }]}
                                 >
                                     Up %
                                 </Text>
@@ -267,7 +269,7 @@ export default function ProfileScreen() {
                                     numberOfLines={1}
                                     style={[
                                         styles.metricValue,
-                                        { color: portfolio.totalGainLossPercentage >= 0 ? '#00C853' : '#dc2626' }
+                                        { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
                                     ]}
                                 >
                                     {formatPercentage(portfolio.totalGainLossPercentage)}
@@ -280,7 +282,7 @@ export default function ProfileScreen() {
                                     numberOfLines={2}
                                     adjustsFontSizeToFit={true}
                                     minimumFontScale={0.8}
-                                    style={[styles.metricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}
+                                    style={[styles.metricLabel, { color: Color.subText }]}
                                 >
                                     All-Time Winnings
                                 </Text>
@@ -288,7 +290,7 @@ export default function ProfileScreen() {
                                     adjustsFontSizeToFit={true}
                                     minimumFontScale={0.6}
                                     numberOfLines={1}
-                                    style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                    style={[styles.metricValue, { color: Color.baseText }]}
                                 >
                                     {formatCurrency(allTimeWinnings)}
                                 </Text>
@@ -299,7 +301,7 @@ export default function ProfileScreen() {
 
                 {/* Account Actions */}
                 <View style={styles.actionsContainer}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         Quick Actions
                     </Text>
                     <View style={styles.actionsGrid}>
@@ -337,10 +339,10 @@ export default function ProfileScreen() {
                                 router.push('/profile/trade-history');
                             }}
                         >
-                            <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                                 Trade History
                             </Text>
-                            <Ionicons name="chevron-forward" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                            <Ionicons name="chevron-forward" size={20} color={Color.subText} />
                         </TouchableOpacity>
                         <GlassCard style={styles.tradeHistoryCard}>
                             {recentTransactions.map((transaction, index) => {
@@ -366,16 +368,16 @@ export default function ProfileScreen() {
                                             ]}>
                                                 <Text style={[
                                                     styles.tradeHistoryBadgeText,
-                                                    { color: transaction.action === 'buy' ? '#00C853' : '#FF1744' }
+                                                    { color: transaction.action === 'buy' ? Color.green : Color.red }
                                                 ]}>
                                                     {transaction.action === 'buy' ? 'BUY' : 'SELL'}
                                                 </Text>
                                             </View>
                                             <View style={styles.tradeHistoryInfo}>
-                                                <Text style={[styles.tradeHistoryStockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                <Text style={[styles.tradeHistoryStockName, { color: Color.baseText }]}>
                                                     {stock?.name || 'Unknown'}
                                                 </Text>
-                                                <Text style={[styles.tradeHistoryDate, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                                <Text style={[styles.tradeHistoryDate, { color: Color.subText }]}>
                                                     {transaction.createdAt.toLocaleDateString('en-US', {
                                                         month: 'short',
                                                         day: 'numeric',
@@ -385,10 +387,10 @@ export default function ProfileScreen() {
                                             </View>
                                         </View>
                                         <View style={styles.tradeHistoryItemRight}>
-                                            <Text style={[styles.tradeHistoryQuantity, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.tradeHistoryQuantity, { color: Color.baseText }]}>
                                                 {transaction.quantity.toFixed(1)} entries
                                             </Text>
-                                            <Text style={[styles.tradeHistoryTotal, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.tradeHistoryTotal, { color: Color.baseText }]}>
                                                 {formatCurrency(transaction.totalPrice)}
                                             </Text>
                                         </View>
@@ -403,7 +405,7 @@ export default function ProfileScreen() {
                 <View style={styles.settingsContainer}>
                     {settingsSections.map((section, sectionIndex) => (
                         <View key={sectionIndex} style={styles.settingsSection}>
-                            <Text style={[styles.settingsSectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.settingsSectionTitle, { color: Color.baseText }]}>
                                 {section.title === 'Account' ? 'Account' : section.title === 'Help & Support' ? 'Help' : section.title}
                             </Text>
                             <GlassCard style={styles.settingsCard} padding={8}>
@@ -443,11 +445,11 @@ export default function ProfileScreen() {
                                                     color={isDark ? "#FFFFFF" : "#000000"}
                                                 />
                                             </View>
-                                            <Text style={[styles.settingsItemTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.settingsItemTitle, { color: Color.baseText }]}>
                                                 {item.title}
                                             </Text>
                                             <View style={{ flex: 1 }} />
-                                            <Text style={[styles.settingsItemChevron, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                            <Text style={[styles.settingsItemChevron, { color: Color.subText }]}>
                                                 ›
                                             </Text>
                                         </View>
@@ -460,14 +462,14 @@ export default function ProfileScreen() {
 
                 {/* Location Information */}
                 <View style={styles.locationContainer}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         Location
                     </Text>
                     <GlassCard style={styles.locationCard}>
                         {locationLoading ? (
                             <View style={styles.locationLoading}>
-                                <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : '#000000'} />
-                                <Text style={[styles.locationText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <ActivityIndicator size="small" color={Color.baseText} />
+                                <Text style={[styles.locationText, { color: Color.subText }]}>
                                     Detecting location...
                                 </Text>
                             </View>
@@ -478,13 +480,13 @@ export default function ProfileScreen() {
                                         <Ionicons
                                             name="globe-outline"
                                             size={16}
-                                            color={isDark ? '#9CA3AF' : '#6B7280'}
+                                            color={Color.subText}
                                             style={styles.locationIcon}
                                         />
-                                        <Text style={[styles.locationLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        <Text style={[styles.locationLabel, { color: Color.subText }]}>
                                             IP Address:
                                         </Text>
-                                        <Text style={[styles.locationValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        <Text style={[styles.locationValue, { color: Color.baseText }]}>
                                             {locationInfo.ipAddress}
                                         </Text>
                                     </View>
@@ -494,13 +496,13 @@ export default function ProfileScreen() {
                                         <Ionicons
                                             name="location-outline"
                                             size={16}
-                                            color={isDark ? '#9CA3AF' : '#6B7280'}
+                                            color={Color.subText}
                                             style={styles.locationIcon}
                                         />
-                                        <Text style={[styles.locationLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        <Text style={[styles.locationLabel, { color: Color.subText }]}>
                                             Coordinates:
                                         </Text>
-                                        <Text style={[styles.locationValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        <Text style={[styles.locationValue, { color: Color.baseText }]}>
                                             {locationInfo.coordinates.latitude.toFixed(4)}, {locationInfo.coordinates.longitude.toFixed(4)}
                                         </Text>
                                     </View>
@@ -510,13 +512,13 @@ export default function ProfileScreen() {
                                         <Ionicons
                                             name="map-outline"
                                             size={16}
-                                            color={isDark ? '#9CA3AF' : '#6B7280'}
+                                            color={Color.subText}
                                             style={styles.locationIcon}
                                         />
-                                        <Text style={[styles.locationLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        <Text style={[styles.locationLabel, { color: Color.subText }]}>
                                             State:
                                         </Text>
-                                        <Text style={[styles.locationValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        <Text style={[styles.locationValue, { color: Color.baseText }]}>
                                             {locationInfo.state}
                                         </Text>
                                     </View>
@@ -529,7 +531,7 @@ export default function ProfileScreen() {
                                             color="#dc2626"
                                             style={styles.locationIcon}
                                         />
-                                        <Text style={[styles.locationError, { color: '#dc2626' }]}>
+                                        <Text style={[styles.locationError, { color: Color.red }]}>
                                             {locationInfo.error}
                                         </Text>
                                     </View>
@@ -539,10 +541,10 @@ export default function ProfileScreen() {
                                         <Ionicons
                                             name="information-circle-outline"
                                             size={16}
-                                            color={isDark ? '#9CA3AF' : '#6B7280'}
+                                            color={Color.subText}
                                             style={styles.locationIcon}
                                         />
-                                        <Text style={[styles.locationText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        <Text style={[styles.locationText, { color: Color.subText }]}>
                                             State not available. Check Mapbox token in .env file.
                                         </Text>
                                     </View>
@@ -556,7 +558,7 @@ export default function ProfileScreen() {
                                     color="#dc2626"
                                     style={styles.locationIcon}
                                 />
-                                <Text style={[styles.locationError, { color: '#dc2626' }]}>
+                                <Text style={[styles.locationError, { color: Color.red }]}>
                                     Unable to retrieve location information
                                 </Text>
                             </View>

@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, stocks } from '@/lib/dummy-data';
@@ -15,6 +16,7 @@ type BuySellBottomSheetProps = {
 };
 
 export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBottomSheetProps) {
+    const Color = useColors();
     const { activeStockId, setBuySellBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, removeFollow, buySellMode, setBuySellMode } = useStockStore();
     const { wallet, spendCredits } = useWalletStore();
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -192,19 +194,19 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
             <BottomSheetView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.title, { color: Color.baseText }]}>
                         {buySellMode === 'buy' ? 'Buy' : 'Sell'} {stock.name}
                     </Text>
-                    <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.subtitle, { color: Color.subText }]}>
                         Single Bet
                     </Text>
                     {buySellMode === 'buy' && wallet && (
-                        <Text style={[styles.balanceText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.balanceText, { color: Color.subText }]}>
                             SportCash (SC): {formatCurrency(wallet.tradingCredits)}
                         </Text>
                     )}
                     {buySellMode === 'sell' && userPosition && (
-                        <Text style={[styles.balanceText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.balanceText, { color: Color.subText }]}>
                             Holdings Value: {formatCurrency(availableSellValue)}
                         </Text>
                     )}
@@ -230,16 +232,16 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             name="add-circle-outline"
                             size={20}
                             color={buySellMode === 'buy'
-                                ? (isDark ? '#FFFFFF' : '#000000')
-                                : (isDark ? '#9CA3AF' : '#6B7280')
+                                ? (Color.baseText)
+                                : (Color.subText)
                             }
                         />
                         <Text style={[
                             styles.tabTriggerText,
                             {
                                 color: buySellMode === 'buy'
-                                    ? (isDark ? '#FFFFFF' : '#000000')
-                                    : (isDark ? '#9CA3AF' : '#6B7280')
+                                    ? (Color.baseText)
+                                    : (Color.subText)
                             }
                         ]}>
                             Buy
@@ -263,16 +265,16 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             name="remove-circle-outline"
                             size={20}
                             color={buySellMode === 'sell'
-                                ? (isDark ? '#FFFFFF' : '#000000')
-                                : (isDark ? '#9CA3AF' : '#6B7280')
+                                ? (Color.baseText)
+                                : (Color.subText)
                             }
                         />
                         <Text style={[
                             styles.tabTriggerText,
                             {
                                 color: buySellMode === 'sell'
-                                    ? (isDark ? '#FFFFFF' : '#000000')
-                                    : (isDark ? '#9CA3AF' : '#6B7280')
+                                    ? (Color.baseText)
+                                    : (Color.subText)
                             }
                         ]}>
                             Sell
@@ -285,7 +287,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                     <View style={[styles.warningContainer, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
                         <Ionicons name="warning" size={20} color="#DC2626" />
                         <View style={styles.warningTextContainer}>
-                            <Text style={[styles.warningTitle, { color: '#DC2626' }]}>
+                            <Text style={[styles.warningTitle, { color: Color.red }]}>
                                 Not Enough SportCash
                             </Text>
                             <Text style={[styles.warningText, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>
@@ -306,7 +308,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                     <View style={[styles.warningContainer, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
                         <Ionicons name="warning" size={20} color="#DC2626" />
                         <View style={styles.warningTextContainer}>
-                            <Text style={[styles.warningTitle, { color: '#DC2626' }]}>
+                            <Text style={[styles.warningTitle, { color: Color.red }]}>
                                 Not Enough Holdings
                             </Text>
                             <Text style={[styles.warningText, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>
@@ -336,7 +338,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 {
                                     color: selectedAmount === amount
                                         ? '#FFFFFF'
-                                        : (isDark ? '#FFFFFF' : '#000000')
+                                        : (Color.baseText)
                                 }
                             ]}>
                                 {formatCurrency(amount)}
@@ -347,7 +349,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                         style={[styles.amountButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                         onPress={handleCustomAmountPress}
                     >
-                        <Text style={[styles.amountText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.amountText, { color: Color.baseText }]}>
                             ...
                         </Text>
                     </TouchableOpacity>
@@ -356,7 +358,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                 {/* Custom Amount Input */}
                 {showCustomAmount && (
                     <View style={styles.customAmountContainer}>
-                        <Text style={[styles.customAmountLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.customAmountLabel, { color: Color.baseText }]}>
                             Enter Custom Amount
                         </Text>
                         <BottomSheetTextInput
@@ -365,12 +367,12 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 styles.customAmountInput,
                                 {
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: isDark ? '#FFFFFF' : '#000000',
+                                    color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
                             placeholder="Enter amount"
-                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            placeholderTextColor={Color.subText}
                             value={customAmount}
                             onChangeText={setCustomAmount}
                             keyboardType="decimal-pad"
@@ -382,12 +384,12 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                                 onPress={handleCustomAmountCancel}
                             >
-                                <Text style={[styles.customAmountButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.customAmountButtonText, { color: Color.baseText }]}>
                                     Cancel
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.submitButton, { backgroundColor: customAmount ? '#10B981' : '#9CA3AF' }]}
+                                style={[styles.customAmountButton, styles.submitButton, { backgroundColor: customAmount ? '#10B981' : Color.gray500 }]}
                                 onPress={handleCustomAmountSubmit}
                                 disabled={!customAmount}
                             >
@@ -407,7 +409,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             {
                                 backgroundColor: selectedAmount
                                     ? (buySellMode === 'buy' ? '#10B981' : '#F87171')
-                                    : '#9CA3AF',
+                                    : Color.gray500,
                                 opacity: selectedAmount ? 1 : 0.5
                             }
                         ]}

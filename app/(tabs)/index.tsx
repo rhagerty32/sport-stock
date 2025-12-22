@@ -2,6 +2,7 @@ import Chart from '@/components/chart';
 import { ThemedView } from '@/components/themed-view';
 import { TopMoversBanner } from '@/components/TopMoversBanner';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { portfolio, priceHistory, stocks } from '@/lib/dummy-data';
@@ -26,6 +27,7 @@ const leagueButtons = [
 ];
 
 export default function HomeScreen() {
+    const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const router = useRouter();
@@ -424,7 +426,7 @@ export default function HomeScreen() {
                 {/* Header - Absolutely positioned above everything */}
                 <View style={[styles.header, { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' }]}>
                     <View style={styles.headerTop}>
-                        <Text style={[styles.logo, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.logo, { color: Color.baseText }]}>
                             SportStock
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
@@ -446,7 +448,7 @@ export default function HomeScreen() {
                                                     useGrouping={true}
                                                     enableCompactNotation={false}
                                                     compactToFixed={2}
-                                                    textStyle={[styles.balance, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                                    textStyle={[styles.balance, { color: Color.baseText }]}
                                                     spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
                                                 />
                                                 <View style={styles.coinIconContainer}>
@@ -467,17 +469,17 @@ export default function HomeScreen() {
                                                 </View>
                                             </View>
                                         </View>
-                                        <Ionicons name="chevron-down" size={20} color={selectedCurrency === 'GC' ? '#F7CE37' : '#00C853'} style={{ marginLeft: 8 }} />
+                                        <Ionicons name="chevron-down" size={20} color={selectedCurrency === 'GC' ? '#F7CE37' : Color.green} style={{ marginLeft: 8 }} />
                                     </View>
                                 ) : (
-                                    <Text style={[styles.balance, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    <Text style={[styles.balance, { color: Color.subText }]}>
                                         Loading...
                                     </Text>
                                 )}
                             </TouchableOpacity>
                             <TouchableOpacity
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                style={{ backgroundColor: '#00C853', padding: 3, borderRadius: 10 }}
+                                style={{ backgroundColor: Color.green, padding: 3, borderRadius: 10 }}
                                 onPress={() => {
                                     setShowWalletDropdown(false);
                                     setPurchaseFanCoinsBottomSheetOpen(true);
@@ -504,11 +506,11 @@ export default function HomeScreen() {
                         fullWidth={true}
                     >
                         <View style={styles.portfolioContent}>
-                            <Text style={[styles.portfolioTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.portfolioTitle, { color: Color.baseText }]}>
                                 Total Value
                             </Text>
 
-                            <Text style={[styles.portfolioValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.portfolioValue, { color: Color.baseText }]}>
                                 {formatCurrency(portfolio.totalValue)}
                             </Text>
 
@@ -516,7 +518,7 @@ export default function HomeScreen() {
                                 <Text
                                     style={[
                                         styles.portfolioGainLoss,
-                                        { color: portfolio.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                        { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
                                     ]}
                                 >
                                     {formatCurrency(portfolio.totalGainLoss)}
@@ -524,17 +526,17 @@ export default function HomeScreen() {
                                 <Text
                                     style={[
                                         styles.portfolioGainLoss,
-                                        { color: portfolio.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                        { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
                                     ]}
                                 >
                                     ({formatPercentage(portfolio.totalGainLossPercentage)})
                                 </Text>
-                                <Text style={[styles.portfolioToday, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.portfolioToday, { color: Color.subText }]}>
                                     Today
                                 </Text>
                             </View>
 
-                            <Chart stockId={1} color="#00C853" />
+                            <Chart stockId={1} color={Color.green} />
                         </View>
                     </GlassCard>
                 </View>
@@ -544,28 +546,28 @@ export default function HomeScreen() {
                     <GlassCard style={styles.investmentsCard} padding={0}>
                         <View style={styles.investmentsContent}>
                             {/* My Investments Header */}
-                            <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                 My Portfolio
                             </Text>
 
                             {/* Investment Overview */}
                             <View style={styles.investmentOverview}>
                                 <View style={styles.investmentLeft}>
-                                    <Text style={[styles.investmentAmount, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.investmentAmount, { color: Color.baseText }]}>
                                         {formatCurrency(portfolio.totalInvested)}
                                     </Text>
-                                    <Text style={[styles.investmentLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    <Text style={[styles.investmentLabel, { color: Color.subText }]}>
                                         Put In
                                     </Text>
                                 </View>
                                 <View style={styles.investmentRight}>
                                     <Text style={[
                                         styles.investmentAmount,
-                                        { color: portfolio.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                        { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
                                     ]}>
                                         {formatCurrency(portfolio.totalGainLoss)}
                                     </Text>
-                                    <Text style={[styles.investmentLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                    <Text style={[styles.investmentLabel, { color: Color.subText }]}>
                                         W/L
                                     </Text>
                                 </View>
@@ -576,20 +578,20 @@ export default function HomeScreen() {
 
                             {/* Summary Details */}
                             <View style={styles.summaryDetails}>
-                                <Text style={[styles.summaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.summaryLabel, { color: Color.subText }]}>
                                     Total Value $
                                 </Text>
-                                <Text style={[styles.summaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.summaryValue, { color: Color.baseText }]}>
                                     {formatCurrency(portfolio.totalValue)}
                                 </Text>
                             </View>
                             <View style={styles.summaryDetails}>
-                                <Text style={[styles.summaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.summaryLabel, { color: Color.subText }]}>
                                     Total Gain %
                                 </Text>
                                 <Text style={[
                                     styles.summaryValue,
-                                    { color: portfolio.totalGainLossPercentage >= 0 ? '#00C853' : '#FF1744' }
+                                    { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
                                 ]}>
                                     {formatPercentage(portfolio.totalGainLossPercentage)}
                                 </Text>
@@ -601,7 +603,7 @@ export default function HomeScreen() {
                             {/* Stocks Owned Section */}
                             <View style={styles.stocksOwnedHeader}>
                                 <View style={styles.stocksOwnedLeft}>
-                                    <Text style={[styles.stocksOwnedTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
                                         My Teams
                                     </Text>
                                 </View>
@@ -616,7 +618,7 @@ export default function HomeScreen() {
                                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                         delayPressIn={0}
                                     >
-                                        <Text style={[styles.sortButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        <Text style={[styles.sortButtonText, { color: Color.baseText }]}>
                                             {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
                                         </Text>
                                     </TouchableOpacity>
@@ -654,11 +656,11 @@ export default function HomeScreen() {
                                                 delayPressIn={0}
                                             >
                                                 <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
-                                                    <Text style={styles.stockIconText}>
+                                                    <Text style={[styles.stockIconText, { color: Color.white }]}>
                                                         {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                     </Text>
                                                 </View>
-                                                <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                <Text style={[styles.stockName, { color: Color.baseText }]}>
                                                     {position.stock.name}
                                                 </Text>
                                                 <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
@@ -667,11 +669,11 @@ export default function HomeScreen() {
                                                             <Ionicons
                                                                 name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
                                                                 size={14}
-                                                                color={position.gainLossPercentage >= 0 ? '#00C853' : '#FF1744'}
+                                                                color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
                                                             />
                                                             <Text style={[
                                                                 styles.stockValueText,
-                                                                { color: position.gainLossPercentage >= 0 ? '#00C853' : '#FF1744' }
+                                                                { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
                                                             ]}>
                                                                 {formatPercentage(position.gainLossPercentage)}
                                                             </Text>
@@ -679,7 +681,7 @@ export default function HomeScreen() {
                                                     ) : (
                                                         <Text style={[
                                                             styles.stockValueText,
-                                                            { color: position.gainLossPercentage >= 0 ? '#00C853' : '#FF1744' }
+                                                            { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
                                                         ]}>
                                                             {formatCurrency(position.currentValue)}
                                                         </Text>
@@ -726,7 +728,7 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                     <GlassCard style={styles.investmentsCard} padding={0}>
                         <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                 Highest Volume
                             </Text>
 
@@ -757,17 +759,17 @@ export default function HomeScreen() {
                                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                                 >
                                                     <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
-                                                        <Text style={styles.stockIconText}>
+                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
                                                             {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                         </Text>
                                                     </View>
-                                                    <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
                                                         {stock.name}
                                                     </Text>
                                                     <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
                                                         <Text style={[
                                                             styles.stockValueText,
-                                                            { color: isDark ? '#FFFFFF' : '#000000' }
+                                                            { color: Color.baseText }
                                                         ]}>
                                                             {formatVolume(stock.volume)}
                                                         </Text>
@@ -794,7 +796,7 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                     <GlassCard style={styles.investmentsCard} padding={0}>
                         <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                 On the Rise
                             </Text>
 
@@ -825,11 +827,11 @@ export default function HomeScreen() {
                                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                                 >
                                                     <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                        <Text style={styles.stockIconText}>
+                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
                                                             {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                         </Text>
                                                     </View>
-                                                    <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
                                                         {item.stock.name}
                                                     </Text>
                                                     <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
@@ -837,11 +839,11 @@ export default function HomeScreen() {
                                                             <Ionicons
                                                                 name="trending-up"
                                                                 size={14}
-                                                                color="#00C853"
+                                                                color={Color.green}
                                                             />
                                                             <Text style={[
                                                                 styles.stockValueText,
-                                                                { color: '#00C853' }
+                                                                { color: Color.green }
                                                             ]}>
                                                                 {formatPercentage(item.changePercentage)}
                                                             </Text>
@@ -869,7 +871,7 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                     <GlassCard style={styles.investmentsCard} padding={0}>
                         <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                 Upset Alert
                             </Text>
 
@@ -900,11 +902,11 @@ export default function HomeScreen() {
                                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                                 >
                                                     <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                        <Text style={styles.stockIconText}>
+                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
                                                             {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                         </Text>
                                                     </View>
-                                                    <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
                                                         {item.stock.name}
                                                     </Text>
                                                     <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
@@ -916,7 +918,7 @@ export default function HomeScreen() {
                                                             />
                                                             <Text style={[
                                                                 styles.stockValueText,
-                                                                { color: '#FF1744' }
+                                                                { color: Color.red }
                                                             ]}>
                                                                 {formatPercentage(item.changePercentage)}
                                                             </Text>
@@ -946,7 +948,7 @@ export default function HomeScreen() {
                         <GlassCard style={styles.investmentsCard} padding={0}>
                             <View style={styles.investmentsContent}>
                                 {/* Followed Stocks Header */}
-                                <Text style={[styles.investmentsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                     Following
                                 </Text>
 
@@ -982,11 +984,11 @@ export default function HomeScreen() {
                                                         delayPressIn={0}
                                                     >
                                                         <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
-                                                            <Text style={styles.stockIconText}>
+                                                            <Text style={[styles.stockIconText, { color: Color.white }]}>
                                                                 {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                             </Text>
                                                         </View>
-                                                        <Text style={[styles.stockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                                        <Text style={[styles.stockName, { color: Color.baseText }]}>
                                                             {stock.name}
                                                         </Text>
                                                         <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
@@ -994,11 +996,11 @@ export default function HomeScreen() {
                                                                 <Ionicons
                                                                     name={priceChange.percentage >= 0 ? 'trending-up' : 'trending-down'}
                                                                     size={14}
-                                                                    color={priceChange.percentage >= 0 ? '#00C853' : '#FF1744'}
+                                                                    color={priceChange.percentage >= 0 ? Color.green : Color.red}
                                                                 />
                                                                 <Text style={[
                                                                     styles.stockValueText,
-                                                                    { color: priceChange.percentage >= 0 ? '#00C853' : '#FF1744' }
+                                                                    { color: priceChange.percentage >= 0 ? Color.green : Color.red }
                                                                 ]}>
                                                                     {formatPercentage(priceChange.percentage)}
                                                                 </Text>
@@ -1224,11 +1226,6 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 6,
     },
-    statusText: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
     bottomSpacing: {
         height: 100,
     },
@@ -1397,13 +1394,11 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#3B82F6',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
     stockIconText: {
-        color: '#FFFFFF',
         fontSize: 12,
         fontWeight: 'bold',
     },
@@ -1436,7 +1431,6 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#6B7280',
         marginHorizontal: 4,
     },
     dropdownWrapper: {
@@ -1496,11 +1490,6 @@ const styles = StyleSheet.create({
     coinIconImage: {
         width: 24,
         height: 24,
-    },
-    coinIconText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: 'bold',
     },
     currencyCode: {
         fontSize: 14,

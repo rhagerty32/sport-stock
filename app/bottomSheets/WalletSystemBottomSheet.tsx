@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import WalletBalance from '@/components/wallet/WalletBalance';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -13,6 +14,7 @@ type WalletSystemBottomSheetProps = {
 };
 
 export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: WalletSystemBottomSheetProps) {
+    const Color = useColors();
     const { setWalletSystemBottomSheetOpen } = useStockStore();
     const { wallet } = useWalletStore();
     const { isDark } = useTheme();
@@ -58,7 +60,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.title, { color: Color.baseText }]}>
                         How The SportCash System Works
                     </Text>
                 </View>
@@ -66,7 +68,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                 {/* Current Balances */}
                 {wallet && (
                     <View style={[styles.balanceCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
-                        <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                             Your Current Balances
                         </Text>
                         <WalletBalance showFanCoins={true} size="medium" />
@@ -82,10 +84,10 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                             resizeMode="contain"
                         />
                     </View>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         What Are Gold Coins?
                     </Text>
-                    <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.sectionText, { color: Color.subText }]}>
                         Gold Coins (GC) are entertainment tokens that you purchase with real money. They have no monetary value and cannot be exchanged for SportCash. Think of them as collectible tokens that show your support for SportStock.
                     </Text>
                 </View>
@@ -99,10 +101,10 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                             resizeMode="contain"
                         />
                     </View>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         What Is SportCash?
                     </Text>
-                    <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.sectionText, { color: Color.subText }]}>
                         SportCash (SC) is bonus money we give you when you buy Gold Coins. Use it to back sports teams, build your portfolio, and make plays on SportStock.
                     </Text>
                 </View>
@@ -112,22 +114,22 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                     <View style={styles.iconContainer}>
                         <Ionicons name="gift" size={32} color="#217C0A" />
                     </View>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         How Gold Coins Work
                     </Text>
-                    <Text style={[styles.sectionText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.sectionText, { color: Color.subText }]}>
                         When you buy Gold Coins, you get 100 Gold Coins (GC) for every $1 you spend. Gold Coins are just for fun with no real value. For every dollar you spend, you also get $1 in SportCash (SC) to back sports teams.
                     </Text>
                     <View style={[styles.bonusTiers, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                         <View style={styles.tierRow}>
-                            <Text style={[styles.tierAmount, { color: isDark ? '#FFFFFF' : '#000000' }]}>Example: $100 Buy</Text>
+                            <Text style={[styles.tierAmount, { color: Color.baseText }]}>Example: $100 Buy</Text>
                         </View>
                         <View style={styles.tierRow}>
-                            <Text style={[styles.tierAmount, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Gold Coins (GC) You Get</Text>
+                            <Text style={[styles.tierAmount, { color: Color.subText }]}>Gold Coins (GC) You Get</Text>
                             <Text style={[styles.tierBonus, { color: '#217C0A' }]}>10,000</Text>
                         </View>
                         <View style={styles.tierRow}>
-                            <Text style={[styles.tierAmount, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>SportCash (SC)</Text>
+                            <Text style={[styles.tierAmount, { color: Color.subText }]}>SportCash (SC)</Text>
                             <Text style={[styles.tierBonus, { color: '#217C0A' }]}>$100.00</Text>
                         </View>
                     </View>
@@ -138,7 +140,7 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                     <View style={styles.iconContainer}>
                         <Ionicons name="arrow-forward-circle" size={32} color="#217C0A" />
                     </View>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         How It Works
                     </Text>
                     <View style={styles.flowContainer}>
@@ -146,25 +148,25 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
                             <View style={[styles.stepNumber, { backgroundColor: '#217C0A' }]}>
                                 <Text style={styles.stepNumberText}>1</Text>
                             </View>
-                            <Text style={[styles.flowText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.flowText, { color: Color.subText }]}>
                                 Buy Gold Coins with real money
                             </Text>
                         </View>
-                        <Ionicons name="arrow-down" size={24} color={isDark ? '#9CA3AF' : '#6B7280'} style={styles.flowArrow} />
+                        <Ionicons name="arrow-down" size={24} color={Color.subText} style={styles.flowArrow} />
                         <View style={styles.flowStep}>
                             <View style={[styles.stepNumber, { backgroundColor: '#217C0A' }]}>
                                 <Text style={styles.stepNumberText}>2</Text>
                             </View>
-                            <Text style={[styles.flowText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.flowText, { color: Color.subText }]}>
                                 Get SportCash as a bonus
                             </Text>
                         </View>
-                        <Ionicons name="arrow-down" size={24} color={isDark ? '#9CA3AF' : '#6B7280'} style={styles.flowArrow} />
+                        <Ionicons name="arrow-down" size={24} color={Color.subText} style={styles.flowArrow} />
                         <View style={styles.flowStep}>
                             <View style={[styles.stepNumber, { backgroundColor: '#217C0A' }]}>
                                 <Text style={styles.stepNumberText}>3</Text>
                             </View>
-                            <Text style={[styles.flowText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.flowText, { color: Color.subText }]}>
                                 Use SportCash to back teams
                             </Text>
                         </View>
@@ -173,8 +175,8 @@ export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: 
 
                 {/* Legal Note */}
                 <View style={[styles.legalNote, { backgroundColor: isDark ? '#1A1D21' : '#FEF3C7' }]}>
-                    <Ionicons name="information-circle" size={20} color={isDark ? '#9CA3AF' : '#92400E'} />
-                    <Text style={[styles.legalText, { color: isDark ? '#9CA3AF' : '#92400E' }]}>
+                    <Ionicons name="information-circle" size={20} color={isDark ? Color.gray500 : '#92400E'} />
+                    <Text style={[styles.legalText, { color: isDark ? Color.gray500 : '#92400E' }]}>
                         Gold Coins are just for fun with no real value. SportCash is bonus money that can only be used on SportStock. This system follows all the rules.
                     </Text>
                 </View>

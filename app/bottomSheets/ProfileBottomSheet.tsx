@@ -1,6 +1,6 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useState } from 'react';
@@ -11,8 +11,8 @@ type ProfileBottomSheetProps = {
 };
 
 export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBottomSheetProps) {
+    const Color = useColors();
     const { setProfileBottomSheetOpen } = useStockStore();
-    const { isPublicAccount, setIsPublicAccount } = useSettingsStore();
     const [firstName, setFirstName] = useState('John');
     const [lastName, setLastName] = useState('Doe');
     const [email, setEmail] = useState('john.doe@example.com');
@@ -58,10 +58,10 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
             <BottomSheetView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.title, { color: Color.baseText }]}>
                         Profile
                     </Text>
-                    <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.subtitle, { color: Color.subText }]}>
                         Update your info
                     </Text>
                 </View>
@@ -70,7 +70,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                 <View style={styles.formContainer}>
                     {/* First Name */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.label, { color: Color.baseText }]}>
                             First Name
                         </Text>
                         <BottomSheetTextInput
@@ -78,12 +78,12 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                 styles.input,
                                 {
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: isDark ? '#FFFFFF' : '#000000',
+                                    color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
                             placeholder="Enter first name"
-                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            placeholderTextColor={Color.subText}
                             value={firstName}
                             onChangeText={setFirstName}
                         />
@@ -91,7 +91,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
 
                     {/* Last Name */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.label, { color: Color.baseText }]}>
                             Last Name
                         </Text>
                         <BottomSheetTextInput
@@ -99,12 +99,12 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                 styles.input,
                                 {
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: isDark ? '#FFFFFF' : '#000000',
+                                    color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
                             placeholder="Enter last name"
-                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            placeholderTextColor={Color.subText}
                             value={lastName}
                             onChangeText={setLastName}
                         />
@@ -112,7 +112,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
 
                     {/* Email */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.label, { color: Color.baseText }]}>
                             Email
                         </Text>
                         <BottomSheetTextInput
@@ -120,12 +120,12 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                 styles.input,
                                 {
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: isDark ? '#FFFFFF' : '#000000',
+                                    color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
                             placeholder="Enter email address"
-                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            placeholderTextColor={Color.subText}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -135,7 +135,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
 
                     {/* Phone */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.label, { color: Color.baseText }]}>
                             Phone Number
                         </Text>
                         <BottomSheetTextInput
@@ -143,12 +143,12 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                 styles.input,
                                 {
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: isDark ? '#FFFFFF' : '#000000',
+                                    color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
                             placeholder="Enter phone number"
-                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            placeholderTextColor={Color.subText}
                             value={phone}
                             onChangeText={setPhone}
                             keyboardType="phone-pad"
@@ -159,7 +159,7 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                 {/* Save Button */}
                 <View style={styles.saveButtonContainer}>
                     <TouchableOpacity
-                        style={[styles.saveButton, { backgroundColor: '#00C853' }]}
+                        style={[styles.saveButton, { backgroundColor: Color.green }]}
                         onPress={handleSave}
                     >
                         <Text style={styles.saveButtonText}>Save Changes</Text>

@@ -1,6 +1,6 @@
-import React from 'react';
-import { TouchableOpacity, Text, TextStyle, ViewStyle } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import React from 'react';
+import { Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 
 interface GlassButtonProps {
     title: string;
@@ -52,9 +52,9 @@ export function GlassButton({
             case 'destructive':
                 return {
                     ...baseStyle,
-                    backgroundColor: '#dc2626',
+                    backgroundColor: Color.red,
                     borderWidth: 1,
-                    borderColor: '#dc2626',
+                    borderColor: Color.red,
                 };
             default:
                 return {
@@ -72,7 +72,7 @@ export function GlassButton({
             case 'destructive':
                 return '#FFFFFF';
             case 'secondary':
-                return isDark ? '#FFFFFF' : '#000000';
+                return Color.baseText;
             default:
                 return '#FFFFFF';
         }

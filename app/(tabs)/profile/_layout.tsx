@@ -1,7 +1,9 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { Stack } from 'expo-router';
 
 export default function ProfileLayout() {
+    const Color = useColors();
     const { isDark } = useTheme();
 
     return (
@@ -9,7 +11,7 @@ export default function ProfileLayout() {
             screenOptions={{
                 headerShown: false,
                 contentStyle: {
-                    backgroundColor: isDark ? '#0B0F13' : '#FFFFFF',
+                    backgroundColor: isDark ? '#0B0F13' : Color.white,
                 },
             }}
         >

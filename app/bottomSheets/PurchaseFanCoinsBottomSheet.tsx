@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useStockStore } from '@/stores/stockStore';
@@ -18,6 +19,7 @@ const DUMMY_USER_ID = 1;
 const PRESET_AMOUNTS = [10, 25, 50, 100, 250];
 
 export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomSheetRef }: PurchaseFanCoinsBottomSheetProps) {
+    const Color = useColors();
     const { setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen } = useStockStore();
     const { wallet, purchaseFanCoins, isLoading } = useWalletStore();
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -145,10 +147,10 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
             <BottomSheetScrollView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.title, { color: Color.baseText }]}>
                         Buy Gold Coins
                     </Text>
-                    <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.subtitle, { color: Color.subText }]}>
                         Get SportCash as a bonus
                     </Text>
                 </View>
@@ -194,7 +196,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                             {
                                                 color: selectedAmount === amount
                                                     ? '#FFFFFF'
-                                                    : (isDark ? '#FFFFFF' : '#000000')
+                                                    : (Color.baseText)
                                             }
                                         ]}>
                                             {amount.toFixed(2)}
@@ -205,7 +207,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                         {
                                             color: selectedAmount === amount
                                                 ? '#FFFFFF'
-                                                : (isDark ? '#FFFFFF' : '#000000')
+                                                : (Color.baseText)
                                         }
                                     ]}>
                                         Free SportCash
@@ -221,7 +223,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                             contentFit="contain"
                                         />
                                         <View style={styles.plusIconOverlay}>
-                                            <Ionicons name="add" size={16} color="#00C853" />
+                                            <Ionicons name="add" size={16} color={Color.green} />
                                         </View>
                                     </View>
                                     <Text style={[
@@ -229,7 +231,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                         {
                                             color: selectedAmount === amount
                                                 ? '#FFFFFF'
-                                                : (isDark ? '#FFFFFF' : '#000000')
+                                                : (Color.baseText)
                                         }
                                     ]}>
                                         {coinsForAmount.toLocaleString()}
@@ -239,7 +241,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                         {
                                             color: selectedAmount === amount
                                                 ? '#FFFFFF'
-                                                : (isDark ? '#FFFFFF' : '#000000')
+                                                : (Color.baseText)
                                         }
                                     ]}>
                                         Gold Coins
@@ -267,7 +269,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                         onPress={handleCustomAmountPress}
                     >
                         <View style={styles.offerCardMiddleSection}>
-                            <Text style={[styles.goldCoinsLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.goldCoinsLabel, { color: Color.baseText }]}>
                                 Custom
                             </Text>
                         </View>
@@ -277,7 +279,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                 {/* Custom Amount Input */}
                 {showCustomAmount && (
                     <View style={styles.customAmountContainer}>
-                        <Text style={[styles.customAmountLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.customAmountLabel, { color: Color.baseText }]}>
                             Enter Amount (min. $10)
                         </Text>
                         <BottomSheetTextInput
@@ -286,12 +288,12 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                 styles.customAmountInput,
                                 {
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: isDark ? '#FFFFFF' : '#000000',
+                                    color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
                                 }
                             ]}
                             placeholder="$0.00"
-                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            placeholderTextColor={Color.subText}
                             value={customAmount}
                             onChangeText={setCustomAmount}
                             keyboardType="decimal-pad"
@@ -303,12 +305,12 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                 style={[styles.customAmountButton, styles.cancelButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                                 onPress={handleCustomAmountCancel}
                             >
-                                <Text style={[styles.customAmountButtonText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.customAmountButtonText, { color: Color.baseText }]}>
                                     Cancel
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.customAmountButton, styles.submitButton, { backgroundColor: customAmount && parseFloat(customAmount) >= 10 ? '#10B981' : '#9CA3AF' }]}
+                                style={[styles.customAmountButton, styles.submitButton, { backgroundColor: customAmount && parseFloat(customAmount) >= 10 ? '#10B981' : Color.gray500 }]}
                                 onPress={handleCustomAmountSubmit}
                                 disabled={!customAmount || parseFloat(customAmount) < 10}
                             >
@@ -324,13 +326,13 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                 {selectedAmount && (
                     <View style={[styles.bonusContainer, { backgroundColor: isDark ? '#1A1D21' : '#F0FDF4' }]}>
                         <View style={styles.bonusHeader}>
-                            <Text style={[styles.bonusTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.bonusTitle, { color: Color.baseText }]}>
                                 You'll Receive
                             </Text>
                         </View>
                         <View style={styles.bonusDetails}>
                             <View style={styles.bonusRow}>
-                                <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.bonusLabel, { color: Color.subText }]}>
                                     Gold Coins (GC)
                                 </Text>
                                 <View style={styles.bonusValueContainer}>
@@ -338,7 +340,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                         value={goldCoinsToReceive}
                                         useGrouping={true}
                                         enableCompactNotation={true}
-                                        textStyle={[styles.bonusValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                                        textStyle={[styles.bonusValue, { color: Color.baseText }]}
                                         spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
                                     />
                                     <Image
@@ -349,7 +351,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                                 </View>
                             </View>
                             <View style={styles.bonusRow}>
-                                <Text style={[styles.bonusLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.bonusLabel, { color: Color.subText }]}>
                                     SportCash (SC)
                                 </Text>
                                 <View style={styles.bonusValueContainer}>
@@ -381,7 +383,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
                         style={[
                             styles.purchaseButton,
                             {
-                                backgroundColor: selectedAmount && !isLoading ? '#217C0A' : '#9CA3AF',
+                                backgroundColor: selectedAmount && !isLoading ? '#217C0A' : Color.gray500,
                                 opacity: selectedAmount && !isLoading ? 1 : 0.5
                             }
                         ]}
@@ -641,11 +643,6 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    bonusSportCashIconText: {
-        color: '#00C853',
-        fontSize: 12,
-        fontWeight: 'bold',
     },
     bonusSportCashIconImage: {
         width: 14,

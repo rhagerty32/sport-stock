@@ -1,5 +1,6 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useSearch } from '@/contexts/SearchContext';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -10,6 +11,7 @@ import React from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SearchScreen() {
+    const Color = useColors();
     const { isDark } = useTheme();
     const { selection } = useHaptics();
     const { searchQuery } = useSearch();
@@ -65,19 +67,19 @@ export default function SearchScreen() {
                             </Text>
                         </View>
                         <View style={styles.gridCardInfo}>
-                            <Text style={[styles.gridStockName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.gridStockName, { color: Color.baseText }]}>
                                 {stock.name}
                             </Text>
-                            <Text style={[styles.gridLeagueName, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.gridLeagueName, { color: Color.subText }]}>
                                 {league?.name}
                             </Text>
-                            <Text style={[styles.gridStockPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.gridStockPrice, { color: Color.baseText }]}>
                                 {formatCurrency(stock.price)}
                             </Text>
                             <Text
                                 style={[
                                     styles.gridPriceChange,
-                                    { color: priceChange.amount >= 0 ? '#217C0A' : '#dc2626' }
+                                    { color: priceChange.amount >= 0 ? '#217C0A' : Color.red }
                                 ]}
                             >
                                 {formatPercentage(priceChange.percentage)}
@@ -120,7 +122,7 @@ export default function SearchScreen() {
                             >
                                 <Text style={[
                                     styles.filterPillText,
-                                    { color: selectedLeague === league ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }
+                                    { color: selectedLeague === league ? '#FFFFFF' : (Color.subText) }
                                 ]}>
                                     {league}
                                 </Text>
@@ -131,7 +133,7 @@ export default function SearchScreen() {
 
                 {/* Results Count */}
                 <View style={styles.resultsContainer}>
-                    <Text style={[styles.resultsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                    <Text style={[styles.resultsText, { color: Color.subText }]}>
                         {filteredStocks.length} teams found
                     </Text>
                 </View>

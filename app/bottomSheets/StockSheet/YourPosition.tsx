@@ -1,4 +1,5 @@
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { Position } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,12 +8,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatCurrency, formatPercentage } from './utils';
 
 export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Position, currentPrice: number }) => {
+    const Color = useColors();
     const { isDark } = useTheme();
     return (
         <View style={styles.statsContainer}>
             <GlassCard style={styles.statsCard}>
                 <View style={styles.positionHeader}>
-                    <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.statsTitle, { color: Color.baseText }]}>
                         Your Position
                     </Text>
                     <View style={[
@@ -22,11 +24,11 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                         <Ionicons
                             name={userPosition.totalGainLoss >= 0 ? "trending-up" : "trending-down"}
                             size={16}
-                            color={userPosition.totalGainLoss >= 0 ? '#00C853' : '#FF1744'}
+                            color={userPosition.totalGainLoss >= 0 ? Color.green : Color.red}
                         />
                         <Text style={[
                             styles.gainLossBadgeText,
-                            { color: userPosition.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                            { color: userPosition.totalGainLoss >= 0 ? Color.green : Color.red }
                         ]}>
                             {formatPercentage(userPosition.gainLossPercentage)}
                         </Text>
@@ -36,19 +38,19 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                 {/* Main Metrics Grid */}
                 <View style={styles.positionMetricsGrid}>
                     <View style={styles.positionMetricCard}>
-                        <Text style={[styles.positionMetricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.positionMetricLabel, { color: Color.subText }]}>
                             Current Value
                         </Text>
-                        <Text style={[styles.positionMetricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.positionMetricValue, { color: Color.baseText }]}>
                             {formatCurrency(userPosition.currentValue)}
                         </Text>
                     </View>
 
                     <View style={styles.positionMetricCard}>
-                        <Text style={[styles.positionMetricLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.positionMetricLabel, { color: Color.subText }]}>
                             Entries
                         </Text>
-                        <Text style={[styles.positionMetricValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.positionMetricValue, { color: Color.baseText }]}>
                             {userPosition.entries.toFixed(1)}
                         </Text>
                     </View>
@@ -57,12 +59,12 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                 {/* Gain/Loss Visual Bar */}
                 <View style={styles.gainLossContainer}>
                     <View style={styles.gainLossHeader}>
-                        <Text style={[styles.gainLossLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.gainLossLabel, { color: Color.subText }]}>
                             Total Gain/Loss
                         </Text>
                         <Text style={[
                             styles.gainLossAmount,
-                            { color: userPosition.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                            { color: userPosition.totalGainLoss >= 0 ? Color.green : Color.red }
                         ]}>
                             {userPosition.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(userPosition.totalGainLoss)}
                         </Text>
@@ -90,7 +92,7 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                                     style={[
                                         styles.gainLossBarSegment,
                                         {
-                                            backgroundColor: userPosition.totalGainLoss >= 0 ? '#00C853' : '#FF1744',
+                                            backgroundColor: userPosition.totalGainLoss >= 0 ? Color.green : Color.red,
                                             width: `${Math.abs(userPosition.totalGainLoss / userPosition.currentValue * 100)}%`
                                         }
                                     ]}
@@ -102,7 +104,7 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                     <View style={styles.gainLossBreakdown}>
                         <View style={styles.gainLossBreakdownItem}>
                             <View style={[styles.gainLossBreakdownDot, { backgroundColor: isDark ? '#374151' : '#D1D5DB' }]} />
-                            <Text style={[styles.gainLossBreakdownText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.gainLossBreakdownText, { color: Color.subText }]}>
                                 Invested: {formatCurrency(userPosition.currentValue - userPosition.totalGainLoss)}
                             </Text>
                         </View>
@@ -110,11 +112,11 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                             <View style={styles.gainLossBreakdownItem}>
                                 <View style={[
                                     styles.gainLossBreakdownDot,
-                                    { backgroundColor: userPosition.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                    { backgroundColor: userPosition.totalGainLoss >= 0 ? Color.green : Color.red }
                                 ]} />
                                 <Text style={[
                                     styles.gainLossBreakdownText,
-                                    { color: userPosition.totalGainLoss >= 0 ? '#00C853' : '#FF1744' }
+                                    { color: userPosition.totalGainLoss >= 0 ? Color.green : Color.red }
                                 ]}>
                                     {userPosition.totalGainLoss >= 0 ? 'Gain' : 'Loss'}: {formatCurrency(Math.abs(userPosition.totalGainLoss))}
                                 </Text>
@@ -126,19 +128,19 @@ export const YourPosition = ({ userPosition, currentPrice }: { userPosition: Pos
                 {/* Secondary Metrics */}
                 <View style={styles.positionSecondaryMetrics}>
                     <View style={styles.positionSecondaryMetric}>
-                        <Text style={[styles.positionSecondaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.positionSecondaryLabel, { color: Color.subText }]}>
                             Avg Entry Price
                         </Text>
-                        <Text style={[styles.positionSecondaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.positionSecondaryValue, { color: Color.baseText }]}>
                             {formatCurrency(userPosition.avgEntryPrice)}
                         </Text>
                     </View>
                     <View style={styles.positionSecondaryDivider} />
                     <View style={styles.positionSecondaryMetric}>
-                        <Text style={[styles.positionSecondaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.positionSecondaryLabel, { color: Color.subText }]}>
                             Current Price
                         </Text>
-                        <Text style={[styles.positionSecondaryValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.positionSecondaryValue, { color: Color.baseText }]}>
                             {formatCurrency(currentPrice)}
                         </Text>
                     </View>

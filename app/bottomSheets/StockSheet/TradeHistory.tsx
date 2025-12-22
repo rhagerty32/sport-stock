@@ -1,15 +1,15 @@
+import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
+import { useHaptics } from '@/hooks/useHaptics';
+import { useStockStore } from '@/stores/stockStore';
+import { Stock, Transaction } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { useStockStore } from '@/stores/stockStore';
-import { useHaptics } from '@/hooks/useHaptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/hooks/use-theme';
-import { Stock, Transaction } from '@/types';
 import { formatCurrency } from './utils';
 
 export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: Transaction[], stock: Stock }) => {
-    const { isDark } = useTheme();
+    const Color = useColors();
     const { mediumImpact, lightImpact } = useHaptics();
     const { setActiveTransaction, setTransactionDetailBottomSheetOpen, setBuySellMode, setBuySellBottomSheetOpen } = useStockStore();
 
@@ -22,7 +22,7 @@ export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: 
     return (
         <View style={styles.statsContainer}>
             <GlassCard style={styles.statsCard}>
-                <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[styles.statsTitle, { color: Color.baseText }]}>
                     Trade History
                 </Text>
 
@@ -49,13 +49,13 @@ export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: 
                                     ]}>
                                         <Text style={[
                                             styles.tradeHistoryBadgeText,
-                                            { color: transaction.action === 'buy' ? '#00C853' : '#FF1744' }
+                                            { color: transaction.action === 'buy' ? Color.green : Color.red }
                                         ]}>
                                             {transaction.action === 'buy' ? 'BUY' : 'SELL'}
                                         </Text>
                                     </View>
                                     <View style={styles.tradeHistoryInfo}>
-                                        <Text style={[styles.tradeHistoryDate, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                        <Text style={[styles.tradeHistoryDate, { color: Color.subText }]}>
                                             {transaction.createdAt.toLocaleDateString('en-US', {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -65,10 +65,10 @@ export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: 
                                     </View>
                                 </View>
                                 <View style={styles.tradeHistoryItemRight}>
-                                    <Text style={[styles.tradeHistoryQuantity, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.tradeHistoryQuantity, { color: Color.baseText }]}>
                                         {transaction.quantity.toFixed(1)} entries
                                     </Text>
-                                    <Text style={[styles.tradeHistoryTotal, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.tradeHistoryTotal, { color: Color.baseText }]}>
                                         {formatCurrency(transaction.totalPrice)}
                                     </Text>
                                 </View>
@@ -77,19 +77,19 @@ export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: 
                     </View>
                 ) : (
                     <View style={styles.emptyTradeHistory}>
-                        <Ionicons name="receipt-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-                        <Text style={[styles.emptyTradeHistoryTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Ionicons name="receipt-outline" size={48} color={Color.subText} />
+                        <Text style={[styles.emptyTradeHistoryTitle, { color: Color.baseText }]}>
                             No Trades Yet
                         </Text>
-                        <Text style={[styles.emptyTradeHistoryText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.emptyTradeHistoryText, { color: Color.subText }]}>
                             You haven't made any trades for {stock.name}. Start building your position!
                         </Text>
                         <TouchableOpacity
-                            style={styles.emptyTradeHistoryCTA}
+                            style={[styles.emptyTradeHistoryCTA, { backgroundColor: Color.green }]}
                             onPress={handleBuy}
                         >
                             <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-                            <Text style={styles.emptyTradeHistoryCTAText}>Buy {stock.ticker}</Text>
+                            <Text style={[styles.emptyTradeHistoryCTAText, { color: Color.white }]}>Buy {stock.ticker}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -179,13 +179,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: '#00C853',
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 12,
     },
     emptyTradeHistoryCTAText: {
-        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
     }

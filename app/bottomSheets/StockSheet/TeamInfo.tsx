@@ -7,8 +7,10 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { formatNumber } from './utils';
+import { useColors } from '@/components/utils';
 
 export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) => {
+    const Color = useColors();
     const { isDark } = useTheme();
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
     const { buySellBottomSheetOpen } = useStockStore();
@@ -25,10 +27,10 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
             <GlassCard style={styles.statsCard}>
                 <View style={styles.teamInfoHeader}>
                     <View>
-                        <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Text style={[styles.statsTitle, { color: Color.baseText }]}>
                             Team Overview
                         </Text>
-                        <Text style={[styles.teamInfoSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.teamInfoSubtitle, { color: Color.subText }]}>
                             {league?.sport} • {league?.name}
                         </Text>
                     </View>
@@ -53,13 +55,13 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
                 <View style={styles.teamStatsGrid}>
                     <View style={styles.teamStatCard}>
                         <View style={styles.teamStatIconContainer}>
-                            <Ionicons name="stats-chart" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                            <Ionicons name="stats-chart" size={20} color={Color.subText} />
                         </View>
-                        <Text style={[styles.teamStatLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.teamStatLabel, { color: Color.subText }]}>
                             Volume
                         </Text>
                         <Text
-                            style={[styles.teamStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                            style={[styles.teamStatValue, { color: Color.baseText }]}
                             numberOfLines={1}
                             adjustsFontSizeToFit={true}
                             minimumFontScale={0.7}
@@ -70,13 +72,13 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
 
                     <View style={styles.teamStatCard}>
                         <View style={styles.teamStatIconContainer}>
-                            <Ionicons name="cash" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                            <Ionicons name="cash" size={20} color={Color.subText} />
                         </View>
-                        <Text style={[styles.teamStatLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.teamStatLabel, { color: Color.subText }]}>
                             Market Cap
                         </Text>
                         <Text
-                            style={[styles.teamStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                            style={[styles.teamStatValue, { color: Color.baseText }]}
                             numberOfLines={1}
                             adjustsFontSizeToFit={true}
                             minimumFontScale={0.7}
@@ -87,13 +89,13 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
 
                     <View style={styles.teamStatCard}>
                         <View style={styles.teamStatIconContainer}>
-                            <Ionicons name="people" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                            <Ionicons name="people" size={20} color={Color.subText} />
                         </View>
-                        <Text style={[styles.teamStatLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.teamStatLabel, { color: Color.subText }]}>
                             League Vol
                         </Text>
                         <Text
-                            style={[styles.teamStatValue, { color: isDark ? '#FFFFFF' : '#000000' }]}
+                            style={[styles.teamStatValue, { color: Color.baseText }]}
                             numberOfLines={1}
                             adjustsFontSizeToFit={true}
                             minimumFontScale={0.7}
@@ -106,12 +108,12 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
                 {/* Team Details Row */}
                 <View style={styles.teamDetailsRow}>
                     <View style={styles.teamDetailItem}>
-                        <Ionicons name="person" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Ionicons name="person" size={16} color={Color.subText} />
                         <View style={styles.teamDetailContent}>
-                            <Text style={[styles.teamDetailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.teamDetailLabel, { color: Color.subText }]}>
                                 Coach
                             </Text>
-                            <Text style={[styles.teamDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.teamDetailValue, { color: Color.baseText }]}>
                                 {stock.coach}
                             </Text>
                         </View>
@@ -120,12 +122,12 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
                     <View style={styles.teamDetailDivider} />
 
                     <View style={styles.teamDetailItem}>
-                        <Ionicons name="calendar" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Ionicons name="calendar" size={16} color={Color.subText} />
                         <View style={styles.teamDetailContent}>
-                            <Text style={[styles.teamDetailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.teamDetailLabel, { color: Color.subText }]}>
                                 Founded
                             </Text>
-                            <Text style={[styles.teamDetailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.teamDetailValue, { color: Color.baseText }]}>
                                 {stock.founded}
                             </Text>
                         </View>
@@ -137,7 +139,7 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
                     <View style={styles.topPlayersContainer}>
                         <View style={styles.topPlayersHeader}>
                             <Ionicons name="star" size={18} color={isDark ? '#F59E0B' : '#F59E0B'} />
-                            <Text style={[styles.topPlayersTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.topPlayersTitle, { color: Color.baseText }]}>
                                 Top Players
                             </Text>
                         </View>
@@ -146,11 +148,11 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
                                 <View key={index} style={styles.topPlayerItem}>
                                     <View style={[
                                         styles.topPlayerRank,
-                                        { backgroundColor: index === 0 ? '#F59E0B' : index === 1 ? '#9CA3AF' : '#CD7F32' }
+                                        { backgroundColor: index === 0 ? '#F59E0B' : index === 1 ? Color.gray500 : '#CD7F32' }
                                     ]}>
                                         <Text style={styles.topPlayerRankText}>{index + 1}</Text>
                                     </View>
-                                    <Text style={[styles.topPlayerName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.topPlayerName, { color: Color.baseText }]}>
                                         {player}
                                     </Text>
                                 </View>
@@ -162,15 +164,15 @@ export const TeamInfo = ({ stock, league }: { stock: Stock, league: League }) =>
                 {/* Listing Info */}
                 <View style={styles.listingInfo}>
                     <View style={styles.listingInfoItem}>
-                        <Ionicons name="time-outline" size={14} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                        <Text style={[styles.listingInfoText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Ionicons name="time-outline" size={14} color={Color.subText} />
+                        <Text style={[styles.listingInfoText, { color: Color.subText }]}>
                             Listed {stock.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                         </Text>
                     </View>
                     <View style={styles.listingInfoDivider} />
                     <View style={styles.listingInfoItem}>
-                        <Ionicons name="refresh-outline" size={14} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                        <Text style={[styles.listingInfoText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Ionicons name="refresh-outline" size={14} color={Color.subText} />
+                        <Text style={[styles.listingInfoText, { color: Color.subText }]}>
                             Updated {stock.updatedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Text>
                     </View>

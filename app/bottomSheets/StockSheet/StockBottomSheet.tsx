@@ -1,6 +1,6 @@
 import Chart from '@/components/chart';
 import { Ticker } from '@/components/Ticker';
-import { brightenColor, isDarkColor } from '@/components/utils';
+import { brightenColor, isDarkColor, useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { leagues, portfolio, priceHistory, stocks, transactions } from '@/lib/dummy-data';
 import { getSportKey } from '@/lib/odds-api';
@@ -27,6 +27,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
     const { buySellBottomSheetOpen } = useStockStore();
     const { isDark } = useTheme();
+    const Color = useColors();
 
     useEffect(() => {
         if (buySellBottomSheetOpen) {
@@ -98,7 +99,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const priceChangePercentage = (priceChange / previousPrice) * 100;
 
     // Get team colors
-    const primaryColor = stock.color || '#3B82F6';
+    const primaryColor = stock.color || Color.blue;
     const isDarkBackground = isDarkColor(primaryColor);
     const brightenedPrimaryColor = brightenColor(primaryColor);
 
@@ -128,14 +129,14 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                             </View>
                         </View>
                         <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
-                            <Text style={[styles.currentPrice, { color: isDark ? '#FFFFFF' : '#000000' }]}>{formatCurrency(currentPrice)}</Text>
+                            <Text style={[styles.currentPrice, { color: Color.baseText }]}>{formatCurrency(currentPrice)}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Price Performance */}
                 <View style={styles.pricePerformance}>
-                    <Text style={[styles.priceChange, { color: priceChange >= 0 ? '#00C853' : '#FF1744' }]}>
+                    <Text style={[styles.priceChange, { color: priceChange >= 0 ? Color.green : Color.red }]}>
                         {priceChange >= 0 ? '↑' : '↓'} {formatPercentage(priceChangePercentage)}
                     </Text>
                 </View>

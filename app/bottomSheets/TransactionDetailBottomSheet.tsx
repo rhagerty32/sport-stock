@@ -1,5 +1,5 @@
 import { GlassCard } from '@/components/ui/GlassCard';
-import { brightenColor, isDarkColor } from '@/components/utils';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { leagues, stocks, transactions } from '@/lib/dummy-data';
@@ -14,6 +14,7 @@ type TransactionDetailBottomSheetProps = {
 };
 
 export default function TransactionDetailBottomSheet({ transactionDetailBottomSheetRef }: TransactionDetailBottomSheetProps) {
+    const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const { activeTransaction, setActiveTransaction, setTransactionDetailBottomSheetOpen } = useStockStore();
@@ -38,9 +39,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
 
     const stock = stocks.find(s => s.id === activeTransaction.stockID);
     const league = leagues.find(l => l.id === stock?.leagueID);
-    const primaryColor = stock?.color || '#3B82F6';
-    const isDarkBackground = stock ? isDarkColor(primaryColor) : false;
-    const brightenedPrimaryColor = stock ? brightenColor(primaryColor) : '#FFFFFF';
+    const primaryColor = stock?.color || Color.blue;
 
     // Calculate returns for sell transactions
     const transactionReturns = useMemo(() => {
@@ -149,7 +148,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
     };
 
     const isBuy = activeTransaction.action === 'buy';
-    const actionColor = isBuy ? '#00C853' : '#FF1744';
+    const actionColor = isBuy ? Color.green : Color.red;
     const actionBgColor = isBuy ? 'rgba(0, 200, 83, 0.15)' : 'rgba(255, 23, 68, 0.15)';
 
     return (
@@ -165,7 +164,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
             handleStyle={{ display: 'none' }}
             snapPoints={['92%']}
             style={{ borderRadius: 25 }}
-            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
+            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : Color.white }}
         >
             <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
@@ -176,7 +175,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                                 <View style={styles.stockNameRow}>
                                     <Text style={styles.stockName}>{stock?.name || 'Unknown'}</Text>
                                     {stock && (
-                                        <View style={[styles.tickerBadge, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
+                                        <View style={[styles.tickerBadge, { backgroundColor: isDark ? '#1A1D21' : Color.white }]}>
                                             <Text style={[styles.tickerText, { color: primaryColor }]}>
                                                 {stock.ticker}
                                             </Text>
@@ -203,8 +202,8 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                 <View style={styles.detailsContainer}>
                     <GlassCard style={styles.detailsCard}>
                         <View style={styles.detailsHeader}>
-                            <Ionicons name="receipt-outline" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
-                            <Text style={[styles.detailsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Ionicons name="receipt-outline" size={24} color={Color.baseText} />
+                            <Text style={[styles.detailsTitle, { color: Color.baseText }]}>
                                 Transaction Details
                             </Text>
                         </View>
@@ -212,16 +211,16 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                         {/* Date & Time */}
                         <View style={styles.detailRow}>
                             <View style={styles.detailLabelContainer}>
-                                <Ionicons name="calendar-outline" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                                <Text style={[styles.detailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Ionicons name="calendar-outline" size={18} color={Color.subText} />
+                                <Text style={[styles.detailLabel, { color: Color.subText }]}>
                                     Date
                                 </Text>
                             </View>
                             <View style={styles.detailValueContainer}>
-                                <Text style={[styles.detailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.detailValue, { color: Color.baseText }]}>
                                     {formatDate(activeTransaction.createdAt)}
                                 </Text>
-                                <Text style={[styles.detailSubValue, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.detailSubValue, { color: Color.subText }]}>
                                     {formatTime(activeTransaction.createdAt)}
                                 </Text>
                             </View>
@@ -230,12 +229,12 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                         {/* Entries */}
                         <View style={styles.detailRow}>
                             <View style={styles.detailLabelContainer}>
-                                <Ionicons name="layers-outline" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                                <Text style={[styles.detailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Ionicons name="layers-outline" size={18} color={Color.subText} />
+                                <Text style={[styles.detailLabel, { color: Color.subText }]}>
                                     Entries
                                 </Text>
                             </View>
-                            <Text style={[styles.detailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.detailValue, { color: Color.baseText }]}>
                                 {activeTransaction.quantity.toFixed(2)}
                             </Text>
                         </View>
@@ -243,12 +242,12 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                         {/* Price per Entry */}
                         <View style={styles.detailRow}>
                             <View style={styles.detailLabelContainer}>
-                                <Ionicons name="cash-outline" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                                <Text style={[styles.detailLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Ionicons name="cash-outline" size={18} color={Color.subText} />
+                                <Text style={[styles.detailLabel, { color: Color.subText }]}>
                                     Price per Entry
                                 </Text>
                             </View>
-                            <Text style={[styles.detailValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.detailValue, { color: Color.baseText }]}>
                                 {formatCurrency(activeTransaction.price)}
                             </Text>
                         </View>
@@ -257,7 +256,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                         <View style={[styles.detailRow, styles.detailRowHighlight]}>
                             <View style={styles.detailLabelContainer}>
                                 <Ionicons name="wallet-outline" size={18} color={actionColor} />
-                                <Text style={[styles.detailLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.detailLabel, { color: Color.baseText }]}>
                                     Total {isBuy ? 'Paid' : 'Received'}
                                 </Text>
                             </View>
@@ -274,53 +273,53 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                                 <Ionicons
                                     name={transactionReturns.profit >= 0 ? 'trending-up' : 'trending-down'}
                                     size={24}
-                                    color={transactionReturns.profit >= 0 ? '#00C853' : '#FF1744'}
+                                    color={transactionReturns.profit >= 0 ? Color.green : Color.red}
                                 />
-                                <Text style={[styles.returnsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.returnsTitle, { color: Color.baseText }]}>
                                     Returns on This Transaction
                                 </Text>
                             </View>
 
                             {/* Average Cost */}
                             <View style={styles.returnRow}>
-                                <Text style={[styles.returnLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.returnLabel, { color: Color.subText }]}>
                                     Average Entry Price
                                 </Text>
-                                <Text style={[styles.returnValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.returnValue, { color: Color.baseText }]}>
                                     {formatCurrency(transactionReturns.avgEntryPrice)}
                                 </Text>
                             </View>
 
                             {/* Total Cost */}
                             <View style={styles.returnRow}>
-                                <Text style={[styles.returnLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.returnLabel, { color: Color.subText }]}>
                                     Total Cost
                                 </Text>
-                                <Text style={[styles.returnValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.returnValue, { color: Color.baseText }]}>
                                     {formatCurrency(transactionReturns.totalCost)}
                                 </Text>
                             </View>
 
                             {/* Total Revenue */}
                             <View style={styles.returnRow}>
-                                <Text style={[styles.returnLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.returnLabel, { color: Color.subText }]}>
                                     Total Revenue
                                 </Text>
-                                <Text style={[styles.returnValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.returnValue, { color: Color.baseText }]}>
                                     {formatCurrency(transactionReturns.totalRevenue)}
                                 </Text>
                             </View>
 
                             {/* Profit/Loss */}
                             <View style={[styles.returnRow, styles.returnRowHighlight]}>
-                                <Text style={[styles.returnLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.returnLabel, { color: Color.baseText }]}>
                                     {transactionReturns.profit >= 0 ? 'Profit' : 'Loss'}
                                 </Text>
                                 <View style={styles.profitContainer}>
                                     <Text
                                         style={[
                                             styles.profitValue,
-                                            { color: transactionReturns.profit >= 0 ? '#00C853' : '#FF1744' },
+                                            { color: transactionReturns.profit >= 0 ? Color.green : Color.red },
                                         ]}
                                     >
                                         {transactionReturns.profit >= 0 ? '+' : ''}
@@ -341,7 +340,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                                             style={[
                                                 styles.profitBadgeText,
                                                 {
-                                                    color: transactionReturns.profit >= 0 ? '#00C853' : '#FF1744',
+                                                    color: transactionReturns.profit >= 0 ? Color.green : Color.red,
                                                 },
                                             ]}
                                         >

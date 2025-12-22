@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -14,6 +15,7 @@ type LightDarkBottomSheetProps = {
 type ThemeOption = 'light' | 'dark' | 'system';
 
 export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightDarkBottomSheetProps) {
+    const Color = useColors();
     const { setLightDarkBottomSheetOpen } = useStockStore();
     const { theme, setTheme } = useSettingsStore();
     const { isDark } = useTheme();
@@ -78,7 +80,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
             <BottomSheetView style={styles.scrollView}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.title, { color: Color.baseText }]}>
                         Appearance
                     </Text>
                     <Text style={[styles.subtitle, { color: isDark ? '#D1D5DB' : '#4B5563' }]}>
@@ -108,16 +110,16 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                                 name={option.icon as any}
                                 size={20}
                                 color={theme === option.value
-                                    ? (isDark ? '#FFFFFF' : '#000000')
-                                    : (isDark ? '#9CA3AF' : '#6B7280')
+                                    ? (Color.baseText)
+                                    : (Color.subText)
                                 }
                             />
                             <Text style={[
                                 styles.tabTriggerText,
                                 {
                                     color: theme === option.value
-                                        ? (isDark ? '#FFFFFF' : '#000000')
-                                        : (isDark ? '#9CA3AF' : '#6B7280')
+                                        ? (Color.baseText)
+                                        : (Color.subText)
                                 }
                             ]}>
                                 {option.label}
@@ -132,7 +134,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                         <View style={[styles.contentCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                             <View style={styles.contentHeader}>
                                 <Ionicons name="sunny" size={24} color="#F59E0B" />
-                                <Text style={[styles.contentTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.contentTitle, { color: Color.baseText }]}>
                                     Light Mode
                                 </Text>
                             </View>
@@ -142,7 +144,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                             <View style={styles.previewContainer}>
                                 <View style={[styles.previewCard, { backgroundColor: '#FFFFFF', borderColor: '#E5E7EB' }]}>
                                     <View style={styles.previewHeader}>
-                                        <View style={[styles.previewDot, { backgroundColor: '#EF4444' }]} />
+                                        <View style={[styles.previewDot, { backgroundColor: Color.red }]} />
                                         <View style={[styles.previewDot, { backgroundColor: '#F59E0B' }]} />
                                         <View style={[styles.previewDot, { backgroundColor: '#10B981' }]} />
                                     </View>
@@ -159,7 +161,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                         <View style={[styles.contentCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                             <View style={styles.contentHeader}>
                                 <Ionicons name="moon" size={24} color="#8B5CF6" />
-                                <Text style={[styles.contentTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.contentTitle, { color: Color.baseText }]}>
                                     Dark Mode
                                 </Text>
                             </View>
@@ -169,7 +171,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                             <View style={styles.previewContainer}>
                                 <View style={[styles.previewCard, { backgroundColor: '#1A1D21', borderColor: '#242428' }]}>
                                     <View style={styles.previewHeader}>
-                                        <View style={[styles.previewDot, { backgroundColor: '#EF4444' }]} />
+                                        <View style={[styles.previewDot, { backgroundColor: Color.red }]} />
                                         <View style={[styles.previewDot, { backgroundColor: '#F59E0B' }]} />
                                         <View style={[styles.previewDot, { backgroundColor: '#10B981' }]} />
                                     </View>
@@ -186,7 +188,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                         <View style={[styles.contentCard, { backgroundColor: isDark ? '#242428' : '#F9FAFB' }]}>
                             <View style={styles.contentHeader}>
                                 <Ionicons name="phone-portrait" size={24} color="#6B7280" />
-                                <Text style={[styles.contentTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.contentTitle, { color: Color.baseText }]}>
                                     System
                                 </Text>
                             </View>
@@ -197,7 +199,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                                 <View style={styles.systemPreview}>
                                     <View style={[styles.previewCard, { backgroundColor: '#FFFFFF', borderColor: '#E5E7EB' }]}>
                                         <View style={styles.previewHeader}>
-                                            <View style={[styles.previewDot, { backgroundColor: '#EF4444' }]} />
+                                            <View style={[styles.previewDot, { backgroundColor: Color.red }]} />
                                             <View style={[styles.previewDot, { backgroundColor: '#F59E0B' }]} />
                                             <View style={[styles.previewDot, { backgroundColor: '#10B981' }]} />
                                         </View>
@@ -208,7 +210,7 @@ export default function LightDarkBottomSheet({ lightDarkBottomSheetRef }: LightD
                                     </View>
                                     <View style={[styles.previewCard, { backgroundColor: '#1A1D21', borderColor: '#242428' }]}>
                                         <View style={styles.previewHeader}>
-                                            <View style={[styles.previewDot, { backgroundColor: '#EF4444' }]} />
+                                            <View style={[styles.previewDot, { backgroundColor: Color.red }]} />
                                             <View style={[styles.previewDot, { backgroundColor: '#F59E0B' }]} />
                                             <View style={[styles.previewDot, { backgroundColor: '#10B981' }]} />
                                         </View>

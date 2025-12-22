@@ -55,14 +55,14 @@ export default function LeaguePage() {
                 </Text>
             </View>
             <View style={styles.teamInfo}>
-                <Text style={[styles.teamName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[styles.teamName, { color: Color.baseText }]}>
                     {item.name}
                 </Text>
-                <Text style={[styles.teamPrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                <Text style={[styles.teamPrice, { color: Color.subText }]}>
                     ${item.price.toFixed(2)}
                 </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={isDark ? '#6B7280' : '#9CA3AF'} />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#6B7280' : Color.gray500} />
         </TouchableOpacity>
     );
 
@@ -70,9 +70,9 @@ export default function LeaguePage() {
         <ThemedView style={styles.container}>
             <View style={[styles.header, { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={28} color={isDark ? '#FFFFFF' : '#000000'} />
+                    <Ionicons name="chevron-back" size={28} color={Color.baseText} />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                <Text style={[styles.title, { color: Color.baseText }]}>
                     {leagueName}
                 </Text>
                 <View style={styles.placeholder} />

@@ -1,5 +1,6 @@
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -12,6 +13,7 @@ interface BlockedStateScreenProps {
 }
 
 export default function BlockedStateScreen({ detectedState }: BlockedStateScreenProps) {
+    const Color = useColors();
     const { isDark } = useTheme();
 
     return (
@@ -29,14 +31,14 @@ export default function BlockedStateScreen({ detectedState }: BlockedStateScreen
                         <Ionicons
                             name="location-outline"
                             size={64}
-                            color={isDark ? '#EF4444' : '#DC2626'}
+                            color={isDark ? Color.red : Color.red}
                         />
                     </View>
                 </Animated.View>
 
                 {/* Title */}
                 <Animated.View entering={FadeInUp.duration(600).delay(200)}>
-                    <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.title, { color: Color.baseText }]}>
                         Service Not Available
                     </Text>
                 </Animated.View>
@@ -52,10 +54,10 @@ export default function BlockedStateScreen({ detectedState }: BlockedStateScreen
                                 <Ionicons
                                     name="information-circle-outline"
                                     size={20}
-                                    color={isDark ? '#9CA3AF' : '#6B7280'}
+                                    color={Color.subText}
                                     style={styles.infoIcon}
                                 />
-                                <Text style={[styles.stateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.stateText, { color: Color.subText }]}>
                                     Detected location: {detectedState}
                                 </Text>
                             </View>
@@ -67,10 +69,10 @@ export default function BlockedStateScreen({ detectedState }: BlockedStateScreen
                 <Animated.View entering={FadeInUp.duration(600).delay(400)}>
                     <GlassCard style={styles.mapCard} padding={0}>
                         <View style={styles.mapContainer}>
-                            <Text style={[styles.mapTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                            <Text style={[styles.mapTitle, { color: Color.baseText }]}>
                                 Available States
                             </Text>
-                            <Text style={[styles.mapSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.mapSubtitle, { color: Color.subText }]}>
                                 SportStock is available in the highlighted states
                             </Text>
                             <View style={styles.mapImageContainer}>
@@ -91,14 +93,14 @@ export default function BlockedStateScreen({ detectedState }: BlockedStateScreen
                             <Ionicons
                                 name="help-circle-outline"
                                 size={24}
-                                color={isDark ? '#00C853' : '#00C853'}
+                                color={Color.green}
                                 style={styles.infoIcon}
                             />
                             <View style={styles.infoContent}>
-                                <Text style={[styles.infoTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                <Text style={[styles.infoTitle, { color: Color.baseText }]}>
                                     Why is this restricted?
                                 </Text>
-                                <Text style={[styles.infoText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.infoText, { color: Color.subText }]}>
                                     State regulations vary across the United States. We're working to expand our availability to more states in the future.
                                 </Text>
                             </View>

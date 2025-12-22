@@ -1,5 +1,6 @@
 import { Ticker } from '@/components/Ticker';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useGameOdds } from '@/lib/odds-api';
 import { Stock } from '@/types';
@@ -10,17 +11,18 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
 import { calculateWinProbability, getTeamAbbreviation, getTeamColor } from './utils';
 
 export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: string, sportKey: string, stock: Stock }) => {
+    const Color = useColors();
     const { isDark } = useTheme();
     const { data: gameOdds, isLoading: oddsLoading, error: oddsError } = useGameOdds(apiTeamName, sportKey);
     return (
         <View style={styles.statsContainer}>
             <GlassCard style={styles.statsCard}>
                 <View style={styles.gameOddsHeader}>
-                    <Text style={[styles.statsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                    <Text style={[styles.statsTitle, { color: Color.baseText }]}>
                         GAME ODDS
                     </Text>
                     <View style={styles.draftkingsBranding}>
-                        <Text style={[styles.draftkingsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.draftkingsText, { color: Color.subText }]}>
                             Odds by DRAFTKINGS
                         </Text>
                     </View>
@@ -28,18 +30,18 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
 
                 {oddsLoading ? (
                     <View style={styles.oddsLoadingContainer}>
-                        <ActivityIndicator size="small" color={isDark ? '#9CA3AF' : '#6B7280'} />
-                        <Text style={[styles.oddsLoadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <ActivityIndicator size="small" color={Color.subText} />
+                        <Text style={[styles.oddsLoadingText, { color: Color.subText }]}>
                             Loading odds...
                         </Text>
                     </View>
                 ) : oddsError || !gameOdds ? (
                     <View style={styles.emptyOddsState}>
-                        <Ionicons name="calendar-outline" size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
-                        <Text style={[styles.emptyOddsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                        <Ionicons name="calendar-outline" size={48} color={Color.subText} />
+                        <Text style={[styles.emptyOddsTitle, { color: Color.baseText }]}>
                             No Upcoming Games
                         </Text>
-                        <Text style={[styles.emptyOddsText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        <Text style={[styles.emptyOddsText, { color: Color.subText }]}>
                             {stock?.name} doesn't have any upcoming games scheduled.
                         </Text>
                     </View>
@@ -47,7 +49,7 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                     <>
                         {/* Game Time */}
                         <View style={styles.gameTimeContainer}>
-                            <Text style={[styles.gameTime, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.gameTime, { color: Color.subText }]}>
                                 {new Date(gameOdds.event.commence_time).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
@@ -62,10 +64,10 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                     year: 'numeric'
                                 })}
                             </Text>
-                            <Text style={[styles.gameTime, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.gameTime, { color: Color.subText }]}>
                                 @
                             </Text>
-                            <Text style={[styles.gameTime, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                            <Text style={[styles.gameTime, { color: Color.subText }]}>
                                 {new Date(gameOdds.event.commence_time).toLocaleTimeString('en-US', {
                                     hour: 'numeric',
                                     minute: '2-digit',
@@ -79,13 +81,13 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                             {/* Header Row */}
                             <View style={styles.oddsTableHeader}>
                                 <View style={styles.oddsTableHeaderTeam} />
-                                <Text style={[styles.oddsTableHeaderText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.oddsTableHeaderText, { color: Color.subText }]}>
                                     SPREAD
                                 </Text>
-                                <Text style={[styles.oddsTableHeaderText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.oddsTableHeaderText, { color: Color.subText }]}>
                                     TOTAL
                                 </Text>
-                                <Text style={[styles.oddsTableHeaderText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                <Text style={[styles.oddsTableHeaderText, { color: Color.subText }]}>
                                     ML
                                 </Text>
                             </View>
@@ -93,7 +95,7 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                             {/* Home Team Row */}
                             <View style={styles.oddsTableRow}>
                                 <View style={styles.oddsTableTeamCell}>
-                                    <Text style={[styles.oddsTableTeamName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.oddsTableTeamName, { color: Color.baseText }]}>
                                         {gameOdds.event.home_team}
                                     </Text>
                                 </View>
@@ -103,15 +105,15 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                 ]}>
                                     {gameOdds.spread.home ? (
                                         <>
-                                            <Text style={[styles.oddsTableValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.oddsTableValue, { color: Color.baseText }]}>
                                                 {gameOdds.spread.home.point > 0 ? '+' : ''}{gameOdds.spread.home.point}
                                             </Text>
-                                            <Text style={[styles.oddsTablePrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                            <Text style={[styles.oddsTablePrice, { color: Color.subText }]}>
                                                 {gameOdds.spread.home.price > 0 ? '+' : ''}{gameOdds.spread.home.price}
                                             </Text>
                                         </>
                                     ) : (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#4B5563' : '#9CA3AF' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.subText }]}>
                                             —
                                         </Text>
                                     )}
@@ -122,15 +124,15 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                 ]}>
                                     {gameOdds.total.over ? (
                                         <>
-                                            <Text style={[styles.oddsTableValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.oddsTableValue, { color: Color.baseText }]}>
                                                 o{gameOdds.total.over.point}
                                             </Text>
-                                            <Text style={[styles.oddsTablePrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                            <Text style={[styles.oddsTablePrice, { color: Color.subText }]}>
                                                 {gameOdds.total.over.price > 0 ? '+' : ''}{gameOdds.total.over.price}
                                             </Text>
                                         </>
                                     ) : (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#4B5563' : '#9CA3AF' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.subText }]}>
                                             —
                                         </Text>
                                     )}
@@ -140,11 +142,11 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                     gameOdds.moneyline.home !== null && styles.oddsTableCellHighlighted
                                 ]}>
                                     {gameOdds.moneyline.home !== null ? (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.baseText }]}>
                                             {gameOdds.moneyline.home > 0 ? '+' : ''}{gameOdds.moneyline.home}
                                         </Text>
                                     ) : (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#4B5563' : '#9CA3AF' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.subText }]}>
                                             —
                                         </Text>
                                     )}
@@ -154,7 +156,7 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                             {/* Away Team Row */}
                             <View style={styles.oddsTableRow}>
                                 <View style={styles.oddsTableTeamCell}>
-                                    <Text style={[styles.oddsTableTeamName, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                    <Text style={[styles.oddsTableTeamName, { color: Color.baseText }]}>
                                         {gameOdds.event.away_team}
                                     </Text>
                                 </View>
@@ -164,15 +166,15 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                 ]}>
                                     {gameOdds.spread.away ? (
                                         <>
-                                            <Text style={[styles.oddsTableValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.oddsTableValue, { color: Color.baseText }]}>
                                                 {gameOdds.spread.away.point > 0 ? '+' : ''}{gameOdds.spread.away.point}
                                             </Text>
-                                            <Text style={[styles.oddsTablePrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                            <Text style={[styles.oddsTablePrice, { color: Color.subText }]}>
                                                 {gameOdds.spread.away.price > 0 ? '+' : ''}{gameOdds.spread.away.price}
                                             </Text>
                                         </>
                                     ) : (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#4B5563' : '#9CA3AF' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.subText }]}>
                                             —
                                         </Text>
                                     )}
@@ -183,164 +185,166 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                 ]}>
                                     {gameOdds.total.under ? (
                                         <>
-                                            <Text style={[styles.oddsTableValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                            <Text style={[styles.oddsTableValue, { color: Color.baseText }]}>
                                                 u{gameOdds.total.under.point}
                                             </Text>
-                                            <Text style={[styles.oddsTablePrice, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                                            <Text style={[styles.oddsTablePrice, { color: Color.subText }]}>
                                                 {gameOdds.total.under.price > 0 ? '+' : ''}{gameOdds.total.under.price}
                                             </Text>
                                         </>
                                     ) : (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#4B5563' : '#9CA3AF' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.subText }]}>
                                             —
                                         </Text>
                                     )}
-                                </View>
+                                </View >
                                 <View style={[
                                     styles.oddsTableCell,
                                     gameOdds.moneyline.away !== null && styles.oddsTableCellHighlighted
                                 ]}>
                                     {gameOdds.moneyline.away !== null ? (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.baseText }]}>
                                             {gameOdds.moneyline.away > 0 ? '+' : ''}{gameOdds.moneyline.away}
                                         </Text>
                                     ) : (
-                                        <Text style={[styles.oddsTableValue, { color: isDark ? '#4B5563' : '#9CA3AF' }]}>
+                                        <Text style={[styles.oddsTableValue, { color: Color.subText }]}>
                                             —
                                         </Text>
                                     )}
-                                </View>
-                            </View>
-                        </View>
+                                </View >
+                            </View >
+                        </View >
 
                         {/* Matchup Predictor Chart */}
-                        {gameOdds.moneyline.home !== null && gameOdds.moneyline.away !== null && (
-                            <View style={styles.matchupPredictorContainer}>
-                                <Text style={[styles.matchupPredictorTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                    TO WIN
-                                </Text>
+                        {
+                            gameOdds.moneyline.home !== null && gameOdds.moneyline.away !== null && (
+                                <View style={styles.matchupPredictorContainer}>
+                                    <Text style={[styles.matchupPredictorTitle, { color: Color.baseText }]}>
+                                        TO WIN
+                                    </Text>
 
-                                {(() => {
-                                    const homeProb = calculateWinProbability(gameOdds.moneyline.home);
-                                    const awayProb = calculateWinProbability(gameOdds.moneyline.away);
-                                    const totalProb = homeProb + awayProb;
-                                    // Normalize to 100%
-                                    const homePercent = (homeProb / totalProb) * 100;
-                                    const awayPercent = (awayProb / totalProb) * 100;
+                                    {(() => {
+                                        const homeProb = calculateWinProbability(gameOdds.moneyline.home);
+                                        const awayProb = calculateWinProbability(gameOdds.moneyline.away);
+                                        const totalProb = homeProb + awayProb;
+                                        // Normalize to 100%
+                                        const homePercent = (homeProb / totalProb) * 100;
+                                        const awayPercent = (awayProb / totalProb) * 100;
 
-                                    const homeAbbr = getTeamAbbreviation(gameOdds.event.home_team);
-                                    const awayAbbr = getTeamAbbreviation(gameOdds.event.away_team);
+                                        const homeAbbr = getTeamAbbreviation(gameOdds.event.home_team);
+                                        const awayAbbr = getTeamAbbreviation(gameOdds.event.away_team);
 
-                                    // Check if current stock is home or away team
-                                    const isHomeTeam = stock?.fullName.toLowerCase().trim() === gameOdds.event.home_team.toLowerCase().trim();
+                                        // Check if current stock is home or away team
+                                        const isHomeTeam = stock?.fullName.toLowerCase().trim() === gameOdds.event.home_team.toLowerCase().trim();
 
-                                    const homeColor = isHomeTeam ? stock.secondaryColor : getTeamColor(gameOdds.event.home_team);
-                                    const awayColor = getTeamColor(gameOdds.event.away_team);
+                                        const homeColor = isHomeTeam ? stock.secondaryColor : getTeamColor(gameOdds.event.home_team);
+                                        const awayColor = getTeamColor(gameOdds.event.away_team);
 
-                                    const chartSize = 300;
-                                    const centerX = chartSize / 2;
-                                    const centerY = chartSize / 2;
-                                    const radius = 95;
-                                    const innerRadius = 75;
+                                        const chartSize = 300;
+                                        const centerX = chartSize / 2;
+                                        const centerY = chartSize / 2;
+                                        const radius = 95;
+                                        const innerRadius = 75;
 
-                                    // Calculate angles for donut chart
-                                    const homeAngle = (homePercent / 100) * 360;
-                                    const awayAngle = (awayPercent / 100) * 360;
+                                        // Calculate angles for donut chart
+                                        const homeAngle = (homePercent / 100) * 360;
+                                        const awayAngle = (awayPercent / 100) * 360;
 
-                                    // Convert angles to radians and calculate arc paths
-                                    const homeStartAngle = -90; // Start at top
-                                    const homeEndAngle = homeStartAngle + homeAngle;
-                                    const awayStartAngle = homeEndAngle;
-                                    const awayEndAngle = awayStartAngle + awayAngle;
+                                        // Convert angles to radians and calculate arc paths
+                                        const homeStartAngle = -90; // Start at top
+                                        const homeEndAngle = homeStartAngle + homeAngle;
+                                        const awayStartAngle = homeEndAngle;
+                                        const awayEndAngle = awayStartAngle + awayAngle;
 
-                                    const toRadians = (deg: number) => (deg * Math.PI) / 180;
+                                        const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
-                                    const createArc = (startAngle: number, endAngle: number, innerR: number, outerR: number) => {
-                                        const startRad = toRadians(startAngle);
-                                        const endRad = toRadians(endAngle);
+                                        const createArc = (startAngle: number, endAngle: number, innerR: number, outerR: number) => {
+                                            const startRad = toRadians(startAngle);
+                                            const endRad = toRadians(endAngle);
 
-                                        const x1 = centerX + outerR * Math.cos(startRad);
-                                        const y1 = centerY + outerR * Math.sin(startRad);
-                                        const x2 = centerX + outerR * Math.cos(endRad);
-                                        const y2 = centerY + outerR * Math.sin(endRad);
+                                            const x1 = centerX + outerR * Math.cos(startRad);
+                                            const y1 = centerY + outerR * Math.sin(startRad);
+                                            const x2 = centerX + outerR * Math.cos(endRad);
+                                            const y2 = centerY + outerR * Math.sin(endRad);
 
-                                        const x3 = centerX + innerR * Math.cos(endRad);
-                                        const y3 = centerY + innerR * Math.sin(endRad);
-                                        const x4 = centerX + innerR * Math.cos(startRad);
-                                        const y4 = centerY + innerR * Math.sin(startRad);
+                                            const x3 = centerX + innerR * Math.cos(endRad);
+                                            const y3 = centerY + innerR * Math.sin(endRad);
+                                            const x4 = centerX + innerR * Math.cos(startRad);
+                                            const y4 = centerY + innerR * Math.sin(startRad);
 
-                                        const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+                                            const largeArc = endAngle - startAngle > 180 ? 1 : 0;
 
-                                        return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
-                                    };
+                                            return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+                                        };
 
-                                    return (
-                                        <View style={styles.matchupPredictorContent}>
-                                            <View style={{ flexDirection: 'row', gap: 16 }}>
-                                                {/* Left side - Away team */}
-                                                <View style={styles.matchupPredictorSide}>
-                                                    <Text style={[styles.matchupPredictorPercent, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                        {awayPercent.toFixed(1)}%
-                                                    </Text>
-                                                </View>
-
-                                                {/* Right side - Home team */}
-                                                <View style={styles.matchupPredictorSide}>
-                                                    <Text style={[styles.matchupPredictorPercent, { color: isDark ? '#FFFFFF' : '#000000' }]}>
-                                                        {homePercent.toFixed(1)}%
-                                                    </Text>
-                                                </View>
-                                            </View>
-
-                                            {/* Center - Donut Chart */}
-                                            <View style={styles.matchupPredictorChart}>
-                                                <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
-                                                    <Defs>
-                                                        <Pattern id="stripesPattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
-                                                            <Rect width="4" height="8" fill={isDark ? '#FFFFFF' : '#000000'} opacity="0.4" />
-                                                        </Pattern>
-                                                    </Defs>
-
-                                                    {/* Home team segment */}
-                                                    <Path
-                                                        d={createArc(homeStartAngle, homeEndAngle, innerRadius, radius)}
-                                                        fill={homeColor}
-                                                        stroke={isDark ? '#4B5563' : '#9CA3AF'}
-                                                        strokeWidth="1"
-                                                    />
-
-                                                    {/* Away team segment */}
-                                                    <Path
-                                                        d={createArc(awayStartAngle, awayEndAngle, innerRadius, radius)}
-                                                        fill={awayColor}
-                                                        stroke={isDark ? '#4B5563' : '#9CA3AF'}
-                                                        strokeWidth="1"
-                                                    />
-
-                                                    {/* Center circle for logos */}
-                                                    <Circle
-                                                        cx={centerX}
-                                                        cy={centerY}
-                                                        r={innerRadius}
-                                                        fill={isDark ? '#1A1D21' : '#FFFFFF'}
-                                                    />
-
-                                                    {/* Tickers for the teams */}
-                                                    <View style={styles.matchupPredictorTickers}>
-                                                        <Ticker ticker={awayAbbr} color={awayColor} />
-                                                        <Ticker ticker={homeAbbr} color={homeColor} />
+                                        return (
+                                            <View style={styles.matchupPredictorContent}>
+                                                <View style={{ flexDirection: 'row', gap: 16 }}>
+                                                    {/* Left side - Away team */}
+                                                    <View style={styles.matchupPredictorSide}>
+                                                        <Text style={[styles.matchupPredictorPercent, { color: Color.baseText }]}>
+                                                            {awayPercent.toFixed(1)}%
+                                                        </Text>
                                                     </View>
-                                                </Svg>
+
+                                                    {/* Right side - Home team */}
+                                                    <View style={styles.matchupPredictorSide}>
+                                                        <Text style={[styles.matchupPredictorPercent, { color: Color.baseText }]}>
+                                                            {homePercent.toFixed(1)}%
+                                                        </Text>
+                                                    </View>
+                                                </View>
+
+                                                {/* Center - Donut Chart */}
+                                                <View style={styles.matchupPredictorChart}>
+                                                    <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
+                                                        <Defs>
+                                                            <Pattern id="stripesPattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+                                                                <Rect width="4" height="8" fill={Color.baseText} opacity="0.4" />
+                                                            </Pattern>
+                                                        </Defs>
+
+                                                        {/* Home team segment */}
+                                                        <Path
+                                                            d={createArc(homeStartAngle, homeEndAngle, innerRadius, radius)}
+                                                            fill={homeColor}
+                                                            stroke={Color.subText}
+                                                            strokeWidth="1"
+                                                        />
+
+                                                        {/* Away team segment */}
+                                                        <Path
+                                                            d={createArc(awayStartAngle, awayEndAngle, innerRadius, radius)}
+                                                            fill={awayColor}
+                                                            stroke={Color.subText}
+                                                            strokeWidth="1"
+                                                        />
+
+                                                        {/* Center circle for logos */}
+                                                        <Circle
+                                                            cx={centerX}
+                                                            cy={centerY}
+                                                            r={innerRadius}
+                                                            fill={isDark ? '#1A1D21' : '#FFFFFF'}
+                                                        />
+
+                                                        {/* Tickers for the teams */}
+                                                        <View style={styles.matchupPredictorTickers}>
+                                                            <Ticker ticker={awayAbbr} color={awayColor} />
+                                                            <Ticker ticker={homeAbbr} color={homeColor} />
+                                                        </View>
+                                                    </Svg>
+                                                </View>
                                             </View>
-                                        </View>
-                                    );
-                                })()}
-                            </View>
-                        )}
+                                        );
+                                    })()}
+                                </View>
+                            )
+                        }
                     </>
                 )}
-            </GlassCard>
-        </View>
+            </GlassCard >
+        </View >
     )
 }
 
