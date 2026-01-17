@@ -1,4 +1,5 @@
 import { ThemedView } from '@/components/themed-view';
+import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { leagues, stocks } from '@/lib/dummy-data';
@@ -28,6 +29,7 @@ export default function LeaguePage() {
     const { lightImpact } = useHaptics();
     const { setActiveStockId } = useStockStore();
     const router = useRouter();
+    const Color = useColors();
 
     const leagueName = leagueNames[id] || id;
 
