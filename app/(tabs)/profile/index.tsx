@@ -1,3 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppHeader } from '@/components/AppHeader';
+import { Ticker } from '@/components/Ticker';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
@@ -9,9 +12,15 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const PROFILE_IMAGE_STORAGE_KEY = '@sportstock_profile_image_uri';
+const PROFILE_IMAGE_FILENAME = 'profile.jpg';
 
 export default function ProfileScreen() {
     const Color = useColors();
@@ -22,6 +31,47 @@ export default function ProfileScreen() {
     const { wallet, initializeWallet, loadWallet } = useWalletStore();
     const { resetOnboarding } = useSettingsStore();
     const { locationInfo, loading: locationLoading } = useLocation();
+    const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
+
+    // Load persisted profile image on mount
+    useEffect(() => {
+        (async () => {
+            try {
+                const saved = await AsyncStorage.getItem(PROFILE_IMAGE_STORAGE_KEY);
+                if (saved) {
+                    const exists = await FileSystem.getInfoAsync(saved);
+                    if (exists.exists) setProfileImageUri(saved);
+                    else await AsyncStorage.removeItem(PROFILE_IMAGE_STORAGE_KEY);
+                }
+            } catch {
+                // ignore
+            }
+        })();
+    }, []);
+
+    const pickProfileImage = useCallback(async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') return;
+            mediumImpact();
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+            if (result.canceled || !result.assets?.[0]?.uri) return;
+            const docDir = FileSystem.documentDirectory;
+            if (!docDir) return;
+            const uri = result.assets[0].uri;
+            const dest = `${docDir}${PROFILE_IMAGE_FILENAME}`;
+            await FileSystem.copyAsync({ from: uri, to: dest });
+            await AsyncStorage.setItem(PROFILE_IMAGE_STORAGE_KEY, dest);
+            setProfileImageUri(dest);
+        } catch {
+            // ignore
+        }
+    }, [mediumImpact]);
 
     // Get user's transactions (userID = 1) and sort by date (most recent first)
     const userTransactions = useMemo(() => {
@@ -129,15 +179,27 @@ export default function ProfileScreen() {
 
     return (
         <ThemedView style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <AppHeader />
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
                     <View style={styles.profileContent}>
-                        <View style={[styles.profilePhoto, { backgroundColor: Color.green }]}>
-                            <Text style={styles.profileInitials}>
-                                {user.firstName[0]}{user.lastName[0]}
-                            </Text>
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.profilePhoto, !profileImageUri && { backgroundColor: Color.green }]}
+                            onPress={pickProfileImage}
+                            activeOpacity={0.8}
+                        >
+                            {profileImageUri ? (
+                                <Image
+                                    source={{ uri: profileImageUri }}
+                                    style={styles.profilePhotoImage}
+                                />
+                            ) : (
+                                <Text style={styles.profileInitials}>
+                                    {user.firstName[0]}{user.lastName[0]}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                         <View style={styles.profileInfo}>
                             <Text style={[styles.profileName, { color: Color.baseText }]}>
                                 {`${user.firstName} ${user.lastName}`}
@@ -149,85 +211,55 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* My Holdings Visual */}
+                {/* My Stash - team rows with Ticker, name, gain/loss */}
                 <View style={styles.holdingsContainer}>
-                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
-                        My Stash
-                    </Text>
-                    <GlassCard style={styles.holdingsCard}>
+                    <View style={styles.holdingsSectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
+                            My Stash
+                        </Text>
+                        {positions.length > 6 && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    lightImpact();
+                                    router.push('/profile/my-stash');
+                                }}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Text style={[styles.seeAllText, { color: Color.green }]}>See all</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    <GlassCard style={styles.holdingsCard} padding={0}>
                         <View style={styles.holdingsContent}>
-                            {(() => {
-                                // Limit to max 9 teams
-                                const displayPositions = positions.slice(0, 9);
-
-                                // Calculate dynamic column count (max 3 columns)
-                                const getColumnCount = (count: number): number => {
-                                    if (count <= 1) return 1;
-                                    if (count === 2) return 2;
-                                    if (count === 3) return 3;
-                                    if (count === 4) return 2;
-                                    return 3; // 5-9 teams use 3 columns
-                                };
-
-                                const columnCount = getColumnCount(displayPositions.length);
-                                const itemWidthPercent = 100 / columnCount;
-
-                                // Calculate portfolio percentages for all positions
-                                const positionsWithPercentages = displayPositions.map((position) => {
-                                    const portfolioPercentage = portfolio.totalValue > 0
-                                        ? (position.currentValue / portfolio.totalValue) * 100
-                                        : 0;
-                                    return { position, portfolioPercentage };
-                                });
+                            {positions.slice(0, 6).map((position, index) => {
+                                const teamColor = position.stock.color || position.colors[0]?.hex || Color.green;
+                                const gainLossColor = position.totalGainLoss >= 0 ? Color.green : Color.red;
+                                const isLast = index === Math.min(5, positions.length - 1);
 
                                 return (
-                                    <View style={styles.holdingsGrid}>
-                                        {positionsWithPercentages.map(({ position, portfolioPercentage }) => {
-                                            const borderColor = position.gainLossPercentage >= 0 ? Color.green : Color.red;
-                                            const teamColor = position.colors[0]?.hex || Color.green;
-                                            const isPositive = position.gainLossPercentage >= 0;
-                                            const trendIcon = isPositive ? 'trending-up' : 'trending-down';
-
-                                            return (
-                                                <TouchableOpacity
-                                                    key={position.stock.id}
-                                                    style={[styles.holdingItem, { width: `${itemWidthPercent}%` }]}
-                                                    onPress={() => {
-                                                        mediumImpact();
-                                                        setActivePosition(position);
-                                                        setPositionDetailBottomSheetOpen(true);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <View style={[
-                                                        styles.holdingLogo,
-                                                        {
-                                                            backgroundColor: teamColor,
-                                                            borderWidth: 3,
-                                                            borderColor: borderColor,
-                                                        }
-                                                    ]}>
-                                                        <Text style={styles.holdingLogoText}>
-                                                            {position.stock.name.split(' ').map(word => word[0]).join('')}
-                                                        </Text>
-                                                    </View>
-                                                    <View style={styles.holdingPercentageContainer}>
-                                                        <Ionicons
-                                                            name={trendIcon as any}
-                                                            size={12}
-                                                            color={borderColor}
-                                                            style={styles.trendIcon}
-                                                        />
-                                                        <Text style={[styles.holdingPercentage, { color: borderColor }]}>
-                                                            {formatPercentage(position.gainLossPercentage)}
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
+                                    <TouchableOpacity
+                                        key={position.stock.id}
+                                        style={[
+                                            styles.stashRow,
+                                            !isLast && { borderBottomWidth: 1, borderBottomColor: isDark ? '#242428' : '#E5E7EB' },
+                                        ]}
+                                        onPress={() => {
+                                            mediumImpact();
+                                            setActivePosition(position);
+                                            setPositionDetailBottomSheetOpen(true);
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ticker ticker={position.stock.ticker} color={teamColor} size="small" />
+                                        <Text style={[styles.stashRowName, { color: Color.baseText }]} numberOfLines={1}>
+                                            {position.stock.name}
+                                        </Text>
+                                        <Text style={[styles.stashRowGainLoss, { color: gainLossColor }]}>
+                                            {position.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(position.totalGainLoss)}
+                                        </Text>
+                                    </TouchableOpacity>
                                 );
-                            })()}
+                            })}
                         </View>
                     </GlassCard>
                 </View>
@@ -296,36 +328,6 @@ export default function ProfileScreen() {
                                 </Text>
                             </View>
                         </GlassCard>
-                    </View>
-                </View>
-
-                {/* Account Actions */}
-                <View style={styles.actionsContainer}>
-                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
-                        Quick Actions
-                    </Text>
-                    <View style={styles.actionsGrid}>
-                        {accountActions.map((action, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={styles.actionButton}
-                                onPress={() => {
-                                    mediumImpact();
-                                    if (action.action) {
-                                        action.action();
-                                    }
-                                }}
-                            >
-                                <GlassCard style={styles.actionCard}>
-                                    <View style={styles.actionContent}>
-                                        <Ionicons name={action.icon as any} size={24} color={action.color} />
-                                        <Text style={[styles.actionTitle, { color: action.color }]}>
-                                            {action.title}
-                                        </Text>
-                                    </View>
-                                </GlassCard>
-                            </TouchableOpacity>
-                        ))}
                     </View>
                 </View>
 
@@ -401,6 +403,36 @@ export default function ProfileScreen() {
                     </View>
                 )}
 
+                {/* Quick Actions */}
+                <View style={styles.actionsContainer}>
+                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
+                        Quick Actions
+                    </Text>
+                    <View style={styles.actionsGrid}>
+                        {accountActions.map((action, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={styles.actionButton}
+                                onPress={() => {
+                                    mediumImpact();
+                                    if (action.action) {
+                                        action.action();
+                                    }
+                                }}
+                            >
+                                <GlassCard style={styles.actionCard}>
+                                    <View style={styles.actionContent}>
+                                        <Ionicons name={action.icon as any} size={24} color={action.color} />
+                                        <Text style={[styles.actionTitle, { color: action.color }]}>
+                                            {action.title}
+                                        </Text>
+                                    </View>
+                                </GlassCard>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
                 {/* Settings Sections */}
                 <View style={styles.settingsContainer}>
                     {settingsSections.map((section, sectionIndex) => (
@@ -460,111 +492,113 @@ export default function ProfileScreen() {
                     ))}
                 </View>
 
-                {/* Location Information */}
-                <View style={styles.locationContainer}>
-                    <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
-                        Location
-                    </Text>
-                    <GlassCard style={styles.locationCard}>
-                        {locationLoading ? (
-                            <View style={styles.locationLoading}>
-                                <ActivityIndicator size="small" color={Color.baseText} />
-                                <Text style={[styles.locationText, { color: Color.subText }]}>
-                                    Detecting location...
-                                </Text>
-                            </View>
-                        ) : locationInfo ? (
-                            <View style={styles.locationContent}>
-                                {locationInfo.ipAddress && (
-                                    <View style={styles.locationRow}>
-                                        <Ionicons
-                                            name="globe-outline"
-                                            size={16}
-                                            color={Color.subText}
-                                            style={styles.locationIcon}
-                                        />
-                                        <Text style={[styles.locationLabel, { color: Color.subText }]}>
-                                            IP Address:
-                                        </Text>
-                                        <Text style={[styles.locationValue, { color: Color.baseText }]}>
-                                            {locationInfo.ipAddress}
-                                        </Text>
-                                    </View>
-                                )}
-                                {locationInfo.coordinates && (
-                                    <View style={styles.locationRow}>
-                                        <Ionicons
-                                            name="location-outline"
-                                            size={16}
-                                            color={Color.subText}
-                                            style={styles.locationIcon}
-                                        />
-                                        <Text style={[styles.locationLabel, { color: Color.subText }]}>
-                                            Coordinates:
-                                        </Text>
-                                        <Text style={[styles.locationValue, { color: Color.baseText }]}>
-                                            {locationInfo.coordinates.latitude.toFixed(4)}, {locationInfo.coordinates.longitude.toFixed(4)}
-                                        </Text>
-                                    </View>
-                                )}
-                                {locationInfo.state && (
-                                    <View style={styles.locationRow}>
-                                        <Ionicons
-                                            name="map-outline"
-                                            size={16}
-                                            color={Color.subText}
-                                            style={styles.locationIcon}
-                                        />
-                                        <Text style={[styles.locationLabel, { color: Color.subText }]}>
-                                            State:
-                                        </Text>
-                                        <Text style={[styles.locationValue, { color: Color.baseText }]}>
-                                            {locationInfo.state}
-                                        </Text>
-                                    </View>
-                                )}
-                                {locationInfo.error && (
-                                    <View style={styles.locationRow}>
-                                        <Ionicons
-                                            name="warning-outline"
-                                            size={16}
-                                            color="#dc2626"
-                                            style={styles.locationIcon}
-                                        />
-                                        <Text style={[styles.locationError, { color: Color.red }]}>
-                                            {locationInfo.error}
-                                        </Text>
-                                    </View>
-                                )}
-                                {locationInfo.coordinates && !locationInfo.state && (
-                                    <View style={styles.locationRow}>
-                                        <Ionicons
-                                            name="information-circle-outline"
-                                            size={16}
-                                            color={Color.subText}
-                                            style={styles.locationIcon}
-                                        />
-                                        <Text style={[styles.locationText, { color: Color.subText }]}>
-                                            State not available. Check Mapbox token in .env file.
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        ) : (
-                            <View style={styles.locationErrorContainer}>
-                                <Ionicons
-                                    name="alert-circle-outline"
-                                    size={16}
-                                    color="#dc2626"
-                                    style={styles.locationIcon}
-                                />
-                                <Text style={[styles.locationError, { color: Color.red }]}>
-                                    Unable to retrieve location information
-                                </Text>
-                            </View>
-                        )}
-                    </GlassCard>
-                </View>
+                {/* Location Information (dev only) */}
+                {__DEV__ && (
+                    <View style={styles.locationContainer}>
+                        <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
+                            Location
+                        </Text>
+                        <GlassCard style={styles.locationCard}>
+                            {locationLoading ? (
+                                <View style={styles.locationLoading}>
+                                    <ActivityIndicator size="small" color={Color.baseText} />
+                                    <Text style={[styles.locationText, { color: Color.subText }]}>
+                                        Detecting location...
+                                    </Text>
+                                </View>
+                            ) : locationInfo ? (
+                                <View style={styles.locationContent}>
+                                    {locationInfo.ipAddress && (
+                                        <View style={styles.locationRow}>
+                                            <Ionicons
+                                                name="globe-outline"
+                                                size={16}
+                                                color={Color.subText}
+                                                style={styles.locationIcon}
+                                            />
+                                            <Text style={[styles.locationLabel, { color: Color.subText }]}>
+                                                IP Address:
+                                            </Text>
+                                            <Text style={[styles.locationValue, { color: Color.baseText }]}>
+                                                {locationInfo.ipAddress}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {locationInfo.coordinates && (
+                                        <View style={styles.locationRow}>
+                                            <Ionicons
+                                                name="location-outline"
+                                                size={16}
+                                                color={Color.subText}
+                                                style={styles.locationIcon}
+                                            />
+                                            <Text style={[styles.locationLabel, { color: Color.subText }]}>
+                                                Coordinates:
+                                            </Text>
+                                            <Text style={[styles.locationValue, { color: Color.baseText }]}>
+                                                {locationInfo.coordinates.latitude.toFixed(4)}, {locationInfo.coordinates.longitude.toFixed(4)}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {locationInfo.state && (
+                                        <View style={styles.locationRow}>
+                                            <Ionicons
+                                                name="map-outline"
+                                                size={16}
+                                                color={Color.subText}
+                                                style={styles.locationIcon}
+                                            />
+                                            <Text style={[styles.locationLabel, { color: Color.subText }]}>
+                                                State:
+                                            </Text>
+                                            <Text style={[styles.locationValue, { color: Color.baseText }]}>
+                                                {locationInfo.state}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {locationInfo.error && (
+                                        <View style={styles.locationRow}>
+                                            <Ionicons
+                                                name="warning-outline"
+                                                size={16}
+                                                color="#dc2626"
+                                                style={styles.locationIcon}
+                                            />
+                                            <Text style={[styles.locationError, { color: Color.red }]}>
+                                                {locationInfo.error}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {locationInfo.coordinates && !locationInfo.state && (
+                                        <View style={styles.locationRow}>
+                                            <Ionicons
+                                                name="information-circle-outline"
+                                                size={16}
+                                                color={Color.subText}
+                                                style={styles.locationIcon}
+                                            />
+                                            <Text style={[styles.locationText, { color: Color.subText }]}>
+                                                State not available. Check Mapbox token in .env file.
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            ) : (
+                                <View style={styles.locationErrorContainer}>
+                                    <Ionicons
+                                        name="alert-circle-outline"
+                                        size={16}
+                                        color="#dc2626"
+                                        style={styles.locationIcon}
+                                    />
+                                    <Text style={[styles.locationError, { color: Color.red }]}>
+                                        Unable to retrieve location information
+                                    </Text>
+                                </View>
+                            )}
+                        </GlassCard>
+                    </View>
+                )}
 
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
@@ -601,7 +635,6 @@ const styles = StyleSheet.create({
     profileHeader: {
         paddingHorizontal: 20,
         marginBottom: 24,
-        marginTop: 84,
     },
     profileCard: {
         minHeight: 200,
@@ -616,6 +649,12 @@ const styles = StyleSheet.create({
         borderRadius: 40,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
+    },
+    profilePhotoImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
     },
     profileInitials: {
         fontSize: 32,
@@ -641,52 +680,40 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         marginBottom: 24,
     },
+    holdingsSectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 16,
     },
+    seeAllText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
     holdingsCard: {
         minHeight: 120,
     },
     holdingsContent: {
+        paddingVertical: 4,
+    },
+    stashRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        gap: 12,
+    },
+    stashRowName: {
         flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
     },
-    holdingsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start',
-        alignItems: 'flex-start',
-    },
-    holdingItem: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    holdingLogo: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    holdingLogoText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-    },
-    holdingPercentageContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 6,
-        gap: 4,
-    },
-    trendIcon: {
-        marginRight: 2,
-    },
-    holdingPercentage: {
-        fontSize: 11,
+    stashRowGainLoss: {
+        fontSize: 15,
         fontWeight: '600',
     },
     metricsContainer: {

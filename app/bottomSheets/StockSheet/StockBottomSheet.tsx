@@ -13,7 +13,6 @@ import BuySellBottomSheet from '../BuySellBottomSheet';
 import { ActionButtons } from './ActionButtons';
 import { OddsSection } from './OddsSection';
 import { PredictionMarkets } from './PredictionMarkets';
-import { TeamInfo } from './TeamInfo';
 import { TradeHistory } from './TradeHistory';
 import { formatCurrency, formatPercentage } from './utils';
 import { YourPosition } from './YourPosition';
@@ -167,13 +166,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
                 {(league && stock) ? (
                     <PredictionMarkets league={league} stock={stock} />
-                ) : (
-                    <ActivityIndicator size="small" color="#000000" />
-                )}
-
-                {/* Team Info & About - Combined Section */}
-                {(league && stock) ? (
-                    <TeamInfo stock={stock} league={league} />
                 ) : (
                     <ActivityIndicator size="small" color="#000000" />
                 )}

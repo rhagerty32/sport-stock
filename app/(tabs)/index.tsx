@@ -1,3 +1,4 @@
+import { AppHeader } from '@/components/AppHeader';
 import Chart from '@/components/chart';
 import { ThemedView } from '@/components/themed-view';
 import { TopMoversBanner } from '@/components/TopMoversBanner';
@@ -9,13 +10,11 @@ import { portfolio, priceHistory, stocks } from '@/lib/dummy-data';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 type SortType = 'percentage' | 'value' | null;
 
@@ -235,263 +234,10 @@ export default function HomeScreen() {
         }
     }, [showSortDropdown]);
 
-    const [showWalletDropdown, setShowWalletDropdown] = useState(false);
-    const [selectedCurrency, setSelectedCurrency] = useState<'GC' | 'SC'>('SC');
-    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
-    // Animation values for dropdown
-    const dropdownOpacity = useSharedValue(0);
-    const dropdownScale = useSharedValue(0.8);
-
-    // Animation values for coin icon fade
-    const gcIconOpacity = useSharedValue(selectedCurrency === 'GC' ? 1 : 0);
-    const scIconOpacity = useSharedValue(selectedCurrency === 'SC' ? 1 : 0);
-
-    // Load selected currency from AsyncStorage on mount
-    useEffect(() => {
-        const loadSelectedCurrency = async () => {
-            try {
-                const saved = await AsyncStorage.getItem('selectedCurrency');
-                if (saved === 'GC' || saved === 'SC') {
-                    setSelectedCurrency(saved);
-                }
-            } catch (error) {
-                console.error('Failed to load selected currency:', error);
-            }
-        };
-        loadSelectedCurrency();
-    }, []);
-
-    // Animate dropdown when visibility changes
-    useEffect(() => {
-        if (showWalletDropdown) {
-            setIsDropdownVisible(true);
-            dropdownOpacity.value = withSpring(1, {
-                damping: 150,
-                stiffness: 500,
-                mass: 0.8,
-            });
-            dropdownScale.value = withSpring(1, {
-                damping: 150,
-                stiffness: 500,
-                mass: 0.8,
-            });
-        } else {
-            dropdownOpacity.value = withSpring(0, {
-                damping: 200,
-                stiffness: 300,
-                mass: 0.6,
-            });
-            dropdownScale.value = withSpring(0.8, {
-                damping: 200,
-                stiffness: 300,
-                mass: 0.6,
-            });
-            // Hide component after animation completes
-            const timer = setTimeout(() => {
-                setIsDropdownVisible(false);
-            }, 200);
-            return () => clearTimeout(timer);
-        }
-    }, [showWalletDropdown]);
-
-    // Animate coin icon fade when currency changes
-    useEffect(() => {
-        if (selectedCurrency === 'GC') {
-            gcIconOpacity.value = withSpring(1, {
-                damping: 20,
-                stiffness: 300,
-            });
-            scIconOpacity.value = withSpring(0, {
-                damping: 20,
-                stiffness: 300,
-            });
-        } else {
-            gcIconOpacity.value = withSpring(0, {
-                damping: 20,
-                stiffness: 300,
-            });
-            scIconOpacity.value = withSpring(1, {
-                damping: 20,
-                stiffness: 300,
-            });
-        }
-    }, [selectedCurrency]);
-
-    // Save selected currency to AsyncStorage when it changes
-    const handleCurrencySelect = async (currency: 'GC' | 'SC') => {
-        setSelectedCurrency(currency);
-        setShowWalletDropdown(false);
-        lightImpact();
-        try {
-            await AsyncStorage.setItem('selectedCurrency', currency);
-        } catch (error) {
-            console.error('Failed to save selected currency:', error);
-        }
-    };
-
-    // Animated style for dropdown
-    const dropdownAnimatedStyle = useAnimatedStyle(() => {
-        'worklet';
-        // Round scale to avoid subpixel rendering blur (round to 2 decimal places)
-        const roundedScale = Math.round(dropdownScale.value * 100) / 100;
-        return {
-            opacity: dropdownOpacity.value,
-            transform: [{ scale: roundedScale }],
-        };
-    }, []);
-
-    // Animated styles for coin icons
-    const gcIconAnimatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: gcIconOpacity.value,
-        };
-    }, []);
-
-    const scIconAnimatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: scIconOpacity.value,
-        };
-    }, []);
-
-    const WalletDropdownMenu = () => {
-        if (!wallet) return null;
-
-        const dropdownBgColor = isDark ? '#1A1A1A' : '#FFFFFF';
-
-        return (
-            <Animated.View
-                style={[styles.dropdownWrapper, dropdownAnimatedStyle]}
-                needsOffscreenAlphaCompositing={false}
-                collapsable={false}
-            >
-                {/* Triangle pointer */}
-                <Animated.View
-                    style={[styles.dropdownTriangle, { borderBottomColor: dropdownBgColor }, dropdownAnimatedStyle]}
-                    needsOffscreenAlphaCompositing={false}
-                    collapsable={false}
-                />
-                <Animated.View
-                    style={[styles.walletDropdownMenu, { backgroundColor: dropdownBgColor }, dropdownAnimatedStyle]}
-                    needsOffscreenAlphaCompositing={false}
-                    collapsable={false}
-                >
-                    {/* GC Option */}
-                    <TouchableOpacity
-                        style={[styles.currencyOption, { backgroundColor: selectedCurrency === 'GC' ? isDark ? '#242428' : '#F3F4F6' : 'transparent' }]}
-                        onPress={() => handleCurrencySelect('GC')}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={[styles.currencyAmount, { color: isDark ? '#D1D5DB' : '#374151' }]}>
-                            {formatNumber(wallet.fanCoins)}
-                        </Text>
-                        <View style={styles.currencyRight}>
-                            <Image
-                                source={require('@/assets/images/goldCoin.png')}
-                                style={styles.coinIconImage}
-                                contentFit="contain"
-                            />
-                            <Text style={[styles.currencyCode, { color: isDark ? '#D1D5DB' : '#374151' }]}>GC</Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    {/* SC Option */}
-                    <TouchableOpacity
-                        style={[styles.currencyOption, { backgroundColor: selectedCurrency === 'SC' ? isDark ? '#242428' : '#F3F4F6' : 'transparent' }]}
-                        onPress={() => handleCurrencySelect('SC')}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={[styles.currencyAmount, { color: isDark ? '#D1D5DB' : '#374151' }]}>
-                            {formatNumber(wallet.tradingCredits)}
-                        </Text>
-                        <View style={styles.currencyRight}>
-                            <View style={[styles.coinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }]}>
-                                <Image
-                                    source={require('@/assets/images/sportstockLogo.png')}
-                                    style={styles.coinIconImage}
-                                    contentFit="contain"
-                                />
-                            </View>
-                            <Text style={[styles.currencyCode, { color: isDark ? '#D1D5DB' : '#374151' }]}>SC</Text>
-                        </View>
-                    </TouchableOpacity>
-                </Animated.View>
-            </Animated.View>
-        );
-    };
-
     return (
         <ThemedView style={styles.container}>
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
-                {/* Header - Absolutely positioned above everything */}
-                <View style={[styles.header, { backgroundColor: isDark ? '#0B0F13' : '#FFFFFF' }]}>
-                    <View style={styles.headerTop}>
-                        <Text style={[styles.logo, { color: Color.baseText }]}>
-                            SportStock
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-                            <TouchableOpacity
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 0 }}
-                                onPress={() => {
-                                    setShowWalletDropdown(!showWalletDropdown);
-                                    lightImpact();
-                                }}
-                            >
-                                {wallet ? (
-                                    <View
-                                        style={[styles.balanceContainer, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
-                                    >
-                                        <View style={styles.balanceSubContainer}>
-                                            <View style={styles.balanceAmountContainer}>
-                                                <AnimatedRollingNumber
-                                                    value={selectedCurrency === 'GC' ? wallet.fanCoins : wallet.tradingCredits}
-                                                    useGrouping={true}
-                                                    enableCompactNotation={false}
-                                                    compactToFixed={2}
-                                                    textStyle={[styles.balance, { color: Color.baseText }]}
-                                                    spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
-                                                />
-                                                <View style={styles.coinIconContainer}>
-                                                    <Animated.View style={[styles.coinIconWrapper, gcIconAnimatedStyle]}>
-                                                        <Image
-                                                            source={require('@/assets/images/goldCoin.png')}
-                                                            style={styles.balanceCoinIcon}
-                                                            contentFit="contain"
-                                                        />
-                                                    </Animated.View>
-                                                    <Animated.View style={[styles.coinIconWrapper, styles.scCoinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }, scIconAnimatedStyle]}>
-                                                        <Image
-                                                            source={require('@/assets/images/sportstockLogo.png')}
-                                                            style={styles.balanceCoinIcon}
-                                                            contentFit="contain"
-                                                        />
-                                                    </Animated.View>
-                                                </View>
-                                            </View>
-                                        </View>
-                                        <Ionicons name="chevron-down" size={20} color={selectedCurrency === 'GC' ? '#F7CE37' : Color.green} style={{ marginLeft: 8 }} />
-                                    </View>
-                                ) : (
-                                    <Text style={[styles.balance, { color: Color.subText }]}>
-                                        Loading...
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                style={{ backgroundColor: Color.green, padding: 3, borderRadius: 10 }}
-                                onPress={() => {
-                                    setShowWalletDropdown(false);
-                                    setPurchaseFanCoinsBottomSheetOpen(true);
-                                    lightImpact();
-                                }}
-                            >
-                                <Ionicons name="add" size={24} color={isDark ? '#0B0F13' : '#fff'} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                    {isDropdownVisible && wallet && <WalletDropdownMenu />}
-                </View>
+                <AppHeader />
 
                 {/* Top Movers Banner */}
                 <TopMoversBanner onStockPress={handleStockPress} />
@@ -703,245 +449,6 @@ export default function HomeScreen() {
                     </GlassCard>
                 </View>
 
-                {/* League Buttons */}
-                <View style={styles.leagueButtonsContainer}>
-                    {leagueButtons.map((league) => (
-                        <TouchableOpacity
-                            key={league.id}
-                            style={styles.leagueButton}
-                            onPress={() => {
-                                lightImpact();
-                                router.push(`/league/${league.id}`);
-                            }}
-                            activeOpacity={0.7}
-                        >
-                            <Image
-                                source={league.image}
-                                style={styles.leagueButtonImage}
-                                contentFit="contain"
-                            />
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                {/* Highest Volume Section */}
-                <View style={styles.section}>
-                    <GlassCard style={styles.investmentsCard} padding={0}>
-                        <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                Highest Volume
-                            </Text>
-
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handleHighestVolumePageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {highestVolumeStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
-                                            return (
-                                                <TouchableOpacity
-                                                    key={stock.id}
-                                                    style={styles.stockItem}
-                                                    onPress={() => {
-                                                        handleStockPress(stock.id);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                >
-                                                    <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
-                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                            {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                        {stock.name}
-                                                    </Text>
-                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                        <Text style={[
-                                                            styles.stockValueText,
-                                                            { color: Color.baseText }
-                                                        ]}>
-                                                            {formatVolume(stock.volume)}
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                ))}
-                            </ScrollView>
-
-                            {Math.ceil(highestVolumeStocks.length / 3) > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, index) => (
-                                        <View key={index} style={[styles.paginationDot, { backgroundColor: highestVolumePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                    ))}
-                                </View>
-                            )}
-                        </View>
-                    </GlassCard>
-                </View>
-
-                {/* On the Rise Section */}
-                <View style={styles.section}>
-                    <GlassCard style={styles.investmentsCard} padding={0}>
-                        <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                On the Rise
-                            </Text>
-
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handleOnTheRisePageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {onTheRiseStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
-                                            return (
-                                                <TouchableOpacity
-                                                    key={item.stock.id}
-                                                    style={styles.stockItem}
-                                                    onPress={() => {
-                                                        handleStockPress(item.stock.id);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                >
-                                                    <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                            {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                        {item.stock.name}
-                                                    </Text>
-                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                        <View style={styles.stockValueContent}>
-                                                            <Ionicons
-                                                                name="trending-up"
-                                                                size={14}
-                                                                color={Color.green}
-                                                            />
-                                                            <Text style={[
-                                                                styles.stockValueText,
-                                                                { color: Color.green }
-                                                            ]}>
-                                                                {formatPercentage(item.changePercentage)}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                ))}
-                            </ScrollView>
-
-                            {Math.ceil(onTheRiseStocks.length / 3) > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, index) => (
-                                        <View key={index} style={[styles.paginationDot, { backgroundColor: onTheRisePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                    ))}
-                                </View>
-                            )}
-                        </View>
-                    </GlassCard>
-                </View>
-
-                {/* Upset Alert Section */}
-                <View style={styles.section}>
-                    <GlassCard style={styles.investmentsCard} padding={0}>
-                        <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                Upset Alert
-                            </Text>
-
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handleUpsetAlertPageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {upsetAlertStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
-                                            return (
-                                                <TouchableOpacity
-                                                    key={item.stock.id}
-                                                    style={styles.stockItem}
-                                                    onPress={() => {
-                                                        handleStockPress(item.stock.id);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                >
-                                                    <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                            {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                        {item.stock.name}
-                                                    </Text>
-                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                        <View style={styles.stockValueContent}>
-                                                            <Ionicons
-                                                                name="trending-down"
-                                                                size={14}
-                                                                color="#FF1744"
-                                                            />
-                                                            <Text style={[
-                                                                styles.stockValueText,
-                                                                { color: Color.red }
-                                                            ]}>
-                                                                {formatPercentage(item.changePercentage)}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                ))}
-                            </ScrollView>
-
-                            {Math.ceil(upsetAlertStocks.length / 3) > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, index) => (
-                                        <View key={index} style={[styles.paginationDot, { backgroundColor: upsetAlertPage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                    ))}
-                                </View>
-                            )}
-                        </View>
-                    </GlassCard>
-                </View>
-
                 {/* Followed Stocks Section */}
                 {followedStocks.length > 0 && (
                     <View style={styles.section}>
@@ -1026,6 +533,256 @@ export default function HomeScreen() {
                     </View>
                 )}
 
+                {/* League Buttons */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.leagueButtonsScrollContent}
+                    style={styles.leagueButtonsScrollView}
+                >
+                    {leagueButtons.map((league) => (
+                        <TouchableOpacity
+                            key={league.id}
+                            style={styles.leagueButton}
+                            onPress={() => {
+                                lightImpact();
+                                router.push(`/league/${league.id}`);
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Image
+                                source={league.image}
+                                style={styles.leagueButtonImage}
+                                contentFit="contain"
+                            />
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                {/* Highest Volume Section */}
+                <View style={styles.section}>
+                    <GlassCard style={styles.investmentsCard} padding={0}>
+                        <View style={styles.investmentsContent}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
+                                Highest Volume
+                            </Text>
+
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                pagingEnabled
+                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                snapToAlignment="center"
+                                decelerationRate="fast"
+                                onScroll={(event) => handleHighestVolumePageChange(event.nativeEvent.contentOffset.x)}
+                                style={styles.stockScrollView}
+                                contentContainerStyle={styles.stockScrollContent}
+                                scrollEventThrottle={16}
+                                nestedScrollEnabled={true}
+                            >
+                                {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, pageIndex) => (
+                                    <View key={pageIndex} style={styles.stockPage}>
+                                        {highestVolumeStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
+                                            return (
+                                                <TouchableOpacity
+                                                    key={stock.id}
+                                                    style={styles.stockItem}
+                                                    onPress={() => {
+                                                        handleStockPress(stock.id);
+                                                    }}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                >
+                                                    <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
+                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                            {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                        {stock.name}
+                                                    </Text>
+                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                        <Text style={[
+                                                            styles.stockValueText,
+                                                            { color: Color.baseText }
+                                                        ]}>
+                                                            {formatVolume(stock.volume)}
+                                                        </Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                ))}
+                            </ScrollView>
+
+                            {Math.ceil(highestVolumeStocks.length / 3) > 1 && (
+                                <View style={styles.paginationDots}>
+                                    {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, index) => (
+                                        <View key={index} style={[styles.paginationDot, { backgroundColor: highestVolumePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    </GlassCard>
+                </View>
+
+                {/* On the Rise Section */}
+                <View style={styles.section}>
+                    <GlassCard style={styles.investmentsCard} padding={0}>
+                        <View style={styles.investmentsContent}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
+                                ON THE RISE
+                            </Text>
+                            <Text style={[styles.sectionSubtitle, { color: Color.subText }]}>
+                                These stocks were bought and sold more over the last 30 days than any other stocks available on SportStock.
+                            </Text>
+
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                pagingEnabled
+                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                snapToAlignment="center"
+                                decelerationRate="fast"
+                                onScroll={(event) => handleOnTheRisePageChange(event.nativeEvent.contentOffset.x)}
+                                style={styles.stockScrollView}
+                                contentContainerStyle={styles.stockScrollContent}
+                                scrollEventThrottle={16}
+                                nestedScrollEnabled={true}
+                            >
+                                {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, pageIndex) => (
+                                    <View key={pageIndex} style={styles.stockPage}>
+                                        {onTheRiseStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
+                                            return (
+                                                <TouchableOpacity
+                                                    key={item.stock.id}
+                                                    style={styles.stockItem}
+                                                    onPress={() => {
+                                                        handleStockPress(item.stock.id);
+                                                    }}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                >
+                                                    <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
+                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                            {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                        {item.stock.name}
+                                                    </Text>
+                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                        <View style={styles.stockValueContent}>
+                                                            <Ionicons
+                                                                name="trending-up"
+                                                                size={14}
+                                                                color={Color.green}
+                                                            />
+                                                            <Text style={[
+                                                                styles.stockValueText,
+                                                                { color: Color.green }
+                                                            ]}>
+                                                                {formatPercentage(item.changePercentage)}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                ))}
+                            </ScrollView>
+
+                            {Math.ceil(onTheRiseStocks.length / 3) > 1 && (
+                                <View style={styles.paginationDots}>
+                                    {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, index) => (
+                                        <View key={index} style={[styles.paginationDot, { backgroundColor: onTheRisePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    </GlassCard>
+                </View>
+
+                {/* Upset Alert Section */}
+                <View style={styles.section}>
+                    <GlassCard style={styles.investmentsCard} padding={0}>
+                        <View style={styles.investmentsContent}>
+                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
+                                UPSET ALERT
+                            </Text>
+                            <Text style={[styles.sectionSubtitle, { color: Color.subText }]}>
+                                These teams gained or lost the most value today of any stock on SportStock.
+                            </Text>
+
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                pagingEnabled
+                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                snapToAlignment="center"
+                                decelerationRate="fast"
+                                onScroll={(event) => handleUpsetAlertPageChange(event.nativeEvent.contentOffset.x)}
+                                style={styles.stockScrollView}
+                                contentContainerStyle={styles.stockScrollContent}
+                                scrollEventThrottle={16}
+                                nestedScrollEnabled={true}
+                            >
+                                {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, pageIndex) => (
+                                    <View key={pageIndex} style={styles.stockPage}>
+                                        {upsetAlertStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
+                                            return (
+                                                <TouchableOpacity
+                                                    key={item.stock.id}
+                                                    style={styles.stockItem}
+                                                    onPress={() => {
+                                                        handleStockPress(item.stock.id);
+                                                    }}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                >
+                                                    <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
+                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                            {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                        {item.stock.name}
+                                                    </Text>
+                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                        <View style={styles.stockValueContent}>
+                                                            <Ionicons
+                                                                name="trending-down"
+                                                                size={14}
+                                                                color="#FF1744"
+                                                            />
+                                                            <Text style={[
+                                                                styles.stockValueText,
+                                                                { color: Color.red }
+                                                            ]}>
+                                                                {formatPercentage(item.changePercentage)}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                ))}
+                            </ScrollView>
+
+                            {Math.ceil(upsetAlertStocks.length / 3) > 1 && (
+                                <View style={styles.paginationDots}>
+                                    {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, index) => (
+                                        <View key={index} style={[styles.paginationDot, { backgroundColor: upsetAlertPage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    </GlassCard>
+                </View>
+
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
             </ScrollView>
@@ -1039,70 +796,6 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-    },
-    header: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        paddingTop: 60,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        zIndex: 1000,
-        elevation: 1000,
-    },
-    headerTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    logo: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    balanceContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 6,
-        borderRadius: 10,
-    },
-    balanceSubContainer: {
-        alignItems: 'flex-end',
-    },
-    balance: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    balanceAmountContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 6,
-    },
-    coinIconContainer: {
-        position: 'relative',
-        width: 20,
-        height: 20,
-    },
-    coinIconWrapper: {
-        position: 'absolute',
-        width: 20,
-        height: 20,
-    },
-    balanceCoinIcon: {
-        width: 20,
-        height: 20,
-    },
-    scCoinIcon: {
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    balanceLabel: {
-        fontSize: 11,
-        fontWeight: '400',
-        marginTop: 2,
     },
     cardContainer: {
         marginTop: -25,
@@ -1229,21 +922,31 @@ const styles = StyleSheet.create({
     bottomSpacing: {
         height: 100,
     },
-    leagueButtonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingHorizontal: 20,
+    leagueButtonsScrollView: {
         marginBottom: 24,
     },
+    leagueButtonsScrollContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        gap: 16,
+        paddingRight: 20,
+    },
     leagueButton: {
-        width: 70,
-        height: 70,
-        borderRadius: 16,
+        width: 132,
+        height: 132,
+        borderRadius: 20,
         overflow: 'hidden',
     },
     leagueButtonImage: {
         width: '100%',
         height: '100%',
+    },
+    sectionSubtitle: {
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 20,
+        paddingHorizontal: 20,
     },
     // Investments Card Styles
     investmentsCard: {
@@ -1432,67 +1135,5 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         marginHorizontal: 4,
-    },
-    dropdownWrapper: {
-        position: 'absolute',
-        top: 100,
-        right: 20,
-        zIndex: 1000,
-        alignItems: 'flex-end',
-    },
-    dropdownTriangle: {
-        width: 0,
-        height: 0,
-        backgroundColor: 'transparent',
-        borderStyle: 'solid',
-        borderLeftWidth: 8,
-        borderRightWidth: 8,
-        borderBottomWidth: 8,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        marginBottom: -1,
-        marginRight: 20,
-    },
-    walletDropdownMenu: {
-        borderRadius: 10,
-        padding: 12,
-        shadowColor: 'rgba(0, 0, 0, 0.5)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
-        minWidth: 200,
-    },
-    currencyOption: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-        borderRadius: 10,
-    },
-    currencyAmount: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    currencyRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    coinIcon: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    coinIconImage: {
-        width: 24,
-        height: 24,
-    },
-    currencyCode: {
-        fontSize: 14,
-        fontWeight: '500',
     },
 });

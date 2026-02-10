@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useGameOdds } from '@/lib/odds-api';
 import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
@@ -23,8 +24,13 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                     </Text>
                     <View style={styles.draftkingsBranding}>
                         <Text style={[styles.draftkingsText, { color: Color.subText }]}>
-                            Odds by DRAFTKINGS
+                            Odds by
                         </Text>
+                        <Image
+                            source={require('@/assets/images/draftKings.png')}
+                            style={styles.brandLogo}
+                            contentFit="contain"
+                        />
                     </View>
                 </View>
 
@@ -338,9 +344,25 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                             </View>
                                         );
                                     })()}
+
+                                    <View>
+
+                                    </View>
                                 </View>
                             )
                         }
+
+                        {/* Powered by Polymarket - shown when odds are displayed */}
+                        <View style={styles.poweredByRow}>
+                            <Text style={[styles.poweredByText, { color: Color.subText }]}>
+                                Powered by
+                            </Text>
+                            <Image
+                                source={require('@/assets/images/polymarket.png')}
+                                style={styles.poweredByLogo}
+                                contentFit="contain"
+                            />
+                        </View>
                     </>
                 )}
             </GlassCard >
@@ -370,14 +392,43 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     draftkingsBranding: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        justifyContent: 'flex-end',
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        gap: 4
     },
     draftkingsText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
+        marginRight: 6,
+    },
+    brandLogo: {
+        width: 70,
+        height: 40,
+        marginRight: 16,
+        marginTop: -16,
+    },
+    poweredByRow: {
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        justifyContent: 'flex-end',
+        marginTop: 14,
+        gap: 2,
+        position: 'absolute',
+        bottom: 10,
+        right: 10
+    },
+    poweredByText: {
+        fontSize: 10,
+        fontWeight: '500',
+    },
+    poweredByLogo: {
+        width: 80,
+        height: 20,
     },
     gameTimeContainer: {
         flexDirection: 'row',

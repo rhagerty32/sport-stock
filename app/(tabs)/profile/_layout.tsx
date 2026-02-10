@@ -17,6 +17,7 @@ export default function ProfileLayout() {
         >
             <Stack.Screen name="index" />
             <Stack.Screen name="trade-history" />
+            <Stack.Screen name="my-stash" />
         </Stack>
     );
 }

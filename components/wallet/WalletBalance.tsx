@@ -1,7 +1,7 @@
-import { useTheme } from '@/hooks/use-theme';
 import { useWalletStore } from '@/stores/walletStore';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useColors } from '../utils';
 
 type WalletBalanceProps = {
     showFanCoins?: boolean;
@@ -15,7 +15,7 @@ export default function WalletBalance({
     variant = 'default',
 }: WalletBalanceProps) {
     const { wallet } = useWalletStore();
-    const { isDark } = useTheme();
+    const Color = useColors();
 
     if (!wallet) {
         return null;

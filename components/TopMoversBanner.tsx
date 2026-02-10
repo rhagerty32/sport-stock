@@ -3,8 +3,9 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { priceHistory, stocks } from '@/lib/dummy-data';
 import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useColors } from './utils';
 
@@ -16,8 +17,10 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
     const Color = useColors();
     const cardWidth = 132; // 120 minWidth + 12 marginRight
     const translateX = useSharedValue(0);
+    const gestureStartX = useSharedValue(0);
     const isMountedRef = useRef(true);
     const animationRef = useRef<(() => void) | null>(null);
+    const halfWidthRef = useRef(0);
 
     // Calculate top movers (up and down) based on recent price changes
     const { allMovers, duplicatedMovers } = useMemo(() => {
@@ -60,47 +63,51 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
         return { allMovers, duplicatedMovers };
     }, []);
 
+    const startAnimation = useCallback(() => {
+        if (!isMountedRef.current) return;
+        const halfWidth = halfWidthRef.current;
+        const scrollSpeed = 0.6;
+        const duration = (halfWidth / scrollSpeed) * 16;
+
+        translateX.value = withTiming(-halfWidth, {
+            duration,
+            easing: Easing.linear,
+        }, (finished) => {
+            'worklet';
+            if (finished && isMountedRef.current) {
+                translateX.value = 0;
+                if (animationRef.current) {
+                    runOnJS(animationRef.current)();
+                }
+            }
+        });
+    }, []);
+
+    const restartAnimationFrom = useCallback((currentX: number) => {
+        const halfWidth = halfWidthRef.current;
+        let normalized = currentX;
+        while (normalized > 0) normalized -= halfWidth;
+        while (normalized < -halfWidth) normalized += halfWidth;
+        translateX.value = normalized;
+        startAnimation();
+    }, [startAnimation]);
+
     useEffect(() => {
         isMountedRef.current = true;
         const halfWidth = (duplicatedMovers.length / 2) * cardWidth;
-        const scrollSpeed = 0.2; // pixels per frame (0.2px per 16ms = ~12px per second)
-        const duration = (halfWidth / scrollSpeed) * 16; // Calculate duration in ms
+        halfWidthRef.current = halfWidth;
 
-        // Reset to starting position
-        translateX.value = 0;
-
-        // Create a worklet-safe animation function stored in ref
-        const startAnimation = () => {
-            if (!isMountedRef.current) return;
-
-            translateX.value = withTiming(-halfWidth, {
-                duration: duration,
-                easing: Easing.linear,
-            }, (finished) => {
-                'worklet';
-                if (finished && isMountedRef.current) {
-                    // Reset to 0 instantly for seamless loop
-                    translateX.value = 0;
-                    // Use runOnJS to call back to JS thread safely
-                    if (animationRef.current) {
-                        runOnJS(animationRef.current)();
-                    }
-                }
-            });
-        };
-
-        // Store animation function in ref so it's stable across renders
         animationRef.current = startAnimation;
+        translateX.value = 0;
         startAnimation();
 
         return () => {
-            // Cleanup on unmount or hot reload
             isMountedRef.current = false;
             animationRef.current = null;
             cancelAnimation(translateX);
             translateX.value = 0;
         };
-    }, [duplicatedMovers.length]);
+    }, [duplicatedMovers.length, startAnimation]);
 
     const handlePress = (stockId: number) => {
         // Call the handler immediately
@@ -150,6 +157,25 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
         );
     };
 
+    const panGesture = useMemo(
+        () =>
+            Gesture.Pan()
+                .minDistance(12)
+                .activeOffsetX([-15, 15])
+                .onStart(() => {
+                    cancelAnimation(translateX);
+                    gestureStartX.value = translateX.value;
+                })
+                .onUpdate((e) => {
+                    translateX.value = gestureStartX.value + e.translationX;
+                })
+                .onEnd(() => {
+                    const current = translateX.value;
+                    runOnJS(restartAnimationFrom)(current);
+                }),
+        [restartAnimationFrom]
+    );
+
     const animatedStyle = useAnimatedStyle(() => {
         return {
             transform: [{ translateX: translateX.value }],
@@ -159,29 +185,31 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
     return (
         <View style={styles.container} pointerEvents="box-none">
             <View style={styles.scrollContainer} pointerEvents="box-none">
-                <Animated.View
-                    style={[
-                        styles.scrollContent,
-                        animatedStyle,
-                        { flexDirection: 'row' }
-                    ]}
-                    pointerEvents="box-none"
-                >
-                    {duplicatedMovers.map(({ stock, changePercentage }, index) => {
-                        const isGainer = changePercentage >= 0;
-                        return (
-                            <TouchableOpacity
-                                key={`${stock.id}-${index}`}
-                                activeOpacity={0.7}
-                                onPress={() => handlePress(stock.id)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                style={styles.cardWrapper}
-                            >
-                                {renderMoverCard(stock, changePercentage, isGainer, index)}
-                            </TouchableOpacity>
-                        );
-                    })}
-                </Animated.View>
+                <GestureDetector gesture={panGesture}>
+                    <Animated.View
+                        style={[
+                            styles.scrollContent,
+                            animatedStyle,
+                            { flexDirection: 'row' }
+                        ]}
+                        pointerEvents="box-none"
+                    >
+                        {duplicatedMovers.map(({ stock, changePercentage }, index) => {
+                            const isGainer = changePercentage >= 0;
+                            return (
+                                <TouchableOpacity
+                                    key={`${stock.id}-${index}`}
+                                    activeOpacity={0.7}
+                                    onPress={() => handlePress(stock.id)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={styles.cardWrapper}
+                                >
+                                    {renderMoverCard(stock, changePercentage, isGainer, index)}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </Animated.View>
+                </GestureDetector>
             </View>
         </View>
     );
@@ -189,7 +217,7 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: -8,
+        marginTop: -16,
         marginBottom: 24,
         height: 80, // Fixed height to prevent expansion
     },

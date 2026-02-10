@@ -1559,7 +1559,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#00C853',
     },
     sellButton: {
-        backgroundColor: 'EF4444',
+        backgroundColor: '#EF4444',
     },
     profitButtonText: {
         color: '#FFFFFF',

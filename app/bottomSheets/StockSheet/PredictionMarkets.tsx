@@ -3,6 +3,7 @@ import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { usePolymarketData } from '@/lib/polymarket-api';
 import { League, PolymarketEvent, PolymarketMarket, Stock } from '@/types';
+import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -57,10 +58,15 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
                     <Text style={[styles.statsTitle, { color: isDark ? Color.white : Color.black }]}>
                         SEASON PREDICTIONS
                     </Text>
-                    <View style={styles.draftkingsBranding}>
-                        <Text style={[styles.draftkingsText, { color: isDark ? Color.gray500 : Color.gray600 }]}>
-                            Straight from Polymarket
+                    <View style={styles.poweredByRow}>
+                        <Text style={[styles.poweredByText, { color: Color.subText }]}>
+                            Powered by
                         </Text>
+                        <Image
+                            source={require('@/assets/images/polymarket.png')}
+                            style={styles.poweredByLogo}
+                            contentFit="contain"
+                        />
                     </View>
                 </View>
 
@@ -178,11 +184,28 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
         gap: 8,
         alignItems: 'flex-start',
-        marginBottom: 8,
+        marginBottom: 16,
     },
     draftkingsBranding: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    poweredByRow: {
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        justifyContent: 'flex-end',
+        gap: 2,
+        position: 'absolute',
+        top: 0,
+        right: 0
+    },
+    poweredByText: {
+        fontSize: 10,
+        fontWeight: '500',
+    },
+    poweredByLogo: {
+        width: 80,
+        height: 20,
     },
     predictionMarketsContainer: {
         gap: 12,
