@@ -1,6 +1,10 @@
 import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from '@/hooks/useLocation';
 import { isStateBlocked } from '@/lib/state-restrictions';
+import { fetchCurrentUser } from '@/lib/auth-api';
+import { hydrateCognitoStorage } from '@/lib/cognito-storage';
+import { getCurrentSession } from '@/lib/cognito';
+import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +22,7 @@ import 'react-native-reanimated';
 import BlockedStateScreen from './BlockedStateScreen';
 import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
+import LoginBottomSheet from './bottomSheets/LoginBottomSheet';
 import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
 import PositionDetailBottomSheet from './bottomSheets/PositionDetailBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
@@ -47,7 +52,8 @@ export default function RootLayout() {
     const onboardingBottomSheetRef = useRef<BottomSheetModal>(null);
     const transactionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
     const positionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen, transactionDetailBottomSheetOpen, positionDetailBottomSheetOpen } = useStockStore();
+    const loginBottomSheetRef = useRef<BottomSheetModal>(null);
+    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen, transactionDetailBottomSheetOpen, positionDetailBottomSheetOpen, loginBottomSheetOpen } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
 
     // Check user location for state restrictions
@@ -134,6 +140,35 @@ export default function RootLayout() {
             positionDetailBottomSheetRef.current?.dismiss();
         }
     }, [positionDetailBottomSheetOpen]);
+
+    useEffect(() => {
+        if (loginBottomSheetOpen) {
+            loginBottomSheetRef.current?.present();
+        } else {
+            loginBottomSheetRef.current?.dismiss();
+        }
+    }, [loginBottomSheetOpen]);
+
+    // Restore Cognito session on app load
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                await hydrateCognitoStorage();
+                const session = await getCurrentSession();
+                if (cancelled || !session?.idToken) return;
+                const user = await fetchCurrentUser(session.idToken);
+                if (cancelled) return;
+                useAuthStore.getState().signIn({
+                    user,
+                    idToken: session.idToken,
+                });
+            } catch {
+                // Cognito not configured or no session
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
 
     useEffect(() => {
         // Load Ionicons font
@@ -269,6 +304,7 @@ export default function RootLayout() {
                         <WalletSystemBottomSheet walletSystemBottomSheetRef={walletSystemBottomSheetRef as React.RefObject<BottomSheetModal>} />
                         <TransactionDetailBottomSheet transactionDetailBottomSheetRef={transactionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
                         <PositionDetailBottomSheet positionDetailBottomSheetRef={positionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <LoginBottomSheet loginBottomSheetRef={loginBottomSheetRef as React.RefObject<BottomSheetModal>} />
 
                         <StatusBar style="auto" />
                     </BottomSheetModalProvider>

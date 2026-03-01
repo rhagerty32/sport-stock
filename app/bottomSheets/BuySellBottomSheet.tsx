@@ -1,13 +1,16 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { portfolio, stocks } from '@/lib/dummy-data';
+import { createTransaction } from '@/lib/transactions-api';
+import { usePortfolioStore } from '@/stores/portfolioStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { fetchStock } from '@/lib/stocks-api';
 import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
 import { Easing } from "react-native-reanimated";
 
@@ -17,12 +20,40 @@ type BuySellBottomSheetProps = {
 
 export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBottomSheetProps) {
     const Color = useColors();
-    const { activeStockId, setBuySellBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, removeFollow, buySellMode, setBuySellMode } = useStockStore();
-    const { wallet, spendCredits } = useWalletStore();
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const { activeStockId, activeStock: storeStock, setActiveStock, setBuySellBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setLoginBottomSheetOpen, removeFollow, buySellMode, setBuySellMode } = useStockStore();
+    const { wallet } = useWalletStore();
+    const { portfolio, refreshAfterTrade } = usePortfolioStore();
+    const [stock, setStock] = useState(storeStock);
+    const [tradeLoading, setTradeLoading] = useState(false);
+    const [tradeError, setTradeError] = useState<string | null>(null);
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
     const [showCustomAmount, setShowCustomAmount] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
     const customAmountInputRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (!activeStockId) {
+            setStock(null);
+            return;
+        }
+        if (storeStock?.id === activeStockId) {
+            setStock(storeStock);
+            return;
+        }
+        let cancelled = false;
+        fetchStock(activeStockId).then((s) => {
+            if (!cancelled && s) {
+                setStock(s);
+                setActiveStock(s);
+            } else if (!cancelled) {
+                setStock(null);
+            }
+        }).catch(() => {
+            if (!cancelled) setStock(null);
+        });
+        return () => { cancelled = true; };
+    }, [activeStockId, storeStock?.id, setActiveStock]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -39,14 +70,11 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
 
-    // Find the stock by ID from the store
-    const stock = stocks.find(s => s.id === activeStockId);
-
     // Get user's position for this stock (for sell mode)
     const userPosition = useMemo(() => {
-        if (!stock) return null;
-        return portfolio.positions.find(position => position.stock.id === stock.id);
-    }, [stock]);
+        if (!stock || !portfolio?.positions) return null;
+        return portfolio.positions.find(position => position.stock.id === stock.id) ?? null;
+    }, [stock, portfolio?.positions]);
 
     // Calculate available value for selling
     const availableSellValue = useMemo(() => {
@@ -55,8 +83,41 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
     }, [userPosition]);
 
     // Don't render anything if no stock is selected
-    if (!activeStockId || !stock) {
+    if (!activeStockId) {
         return null;
+    }
+    // Show loading while resolving stock
+    if (!stock) {
+        return (
+            <BottomSheetView style={styles.guardContainer}>
+                <ActivityIndicator size="large" color={Color.green} />
+                <Text style={[styles.guardSubtext, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
+            </BottomSheetView>
+        );
+    }
+
+    // Safety net: when not authenticated, show login CTA instead of buy/sell form
+    if (!isAuthenticated) {
+        return (
+            <BottomSheetView style={styles.guardContainer}>
+                <Text style={[styles.guardText, { color: Color.baseText }]}>
+                    Log in to trade
+                </Text>
+                <Text style={[styles.guardSubtext, { color: Color.subText }]}>
+                    Sign in to buy and sell teams on SportStock.
+                </Text>
+                <TouchableOpacity
+                    style={[styles.guardButton, { backgroundColor: Color.green }]}
+                    onPress={() => {
+                        setBuySellBottomSheetOpen(false);
+                        setLoginBottomSheetOpen(true);
+                    }}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.guardButtonText}>Log in</Text>
+                </TouchableOpacity>
+            </BottomSheetView>
+        );
     }
 
     const formatCurrency = (amount: number) => {
@@ -71,47 +132,44 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
         lightImpact();
     };
 
+    const runTrade = useCallback(async () => {
+        if (!selectedAmount || !stock || stock.price <= 0) return;
+        const quantity = selectedAmount / stock.price;
+        if (quantity <= 0) return;
+        setTradeLoading(true);
+        setTradeError(null);
+        try {
+            await createTransaction({
+                action: buySellMode,
+                stockId: stock.id,
+                quantity,
+                price: stock.price,
+            });
+            await refreshAfterTrade();
+            if (activeStockId) removeFollow(activeStockId);
+            lightImpact();
+            closeModal();
+        } catch (err) {
+            setTradeError(err instanceof Error ? err.message : 'Trade failed');
+            lightImpact();
+        } finally {
+            setTradeLoading(false);
+        }
+    }, [selectedAmount, stock, buySellMode, activeStockId, removeFollow, refreshAfterTrade, lightImpact]);
+
     const handleBuy = () => {
-        if (selectedAmount && wallet) {
-            if (wallet.tradingCredits >= selectedAmount) {
-                try {
-                    spendCredits(selectedAmount);
-                    // TODO: Implement actual trade execution
-                    console.log(`Buying ${formatCurrency(selectedAmount)} of ${stock.name}`);
-                    // Remove from followed list when user buys stock
-                    if (activeStockId) {
-                        removeFollow(activeStockId);
-                    }
-                    lightImpact();
-                    // Close sheet after successful trade
-                    setTimeout(() => {
-                        closeModal();
-                    }, 500);
-                } catch (error) {
-                    console.error('Failed to execute trade:', error);
-                    lightImpact();
-                }
-            } else {
-                // Show insufficient credits - handled in UI below
-                lightImpact();
-            }
+        if (selectedAmount && wallet && wallet.tradingCredits >= selectedAmount) {
+            runTrade();
+        } else {
+            lightImpact();
         }
     };
 
     const handleSell = () => {
-        if (selectedAmount && wallet) {
-            try {
-                // TODO: Implement actual trade execution
-                console.log(`Selling ${formatCurrency(selectedAmount)} of ${stock.name}`);
-                lightImpact();
-                // Close sheet after successful trade
-                setTimeout(() => {
-                    closeModal();
-                }, 500);
-            } catch (error) {
-                console.error('Failed to execute trade:', error);
-                lightImpact();
-            }
+        if (selectedAmount && userPosition && selectedAmount <= availableSellValue) {
+            runTrade();
+        } else {
+            lightImpact();
         }
     };
 
@@ -414,16 +472,15 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             }
                         ]}
                         onPress={buySellMode === 'buy' ? handleBuy : handleSell}
-                        disabled={!selectedAmount || hasInsufficientCredits || hasInsufficientHoldings}
+                        disabled={!selectedAmount || hasInsufficientCredits || hasInsufficientHoldings || tradeLoading}
                     >
-                        <Text style={styles.addButtonText}>
-                            {buySellMode === 'buy' ? 'Buy' : 'Sell'}
-                        </Text>
-                        {selectedAmount && (
+                        {tradeLoading ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : selectedAmount ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                 <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '600' }}>$</Text>
                                 <AnimatedRollingNumber
-                                    value={selectedAmount ? selectedAmount : 0}
+                                    value={selectedAmount}
                                     useGrouping={true}
                                     enableCompactNotation={true}
                                     compactToFixed={2}
@@ -431,9 +488,14 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                     spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
                                 />
                             </View>
+                        ) : (
+                            <Text style={styles.addButtonText}>{buySellMode === 'buy' ? 'Buy' : 'Sell'}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
+                {tradeError ? (
+                    <Text style={[styles.guardSubtext, { color: Color.red, marginTop: 8, textAlign: 'center' }]}>{tradeError}</Text>
+                ) : null}
 
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
@@ -443,6 +505,30 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
 }
 
 const styles = StyleSheet.create({
+    guardContainer: {
+        padding: 24,
+        alignItems: 'center',
+    },
+    guardText: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    guardSubtext: {
+        fontSize: 14,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    guardButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    guardButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
     scrollView: {
         flex: 1,
         borderRadius: 20,

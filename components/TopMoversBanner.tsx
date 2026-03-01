@@ -1,67 +1,35 @@
 import { Ticker } from '@/components/Ticker';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { priceHistory, stocks } from '@/lib/dummy-data';
 import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useColors } from './utils';
 
+export type MoverItem = { stock: Stock; change: number; changePercentage: number };
+
 interface TopMoversBannerProps {
     onStockPress?: (stockId: number) => void;
+    gainers?: MoverItem[];
+    losers?: MoverItem[];
+    loading?: boolean;
 }
 
-export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
+export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loading = false }: TopMoversBannerProps) {
     const Color = useColors();
-    const cardWidth = 132; // 120 minWidth + 12 marginRight
+    const cardWidth = 132;
     const translateX = useSharedValue(0);
     const gestureStartX = useSharedValue(0);
     const isMountedRef = useRef(true);
     const animationRef = useRef<(() => void) | null>(null);
     const halfWidthRef = useRef(0);
 
-    // Calculate top movers (up and down) based on recent price changes
     const { allMovers, duplicatedMovers } = useMemo(() => {
-        const stockChanges: Array<{ stock: Stock; change: number; changePercentage: number }> = [];
-
-        stocks.forEach((stock) => {
-            // Get the most recent price history entries for this stock
-            const stockPriceHistory = priceHistory
-                .filter((ph) => ph.stockID === stock.id)
-                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                .slice(0, 2); // Get last 2 entries to calculate change
-
-            if (stockPriceHistory.length >= 2) {
-                const current = stockPriceHistory[0];
-                const previous = stockPriceHistory[1];
-                const change = current.price - previous.price;
-                const changePercentage = ((change / previous.price) * 100);
-
-                stockChanges.push({
-                    stock,
-                    change,
-                    changePercentage,
-                });
-            }
-        });
-
-        // Sort by change percentage
-        stockChanges.sort((a, b) => b.changePercentage - a.changePercentage);
-
-        // Get top gainers (top 5) and top losers (bottom 5)
-        const topGainers = stockChanges.slice(0, 5);
-        const topLosers = stockChanges.slice(-5).reverse(); // Reverse to show biggest losers first
-
-        // Combine them: gainers first, then losers
-        const allMovers = [...topGainers, ...topLosers];
-
-        // Duplicate the array for seamless infinite scroll
-        const duplicatedMovers = [...allMovers, ...allMovers];
-
-        return { allMovers, duplicatedMovers };
-    }, []);
+        const all = [...gainers, ...losers];
+        return { allMovers: all, duplicatedMovers: [...all, ...all] };
+    }, [gainers, losers]);
 
     const startAnimation = useCallback(() => {
         if (!isMountedRef.current) return;
@@ -181,6 +149,17 @@ export function TopMoversBanner({ onStockPress }: TopMoversBannerProps) {
             transform: [{ translateX: translateX.value }],
         };
     });
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', minHeight: 120 }]}>
+                <ActivityIndicator size="small" color={Color.green} />
+            </View>
+        );
+    }
+    if (allMovers.length === 0) {
+        return null;
+    }
 
     return (
         <View style={styles.container} pointerEvents="box-none">

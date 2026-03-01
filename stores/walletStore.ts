@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { fetchWallet, getBonusInfo, purchaseFanCoins } from '@/lib/wallet-api';
 import { BonusInfo, FanCoinPurchase, Wallet } from '@/types';
+import { useAuthStore } from '@/stores/authStore';
 
 type WalletStore = {
     wallet: Wallet | null;
@@ -12,22 +13,20 @@ type WalletStore = {
     
     // Actions
     initializeWallet: () => Promise<void>;
-    loadWallet: (userId: number) => Promise<void>;
+    loadWallet: (userId: string) => Promise<void>;
     loadBonusInfo: () => Promise<void>;
     purchaseFanCoins: (
-        userId: number,
+        userId: string,
         amount: number,
         paymentMethod: FanCoinPurchase['paymentMethod']
     ) => Promise<FanCoinPurchase>;
     spendCredits: (amount: number) => void;
-    refreshWallet: (userId: number) => Promise<void>;
+    refreshWallet: (userId: string) => Promise<void>;
     
     // Helper functions
     getBonusMultiplier: (amount: number, isFirstPurchase?: boolean) => number;
     calculateBonusCredits: (amount: number, isFirstPurchase?: boolean) => number;
 };
-
-const DUMMY_USER_ID = 1; // In real app, get from auth context
 
 export const useWalletStore = create<WalletStore>()(
     persist(
@@ -38,17 +37,18 @@ export const useWalletStore = create<WalletStore>()(
             error: null,
 
             initializeWallet: async () => {
-                const DUMMY_USER_ID = 1;
+                const { isAuthenticated, user } = useAuthStore.getState();
+                if (!isAuthenticated || !user) return;
                 const state = get();
                 if (!state.wallet) {
-                    await state.loadWallet(DUMMY_USER_ID);
+                    await state.loadWallet(user.id);
                 }
                 if (!state.bonusInfo) {
                     await state.loadBonusInfo();
                 }
             },
 
-            loadWallet: async (userId: number) => {
+            loadWallet: async (userId: string) => {
                 set({ isLoading: true, error: null });
                 try {
                     const wallet = await fetchWallet(userId);
@@ -71,7 +71,7 @@ export const useWalletStore = create<WalletStore>()(
             },
 
             purchaseFanCoins: async (
-                userId: number,
+                userId: string,
                 amount: number,
                 paymentMethod: FanCoinPurchase['paymentMethod']
             ) => {
@@ -106,7 +106,7 @@ export const useWalletStore = create<WalletStore>()(
                 }
             },
 
-            refreshWallet: async (userId: number) => {
+            refreshWallet: async (userId: string) => {
                 try {
                     const wallet = await fetchWallet(userId);
                     set({ wallet });

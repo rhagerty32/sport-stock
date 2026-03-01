@@ -1,22 +1,34 @@
+import { EmptyState } from '@/components/EmptyState';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Stock, Transaction } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { formatCurrency } from './utils';
 
 export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: Transaction[], stock: Stock }) => {
     const Color = useColors();
+    const requireAuth = useAuthStore((s) => s.requireAuth);
+    const setLoginBottomSheetOpen = useStockStore((s) => s.setLoginBottomSheetOpen);
     const { mediumImpact, lightImpact } = useHaptics();
     const { setActiveTransaction, setTransactionDetailBottomSheetOpen, setBuySellMode, setBuySellBottomSheetOpen } = useStockStore();
 
     const handleBuy = () => {
         lightImpact();
-        setBuySellMode('buy');
-        setBuySellBottomSheetOpen(true);
+        const ok = requireAuth(() => {
+            setBuySellMode('buy');
+            setBuySellBottomSheetOpen(true);
+        });
+        if (!ok) {
+            Alert.alert('Log in to trade', 'Sign in to buy and sell teams on SportStock.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Log in', onPress: () => setLoginBottomSheetOpen(true) },
+            ]);
+        }
     };
 
     return (
@@ -76,22 +88,13 @@ export const TradeHistory = ({ stockTransactions, stock }: { stockTransactions: 
                         ))}
                     </View>
                 ) : (
-                    <View style={styles.emptyTradeHistory}>
-                        <Ionicons name="receipt-outline" size={48} color={Color.subText} />
-                        <Text style={[styles.emptyTradeHistoryTitle, { color: Color.baseText }]}>
-                            No Trades Yet
-                        </Text>
-                        <Text style={[styles.emptyTradeHistoryText, { color: Color.subText }]}>
-                            You haven't made any trades for {stock.name}. Start building your position!
-                        </Text>
-                        <TouchableOpacity
-                            style={[styles.emptyTradeHistoryCTA, { backgroundColor: Color.green }]}
-                            onPress={handleBuy}
-                        >
-                            <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-                            <Text style={[styles.emptyTradeHistoryCTAText, { color: Color.white }]}>Buy {stock.ticker}</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <EmptyState
+                        icon="receipt-outline"
+                        title="No Trades Yet"
+                        subtitle={`You haven't made any trades for ${stock.name}. Start building your position!`}
+                        actionLabel={`Buy ${stock.ticker}`}
+                        onAction={handleBuy}
+                    />
                 )}
             </GlassCard>
         </View>

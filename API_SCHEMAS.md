@@ -1,27 +1,89 @@
 # SportStock API Schemas & Endpoints Documentation
 
-This document provides comprehensive schemas and endpoint specifications for the SportStock backend API. The backend is built with FastAPI on AWS Lambda.
+**For backend engineer / Cursor:** This document is the single contract for implementing the SportStock backend API. Implement the endpoints and authentication described here so the mobile app can switch from dummy data to live API. The backend is built with FastAPI on AWS Lambda.
+
+---
 
 ## Base URL
+
+Use this as the canonical API base (the app overrides via `EXPO_PUBLIC_API_BASE_URL` per environment):
 
 ```
 https://api.thesportstock.com
 ```
 
-## Authentication
+---
 
-All endpoints (except public ones) should include an Authorization header with a JWT token provided by AWS Cognito:
+## Authentication (AWS Cognito)
+
+The mobile app will obtain a JWT from **AWS Cognito** (e.g. Hosted UI or Amplify Auth). The backend does not issue tokens; it only validates the token and uses the identity for user-scoped operations.
+
+**Request header (all protected endpoints):**
 ```
 Authorization: Bearer <jwt_token>
 ```
 
-The JWT token will be validated using AWS Cognito. The token will contain user claims including the user ID (`sub` or `userId` claim).
+**Backend validation:**
+- Verify JWT signature using Cognito JWKS (e.g. `https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json`)
+- Validate `exp` (expiration) and `iss` (issuer must match your Cognito User Pool)
+- Optionally validate `aud` or `client_id` if needed
+- **User ID:** Extract the user identifier from the token (e.g. `sub` or a custom `userId` claim). Use this for all user-scoped resources (wallet, portfolio, transactions, follows, profile, onboarding). Do not trust `userId` from path or body without verifying it matches the token.
 
-**Token Validation:**
-- Verify JWT signature using Cognito public keys
-- Check token expiration
-- Validate issuer matches your Cognito User Pool
-- Extract user ID from token claims for user-specific operations
+**Public (no auth required):**
+- GET /api/leagues, GET /api/leagues/{leagueId}
+- GET /api/stocks, GET /api/stocks/{stockId}, GET /api/stocks/{stockId}/price-history
+- GET /api/stocks/top-movers, GET /api/stocks/highest-volume, GET /api/stocks/on-the-rise, GET /api/stocks/upset-alert
+- GET /api/search
+- GET /api/news
+- GET /api/games/live
+- GET /api/wallet/bonus-info
+
+**Protected (auth required):**
+- All wallet endpoints (GET/POST wallet, purchase, history)
+- All portfolio endpoints
+- All transaction endpoints (GET list, GET by id, POST create)
+- All follow endpoints
+- All user endpoints (GET/PUT profile, friends)
+- All onboarding endpoints (complete, status, reset)
+
+---
+
+## Endpoint quick reference
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/leagues | No | List leagues |
+| GET | /api/leagues/{leagueId} | No | Get league (optional includeStocks) |
+| GET | /api/stocks | No | List stocks (optional leagueID, search, limit, offset) |
+| GET | /api/stocks/{stockId} | No | Get stock |
+| GET | /api/stocks/{stockId}/price-history | No | Price history (optional period, limit) |
+| GET | /api/stocks/top-movers | No | Top gainers/losers |
+| GET | /api/stocks/highest-volume | No | Stocks by volume |
+| GET | /api/stocks/on-the-rise | No | Positive movers |
+| GET | /api/stocks/upset-alert | No | Negative movers |
+| POST | /api/transactions | Yes | Create buy/sell |
+| GET | /api/transactions | Yes | List user transactions |
+| GET | /api/transactions/{transactionId} | Yes | Get transaction |
+| GET | /api/portfolio | Yes | User portfolio |
+| GET | /api/portfolio/positions | Yes | User positions |
+| GET | /api/portfolio/positions/{stockId} | Yes | Position for one stock |
+| POST | /api/follows | Yes | Follow a stock |
+| DELETE | /api/follows/{stockId} | Yes | Unfollow |
+| GET | /api/follows | Yes | List followed stocks |
+| GET | /api/follows/not-owned | Yes | Followed stocks user doesn't own |
+| GET | /api/wallet/{userId} | Yes | Wallet balances |
+| POST | /api/wallet/purchase | Yes | Purchase fan coins |
+| GET | /api/wallet/{userId}/history | Yes | Purchase history |
+| GET | /api/wallet/bonus-info | No | Bonus info |
+| GET | /api/users/{userId} | Yes | User profile |
+| PUT | /api/users/{userId} | Yes | Update profile |
+| GET | /api/users/{userId}/friends | Yes | Friends who invested |
+| POST | /api/user/onboarding/complete | Yes | Mark onboarding complete |
+| GET | /api/user/onboarding/status | Yes | Onboarding completed flag |
+| POST | /api/user/onboarding/reset | Yes | Reset onboarding (e.g. dev) |
+| GET | /api/search | No | Search stocks/leagues |
+| GET | /api/news | No | News items |
+| GET | /api/games/live | No | Live games |
 
 ---
 
@@ -644,6 +706,43 @@ Get friends who have invested in stocks (for social features).
 
 ---
 
+### User onboarding
+
+The app persists onboarding completion locally and syncs with the backend when `USE_LIVE_API` is true. User is identified by the authenticated user (from JWT).
+
+#### POST /api/user/onboarding/complete
+
+Mark onboarding as complete for the authenticated user.
+
+**Request Body:** None (or `{}`).
+
+**Response:**
+```python
+{ "completed": true }
+```
+Or `204 No Content`.
+
+#### GET /api/user/onboarding/status
+
+Get onboarding completion status for the authenticated user.
+
+**Response:**
+```python
+{ "completed": bool }
+```
+
+#### POST /api/user/onboarding/reset
+
+Reset onboarding status (e.g. for development/testing). Restrict to authenticated user; optionally restrict to dev/admin.
+
+**Response:**
+```python
+{ "completed": false }
+```
+Or `204 No Content`.
+
+---
+
 ### Search
 
 #### GET /api/search
@@ -862,6 +961,17 @@ Response should include pagination metadata:
 Consider implementing rate limiting:
 - Public endpoints: 100 requests/minute per IP
 - Authenticated endpoints: 1000 requests/minute per user
+
+---
+
+## App wiring checklist
+
+To wire the mobile app to real data, the backend must support:
+
+- **Cognito JWT** in `Authorization: Bearer <token>` for all protected endpoints; validate token and derive user ID from claims (e.g. `sub` or `userId`).
+- **User-scoped data:** Wallet, portfolio, transactions, follows, user profile, and onboarding status are keyed by the authenticated user ID from the token.
+- **Onboarding:** Persist and return onboarding completion per user via POST complete, GET status, and optionally POST reset.
+- **State restrictions:** The app restricts usage by state (see `lib/state-restrictions.ts`). Backend may need to validate or store user state for compliance (e.g. from IP or profile); no additional endpoints are required unless you add a dedicated compliance endpoint later.
 
 ---
 

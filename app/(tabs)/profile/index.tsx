@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppHeader } from '@/components/AppHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { Ticker } from '@/components/Ticker';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -7,7 +8,8 @@ import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useLocation } from '@/hooks/useLocation';
-import { portfolio, positions, stocks, transactions, user } from '@/lib/dummy-data';
+import { useAuthStore } from '@/stores/authStore';
+import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -27,8 +29,12 @@ export default function ProfileScreen() {
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
-    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, setActiveTransaction, setTransactionDetailBottomSheetOpen, setActivePosition, setPositionDetailBottomSheetOpen } = useStockStore();
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const authUser = useAuthStore((s) => s.user);
+    const signOut = useAuthStore((s) => s.signOut);
+    const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, setActiveTransaction, setTransactionDetailBottomSheetOpen, setActivePosition, setPositionDetailBottomSheetOpen, setLoginBottomSheetOpen } = useStockStore();
     const { wallet, initializeWallet, loadWallet } = useWalletStore();
+    const { portfolio, transactions, loadPortfolio, loadTransactions } = usePortfolioStore();
     const { resetOnboarding } = useSettingsStore();
     const { locationInfo, loading: locationLoading } = useLocation();
     const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -73,72 +79,45 @@ export default function ProfileScreen() {
         }
     }, [mediumImpact]);
 
-    // Get user's transactions (userID = 1) and sort by date (most recent first)
     const userTransactions = useMemo(() => {
-        return transactions
-            .filter(t => t.userID === 1)
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    }, []);
+        return [...transactions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }, [transactions]);
 
-    // Get first 5 transactions for preview
-    const recentTransactions = useMemo(() => {
-        return userTransactions.slice(0, 5);
-    }, [userTransactions]);
+    const recentTransactions = useMemo(() => userTransactions.slice(0, 5), [userTransactions]);
 
-    // Calculate all-time winnings from transaction history
     const allTimeWinnings = useMemo(() => {
-        // Track buy transactions per stock (FIFO queue)
         const buyQueues: Record<number, Array<{ quantity: number; price: number }>> = {};
         let realizedGains = 0;
-
-        // Process all transactions chronologically
         const sortedTransactions = [...userTransactions].sort(
             (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
         );
-
         for (const transaction of sortedTransactions) {
             if (transaction.action === 'buy') {
-                // Add to buy queue
-                if (!buyQueues[transaction.stockID]) {
-                    buyQueues[transaction.stockID] = [];
-                }
-                buyQueues[transaction.stockID].push({
-                    quantity: transaction.quantity,
-                    price: transaction.price,
-                });
+                if (!buyQueues[transaction.stockID]) buyQueues[transaction.stockID] = [];
+                buyQueues[transaction.stockID].push({ quantity: transaction.quantity, price: transaction.price });
             } else if (transaction.action === 'sell') {
-                // Match sell to buys (FIFO)
                 const buyQueue = buyQueues[transaction.stockID] || [];
                 let remainingSellQuantity = transaction.quantity;
-
                 while (remainingSellQuantity > 0 && buyQueue.length > 0) {
                     const buy = buyQueue[0];
                     const quantityToMatch = Math.min(remainingSellQuantity, buy.quantity);
-                    const gain = (transaction.price - buy.price) * quantityToMatch;
-                    realizedGains += gain;
-
+                    realizedGains += (transaction.price - buy.price) * quantityToMatch;
                     remainingSellQuantity -= quantityToMatch;
                     buy.quantity -= quantityToMatch;
-
-                    if (buy.quantity <= 0) {
-                        buyQueue.shift();
-                    }
+                    if (buy.quantity <= 0) buyQueue.shift();
                 }
             }
         }
+        return realizedGains + (portfolio?.totalGainLoss ?? 0);
+    }, [userTransactions, portfolio?.totalGainLoss]);
 
-        // Add current unrealized gains
-        return realizedGains + portfolio.totalGainLoss;
-    }, [userTransactions, portfolio.totalGainLoss]);
-
-    // Initialize wallet on mount
     useEffect(() => {
-        const DUMMY_USER_ID = 1;
+        if (!isAuthenticated || !authUser?.id) return;
         initializeWallet();
-        if (!wallet) {
-            loadWallet(DUMMY_USER_ID);
-        }
-    }, []);
+        if (!wallet) loadWallet(authUser.id);
+        loadPortfolio();
+        loadTransactions({ limit: 100 });
+    }, [isAuthenticated, authUser?.id]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -157,14 +136,16 @@ export default function ProfileScreen() {
         { title: 'How It Works', icon: 'information-circle-outline', color: Color.green, action: () => setWalletSystemBottomSheetOpen(true) },
     ];
 
+    const accountItems = [
+        { title: 'Profile', iconName: 'person-outline' as const },
+        { title: 'Light/Dark Mode', iconName: 'moon-outline' as const },
+        ...(isAuthenticated ? [{ title: 'Reset Onboarding', iconName: 'refresh-outline' as const }] : []),
+        ...(isAuthenticated ? [{ title: 'Log out', iconName: 'log-out-outline' as const }] : []),
+    ];
     const settingsSections = [
         {
             title: 'Account',
-            items: [
-                { title: 'Profile', iconName: 'person-outline' },
-                { title: 'Light/Dark Mode', iconName: 'moon-outline' },
-                { title: 'Reset Onboarding', iconName: 'refresh-outline' },
-            ]
+            items: accountItems,
         },
         {
             title: 'Help & Support',
@@ -181,90 +162,134 @@ export default function ProfileScreen() {
         <ThemedView style={styles.container}>
             <AppHeader />
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
-                {/* Profile Header */}
+                {/* Profile Header: guest + Login CTA when logged out, full header when logged in */}
                 <View style={styles.profileHeader}>
-                    <View style={styles.profileContent}>
-                        <TouchableOpacity
-                            style={[styles.profilePhoto, !profileImageUri && { backgroundColor: Color.green }]}
-                            onPress={pickProfileImage}
-                            activeOpacity={0.8}
-                        >
-                            {profileImageUri ? (
-                                <Image
-                                    source={{ uri: profileImageUri }}
-                                    style={styles.profilePhotoImage}
-                                />
-                            ) : (
-                                <Text style={styles.profileInitials}>
-                                    {user.firstName[0]}{user.lastName[0]}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                        <View style={styles.profileInfo}>
-                            <Text style={[styles.profileName, { color: Color.baseText }]}>
-                                {`${user.firstName} ${user.lastName}`}
-                            </Text>
-                            <Text style={[styles.profileEmail, { color: Color.subText }]}>
-                                {user.email}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* My Stash - team rows with Ticker, name, gain/loss */}
-                <View style={styles.holdingsContainer}>
-                    <View style={styles.holdingsSectionHeader}>
-                        <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
-                            My Stash
-                        </Text>
-                        {positions.length > 6 && (
+                    {isAuthenticated ? (
+                        <View style={styles.profileContent}>
                             <TouchableOpacity
+                                style={[styles.profilePhoto, !profileImageUri && { backgroundColor: Color.green }]}
+                                onPress={pickProfileImage}
+                                activeOpacity={0.8}
+                            >
+                                {profileImageUri ? (
+                                    <Image
+                                        source={{ uri: profileImageUri }}
+                                        style={styles.profilePhotoImage}
+                                    />
+                                ) : (
+                                    <Text style={styles.profileInitials}>
+                                        {(authUser?.firstName && authUser?.lastName)
+                                            ? `${authUser.firstName[0]}${authUser.lastName[0]}`
+                                            : (authUser?.email?.[0] ?? 'U')}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                            <View style={styles.profileInfo}>
+                                <Text style={[styles.profileName, { color: Color.baseText }]}>
+                                    {authUser?.firstName && authUser?.lastName
+                                        ? `${authUser.firstName} ${authUser.lastName}`
+                                        : (authUser?.email ?? 'User')}
+                                </Text>
+                                <Text style={[styles.profileEmail, { color: Color.subText }]}>
+                                    {authUser?.email ?? ''}
+                                </Text>
+                            </View>
+                        </View>
+                    ) : (
+                        <View style={styles.profileContent}>
+                            <View style={[styles.profilePhoto, { backgroundColor: isDark ? '#3a3a3a' : '#E5E7EB' }]}>
+                                <Ionicons name="person-outline" size={40} color={Color.subText} />
+                            </View>
+                            <View style={styles.profileInfo}>
+                                <Text style={[styles.profileName, { color: Color.baseText }]}>
+                                    Profile
+                                </Text>
+                                <Text style={[styles.profileEmail, { color: Color.subText }]}>
+                                    Log in to access your portfolio and settings
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.loginButton, { backgroundColor: Color.green }]}
                                 onPress={() => {
                                     lightImpact();
-                                    router.push('/profile/my-stash');
+                                    setLoginBottomSheetOpen(true);
                                 }}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                activeOpacity={0.8}
                             >
-                                <Text style={[styles.seeAllText, { color: Color.green }]}>See all</Text>
+                                <Text style={styles.loginButtonText}>Log in</Text>
                             </TouchableOpacity>
-                        )}
-                    </View>
-                    <GlassCard style={styles.holdingsCard} padding={0}>
-                        <View style={styles.holdingsContent}>
-                            {positions.slice(0, 6).map((position, index) => {
-                                const teamColor = position.stock.color || position.colors[0]?.hex || Color.green;
-                                const gainLossColor = position.totalGainLoss >= 0 ? Color.green : Color.red;
-                                const isLast = index === Math.min(5, positions.length - 1);
-
-                                return (
-                                    <TouchableOpacity
-                                        key={position.stock.id}
-                                        style={[
-                                            styles.stashRow,
-                                            !isLast && { borderBottomWidth: 1, borderBottomColor: isDark ? '#242428' : '#E5E7EB' },
-                                        ]}
-                                        onPress={() => {
-                                            mediumImpact();
-                                            setActivePosition(position);
-                                            setPositionDetailBottomSheetOpen(true);
-                                        }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Ticker ticker={position.stock.ticker} color={teamColor} size="small" />
-                                        <Text style={[styles.stashRowName, { color: Color.baseText }]} numberOfLines={1}>
-                                            {position.stock.name}
-                                        </Text>
-                                        <Text style={[styles.stashRowGainLoss, { color: gainLossColor }]}>
-                                            {position.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(position.totalGainLoss)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
                         </View>
-                    </GlassCard>
+                    )}
                 </View>
 
-                {/* Account Metrics */}
+                {/* My Stash - only when logged in */}
+                {isAuthenticated && (
+                    <View style={styles.holdingsContainer}>
+                        <View style={styles.holdingsSectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
+                                My Stash
+                            </Text>
+                            {(portfolio?.positions?.length ?? 0) > 6 && (
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        lightImpact();
+                                        router.push('/profile/my-stash');
+                                    }}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Text style={[styles.seeAllText, { color: Color.green }]}>See all</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <GlassCard style={styles.holdingsCard} padding={0}>
+                            <View style={styles.holdingsContent}>
+                                {(portfolio?.positions?.length ?? 0) === 0 ? (
+                                    <EmptyState
+                                        icon="wallet-outline"
+                                        title="No positions yet"
+                                        subtitle="Buy stocks to see your stash here."
+                                        actionLabel="Browse stocks"
+                                        onAction={() => router.push('/(tabs)/search')}
+                                        style={styles.stashEmptyState}
+                                    />
+                                ) : (
+                                    (portfolio?.positions ?? []).slice(0, 6).map((position, index) => {
+                                        const teamColor = position.stock.color || position.colors[0]?.hex || Color.green;
+                                        const gainLossColor = position.totalGainLoss >= 0 ? Color.green : Color.red;
+                                        const isLast = index === Math.min(5, (portfolio?.positions?.length ?? 0) - 1);
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={position.stock.id}
+                                                style={[
+                                                    styles.stashRow,
+                                                    !isLast && { borderBottomWidth: 1, borderBottomColor: isDark ? '#242428' : '#E5E7EB' },
+                                                ]}
+                                                onPress={() => {
+                                                    mediumImpact();
+                                                    setActivePosition(position);
+                                                    setPositionDetailBottomSheetOpen(true);
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Ticker ticker={position.stock.ticker} color={teamColor} size="small" />
+                                                <Text style={[styles.stashRowName, { color: Color.baseText }]} numberOfLines={1}>
+                                                    {position.stock.name}
+                                                </Text>
+                                                <Text style={[styles.stashRowGainLoss, { color: gainLossColor }]}>
+                                                    {position.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(position.totalGainLoss)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })
+                                )}
+                            </View>
+                        </GlassCard>
+                    </View>
+                )}
+
+                {/* Account Metrics - only when logged in */}
+                {isAuthenticated && (
                 <View style={styles.metricsContainer}>
                     <View style={styles.metricsGrid}>
                         <GlassCard style={styles.metricCard}>
@@ -283,7 +308,7 @@ export default function ProfileScreen() {
                                     numberOfLines={1}
                                     style={[styles.metricValue, { color: Color.baseText }]}
                                 >
-                                    {formatCurrency(portfolio.totalGainLoss)}
+                                    {formatCurrency(portfolio?.totalGainLoss ?? 0)}
                                 </Text>
                             </View>
                         </GlassCard>
@@ -301,10 +326,10 @@ export default function ProfileScreen() {
                                     numberOfLines={1}
                                     style={[
                                         styles.metricValue,
-                                        { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
+                                        { color: (portfolio?.totalGainLossPercentage ?? 0) >= 0 ? Color.green : Color.red }
                                     ]}
                                 >
-                                    {formatPercentage(portfolio.totalGainLossPercentage)}
+                                    {formatPercentage(portfolio?.totalGainLossPercentage ?? 0)}
                                 </Text>
                             </View>
                         </GlassCard>
@@ -330,9 +355,10 @@ export default function ProfileScreen() {
                         </GlassCard>
                     </View>
                 </View>
+                )}
 
-                {/* Trade History */}
-                {userTransactions.length > 0 && (
+                {/* Trade History - only when logged in */}
+                {isAuthenticated && userTransactions.length > 0 && (
                     <View style={styles.tradeHistoryContainer}>
                         <TouchableOpacity
                             style={styles.tradeHistoryHeader}
@@ -347,8 +373,16 @@ export default function ProfileScreen() {
                             <Ionicons name="chevron-forward" size={20} color={Color.subText} />
                         </TouchableOpacity>
                         <GlassCard style={styles.tradeHistoryCard}>
-                            {recentTransactions.map((transaction, index) => {
-                                const stock = stocks.find(s => s.id === transaction.stockID);
+                            {recentTransactions.length === 0 ? (
+                                <EmptyState
+                                    icon="receipt-outline"
+                                    title="No transactions yet"
+                                    subtitle="Your buy and sell history will appear here."
+                                    actionLabel="View all"
+                                    onAction={() => router.push('/(tabs)/profile/trade-history')}
+                                />
+                            ) : recentTransactions.map((transaction, index) => {
+                                const stock = (portfolio?.positions ?? []).find(p => p.stock.id === transaction.stockID)?.stock;
                                 return (
                                     <TouchableOpacity
                                         key={transaction.id}
@@ -403,7 +437,8 @@ export default function ProfileScreen() {
                     </View>
                 )}
 
-                {/* Quick Actions */}
+                {/* Quick Actions - only when logged in */}
+                {isAuthenticated && (
                 <View style={styles.actionsContainer}>
                     <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                         Quick Actions
@@ -432,6 +467,7 @@ export default function ProfileScreen() {
                         ))}
                     </View>
                 </View>
+                )}
 
                 {/* Settings Sections */}
                 <View style={styles.settingsContainer}>
@@ -449,7 +485,7 @@ export default function ProfileScreen() {
                                             itemIndex < section.items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: isDark ? '#242428' : '#E5E7EB' } : {},
                                         ]}
                                         onPress={async () => {
-                                            lightImpact()
+                                            lightImpact();
                                             if (item.title === 'Light/Dark Mode') {
                                                 setLightDarkBottomSheetOpen(true);
                                             } else if (item.title === 'Profile') {
@@ -457,6 +493,8 @@ export default function ProfileScreen() {
                                             } else if (item.title === 'Reset Onboarding') {
                                                 await resetOnboarding();
                                                 mediumImpact();
+                                            } else if (item.title === 'Log out') {
+                                                signOut();
                                             } else if (item.title === 'Help Center') {
                                                 Linking.openURL('https://thesportstock.com/help-center');
                                             } else if (item.title === 'Contact Support') {
@@ -672,6 +710,21 @@ const styles = StyleSheet.create({
     profileEmail: {
         fontSize: 14,
     },
+    grayedOutSection: {
+        opacity: 0.5,
+    },
+    loginButton: {
+        alignSelf: 'center',
+        paddingHorizontal: 28,
+        paddingVertical: 14,
+        borderRadius: 12,
+        marginTop: 8,
+    },
+    loginButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
     walletBalanceContainer: {
         width: '100%',
         marginTop: 8,
@@ -699,6 +752,9 @@ const styles = StyleSheet.create({
     },
     holdingsContent: {
         paddingVertical: 4,
+    },
+    stashEmptyState: {
+        paddingVertical: 24,
     },
     stashRow: {
         flexDirection: 'row',

@@ -1,5 +1,4 @@
 import { useHaptics } from "@/hooks/useHaptics";
-import { stocks } from "@/lib/dummy-data";
 import { useStockStore } from "@/stores/stockStore";
 import { Stock } from "@/types";
 
@@ -11,18 +10,7 @@ export const calculateWinProbability = (americanOdds: number): number => {
     }
 };
 
-// Get team abbreviation from full name
 export const getTeamAbbreviation = (teamName: string): string => {
-    // Try to find stock by fullName
-    const stockMatch = stocks.find(s =>
-        s.fullName.toLowerCase() === teamName.toLowerCase() ||
-        teamName.toLowerCase().includes(s.fullName.toLowerCase()) ||
-        s.fullName.toLowerCase().includes(teamName.toLowerCase())
-    );
-    if (stockMatch) {
-        return stockMatch.ticker;
-    }
-    // Fallback: extract first letters of words
     return teamName
         .split(' ')
         .map(word => word[0])
@@ -31,59 +19,38 @@ export const getTeamAbbreviation = (teamName: string): string => {
         .slice(0, 3);
 };
 
-export const getTeamColor = (teamName: string): string => {
+export const getTeamColor = (teamName: string, stocks?: Stock[]): string => {
     if (!teamName) return '#999999';
+    if (!stocks?.length) return '#217C0A';
 
     const normalizedApiName = teamName.toLowerCase().trim();
+    let stockMatch = stocks.find(s => s.fullName.toLowerCase().trim() === normalizedApiName);
 
-    // First try exact match
-    let stockMatch = stocks.find(s =>
-        s.fullName.toLowerCase().trim() === normalizedApiName
-    );
-
-    // If no exact match, try matching by team name (last word or words, excluding location)
     if (!stockMatch) {
-        // Extract team name part (usually the last 1-2 words, excluding common location prefixes)
         const apiWords = normalizedApiName.split(' ');
-        // Get the team name part (last 1-2 words, or all if short)
-        const teamNamePart = apiWords.length > 2
-            ? apiWords.slice(-2).join(' ') // Last 2 words (e.g., "Los Angeles Chargers" -> "Angeles Chargers")
-            : normalizedApiName;
-
-        // Also try just the last word (e.g., "Chargers")
+        const teamNamePart = apiWords.length > 2 ? apiWords.slice(-2).join(' ') : normalizedApiName;
         const lastWord = apiWords[apiWords.length - 1];
 
         stockMatch = stocks.find(s => {
             const normalizedStockName = s.fullName.toLowerCase().trim();
             const stockWords = normalizedStockName.split(' ');
-            const stockTeamNamePart = stockWords.length > 2
-                ? stockWords.slice(-2).join(' ')
-                : normalizedStockName;
+            const stockTeamNamePart = stockWords.length > 2 ? stockWords.slice(-2).join(' ') : normalizedStockName;
             const stockLastWord = stockWords[stockWords.length - 1];
-
-            // Match on team name part (more specific)
             if (teamNamePart === stockTeamNamePart ||
                 normalizedStockName.includes(teamNamePart) ||
-                normalizedApiName.includes(stockTeamNamePart)) {
-                return true;
-            }
-
-            // Match on last word if it's distinctive (longer than 4 chars)
-            if (lastWord.length > 4 && lastWord === stockLastWord) {
-                return true;
-            }
-
+                normalizedApiName.includes(stockTeamNamePart)) return true;
+            if (lastWord.length > 4 && lastWord === stockLastWord) return true;
             return false;
         });
     }
 
-    // If still no match, try full contains matching (but only if one fully contains the other)
-    if (!stockMatch) {
+    if (stockMatch?.color) return stockMatch.color;
+
+    if (!stockMatch && stocks?.length) {
         stockMatch = stocks.find(s => {
             const normalizedStockName = s.fullName.toLowerCase().trim();
-            // Only match if one fully contains the other AND they're similar length
             const lengthDiff = Math.abs(normalizedApiName.length - normalizedStockName.length);
-            if (lengthDiff < 10) { // Only if lengths are similar
+            if (lengthDiff < 10) {
                 return normalizedApiName.includes(normalizedStockName) ||
                     normalizedStockName.includes(normalizedApiName);
             }
@@ -91,8 +58,7 @@ export const getTeamColor = (teamName: string): string => {
         });
     }
 
-    const color = stockMatch?.secondaryColor || '#999999';
-    return color;
+    return stockMatch?.color ?? stockMatch?.secondaryColor ?? '#999999';
 };
 
 export const formatCurrency = (amount: number) => {

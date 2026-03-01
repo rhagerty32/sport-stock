@@ -1,14 +1,16 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Ticker } from '@/components/Ticker';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { positions } from '@/lib/dummy-data';
+import { useAuthStore } from '@/stores/authStore';
+import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function MyStashScreen() {
@@ -16,8 +18,15 @@ export default function MyStashScreen() {
     const { isDark } = useTheme();
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const { portfolio, loadPortfolio } = usePortfolioStore();
     const { setActivePosition, setPositionDetailBottomSheetOpen } = useStockStore();
 
+    useEffect(() => {
+        if (isAuthenticated) loadPortfolio();
+    }, [isAuthenticated, loadPortfolio]);
+
+    const positions = portfolio?.positions ?? [];
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
@@ -38,6 +47,21 @@ export default function MyStashScreen() {
             </View>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                {!isAuthenticated ? (
+                    <EmptyState
+                        icon="lock-closed-outline"
+                        title="Sign in to view your stash"
+                        subtitle="Your positions will appear here once you're logged in."
+                    />
+                ) : positions.length === 0 ? (
+                    <EmptyState
+                        icon="wallet-outline"
+                        title="No positions yet"
+                        subtitle="Buy stocks to see your holdings here."
+                        actionLabel="Browse stocks"
+                        onAction={() => router.push('/(tabs)/search')}
+                    />
+                ) : (
                 <View style={styles.listContainer}>
                     <GlassCard style={styles.listCard} padding={0}>
                         <View style={styles.listContent}>
@@ -73,15 +97,14 @@ export default function MyStashScreen() {
                         </View>
                     </GlassCard>
                 </View>
+                )}
             </ScrollView>
         </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -90,31 +113,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 16,
     },
-    backButton: {
-        padding: 8,
-        minWidth: 40,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 100,
-    },
-    listContainer: {
-        marginBottom: 24,
-    },
-    listCard: {
-        minHeight: 120,
-    },
-    listContent: {
-        paddingVertical: 4,
-    },
+    backButton: { padding: 8, minWidth: 40 },
+    headerTitle: { fontSize: 18, fontWeight: 'bold' },
+    scrollView: { flex: 1 },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
+    listContainer: { marginBottom: 24 },
+    listCard: { minHeight: 120 },
+    listContent: { paddingVertical: 4 },
     stashRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -122,13 +127,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         gap: 12,
     },
-    stashRowName: {
-        flex: 1,
-        fontSize: 15,
-        fontWeight: '500',
-    },
-    stashRowGainLoss: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
+    stashRowName: { flex: 1, fontSize: 15, fontWeight: '500' },
+    stashRowGainLoss: { fontSize: 15, fontWeight: '600' },
 });

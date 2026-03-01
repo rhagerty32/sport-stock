@@ -4,11 +4,13 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { colors, leagues, priceHistory, stocks } from '@/lib/dummy-data';
+import { fetchLeague } from '@/lib/leagues-api';
+import { fetchPriceHistory, fetchStock } from '@/lib/stocks-api';
+import type { League, Stock } from '@/types';
 import { TimePeriod } from '@/types';
 import { Link, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ModalScreen() {
     const Color = useColors();
@@ -18,12 +20,43 @@ export default function ModalScreen() {
     const { lightImpact } = useHaptics();
 
     const [selectedTimeframe, setSelectedTimeframe] = useState<TimePeriod>('1D');
+    const [stock, setStock] = useState<Stock | null>(null);
+    const [league, setLeague] = useState<League | null>(null);
+    const [stockPriceHistory, setStockPriceHistory] = useState<{ price: number }[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Find the stock by ID
-    const stock = stocks.find(s => s.id === parseInt(stockId || '0'));
-    const league = leagues.find(l => l.id === stock?.leagueID);
-    const stockColor = colors.find(c => c.stockID === stock?.id.toString());
-    const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
+    useEffect(() => {
+        const id = stockId ? parseInt(stockId, 10) : NaN;
+        if (!stockId || isNaN(id)) {
+            setStock(null);
+            setLeague(null);
+            setLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setLoading(true);
+        Promise.all([fetchStock(id), fetchPriceHistory(id)]).then(([s, history]) => {
+            if (!cancelled) {
+                setStock(s ?? null);
+                setStockPriceHistory((history ?? []).map((h) => ({ price: h.price })));
+                if (s) fetchLeague(s.leagueID).then((l) => { if (!cancelled) setLeague(l ?? null); });
+            }
+        }).catch(() => {
+            if (!cancelled) setStock(null);
+        }).finally(() => {
+            if (!cancelled) setLoading(false);
+        });
+        return () => { cancelled = true; };
+    }, [stockId]);
+
+    if (loading) {
+        return (
+            <ThemedView style={styles.container}>
+                <ActivityIndicator size="large" color={Color.green} />
+                <Text style={[styles.errorText, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
+            </ThemedView>
+        );
+    }
 
     if (!stock) {
         return (
@@ -61,14 +94,12 @@ export default function ModalScreen() {
         return num.toString();
     };
 
-    // Calculate price change
     const currentPrice = stock.price;
     const previousPrice = stockPriceHistory.length > 1 ? stockPriceHistory[stockPriceHistory.length - 2].price : currentPrice;
     const priceChange = currentPrice - previousPrice;
-    const priceChangePercentage = (priceChange / previousPrice) * 100;
+    const priceChangePercentage = previousPrice ? (priceChange / previousPrice) * 100 : 0;
 
-    // Get team colors
-    const primaryColor = stockColor?.hex || Color.blue;
+    const primaryColor = stock.color || Color.blue;
     const secondaryColor = isDark ? '#1A1D21' : '#F9FAFB';
 
     const timeframes: TimePeriod[] = ['1D', '1W', '1M', '1Y', 'ALL'];

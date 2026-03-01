@@ -1,3 +1,4 @@
+import { useColors } from '@/components/utils';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
 import { Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
@@ -19,6 +20,7 @@ export function GlassButton({
     variant = 'primary',
     disabled = false
 }: GlassButtonProps) {
+    const Color = useColors();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 

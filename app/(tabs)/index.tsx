@@ -1,29 +1,34 @@
 import { AppHeader } from '@/components/AppHeader';
 import Chart from '@/components/chart';
+import { EmptyState } from '@/components/EmptyState';
 import { ThemedView } from '@/components/themed-view';
 import { TopMoversBanner } from '@/components/TopMoversBanner';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { portfolio, priceHistory, stocks } from '@/lib/dummy-data';
+import { fetchHighestVolume, fetchOnTheRise, fetchPriceHistory, fetchTopMovers, fetchUpsetAlert } from '@/lib/stocks-api';
+import { fetchLeagues } from '@/lib/leagues-api';
+import { useAuthStore } from '@/stores/authStore';
+import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
+import type { League, PriceHistory, Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 type SortType = 'percentage' | 'value' | null;
 
-const leagueButtons = [
-    { id: 'proFootball', image: require('@/assets/images/leagues/proFootball.png') },
-    { id: 'proBasketball', image: require('@/assets/images/leagues/proBasketball.png') },
-    { id: 'collegeFootball', image: require('@/assets/images/leagues/collegeFootball.png') },
-    { id: 'collegeBasketball', image: require('@/assets/images/leagues/collegeBasketball.png') },
-];
+const leagueImages: Record<string, any> = {
+    'NFL': require('@/assets/images/leagues/proFootball.png'),
+    'NBA': require('@/assets/images/leagues/proBasketball.png'),
+    'NCAA Football': require('@/assets/images/leagues/collegeFootball.png'),
+    'NCAA Basketball': require('@/assets/images/leagues/collegeBasketball.png'),
+};
 
 export default function HomeScreen() {
     const Color = useColors();
@@ -36,21 +41,77 @@ export default function HomeScreen() {
     const [upsetAlertPage, setUpsetAlertPage] = useState(0);
     const [sortType, setSortType] = useState<SortType>(null);
     const [showSortDropdown, setShowSortDropdown] = useState(false);
-    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen, followedStockIds } = useStockStore();
+    const [topMovers, setTopMovers] = useState<{ gainers: { stock: Stock; change: number; changePercentage: number }[]; losers: { stock: Stock; change: number; changePercentage: number }[] }>({ gainers: [], losers: [] });
+    const [highestVolumeStocks, setHighestVolumeStocks] = useState<Stock[]>([]);
+    const [onTheRiseStocks, setOnTheRiseStocks] = useState<{ stock: Stock; changePercentage: number }[]>([]);
+    const [upsetAlertStocks, setUpsetAlertStocks] = useState<{ stock: Stock; changePercentage: number }[]>([]);
+    const [leaguesList, setLeaguesList] = useState<League[]>([]);
+    const [sectionsLoading, setSectionsLoading] = useState(true);
+    const [chartData, setChartData] = useState<PriceHistory[] | null>(null);
+    const [chartLoading, setChartLoading] = useState(false);
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const user = useAuthStore((s) => s.user);
+    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen, setLoginBottomSheetOpen, followedStockIds } = useStockStore();
     const { wallet, loadWallet, initializeWallet } = useWalletStore();
+    const { portfolio, loadPortfolio } = usePortfolioStore();
     const sortDropdownRef = useRef<View>(null);
 
     // Animation values for sort dropdown
     const sortDropdownOpacity = useSharedValue(0);
     const sortDropdownScale = useSharedValue(0.8);
 
-    // Initialize wallet on mount
     useEffect(() => {
-        const DUMMY_USER_ID = 1;
+        if (!isAuthenticated || !user?.id) return;
         initializeWallet();
-        if (!wallet) {
-            loadWallet(DUMMY_USER_ID);
+        if (!wallet) loadWallet(user.id);
+        loadPortfolio();
+    }, [isAuthenticated, user?.id]);
+
+    // Fetch chart data (price history for first position) when logged in and have positions
+    const firstPosition = portfolio?.positions?.[0];
+    const firstStockId = firstPosition?.stock?.id ?? null;
+    useEffect(() => {
+        if (!isAuthenticated || firstStockId == null) {
+            setChartData(null);
+            return;
         }
+        let cancelled = false;
+        setChartLoading(true);
+        fetchPriceHistory(firstStockId, '1M', 90)
+            .then((history) => {
+                if (!cancelled) {
+                    setChartData(Array.isArray(history) ? history : []);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setChartData([]);
+            })
+            .finally(() => {
+                if (!cancelled) setChartLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, [isAuthenticated, firstStockId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setSectionsLoading(true);
+        Promise.all([
+            fetchTopMovers(5),
+            fetchHighestVolume(9),
+            fetchOnTheRise(9),
+            fetchUpsetAlert(9),
+            fetchLeagues(),
+        ]).then(([movers, highVol, rise, upset, leagues]) => {
+            if (cancelled) return;
+            setTopMovers(movers);
+            setHighestVolumeStocks(highVol);
+            setOnTheRiseStocks(rise);
+            setUpsetAlertStocks(upset);
+            setLeaguesList(Array.isArray(leagues) ? leagues : []);
+        }).catch(() => {}).finally(() => {
+            if (!cancelled) setSectionsLoading(false);
+        });
+        return () => { cancelled = true; };
     }, []);
 
     const formatCurrency = (amount: number) => {
@@ -102,103 +163,51 @@ export default function HomeScreen() {
         setActiveStockId(stockId);
     };
 
-    // Sort positions based on selected sort type
-    const sortedPositions = React.useMemo(() => {
-        const positions = [...portfolio.positions];
-        if (sortType === 'percentage') {
-            return positions.sort((a, b) => b.gainLossPercentage - a.gainLossPercentage);
-        } else if (sortType === 'value') {
-            return positions.sort((a, b) => b.currentValue - a.currentValue);
-        }
-        return positions;
-    }, [sortType]);
+    const positions = portfolio?.positions ?? [];
+    const sortedPositions = useMemo(() => {
+        const list = [...positions];
+        if (sortType === 'percentage') return list.sort((a, b) => b.gainLossPercentage - a.gainLossPercentage);
+        if (sortType === 'value') return list.sort((a, b) => b.currentValue - a.currentValue);
+        return list;
+    }, [positions, sortType]);
 
     const pageCount = Math.ceil(sortedPositions.length / 3);
 
-    // Get followed stocks that user doesn't own
-    const followedStocks = React.useMemo(() => {
-        const ownedStockIds = new Set(portfolio.positions.map(p => p.stock.id));
-        return stocks.filter(stock =>
-            followedStockIds.includes(stock.id) && !ownedStockIds.has(stock.id)
-        );
-    }, [followedStockIds]);
+    const ownedStockIds = useMemo(() => new Set(positions.map(p => p.stock.id)), [positions]);
+    const allStocksFromSections = useMemo(() => {
+        const set = new Map<number, Stock>();
+        topMovers.gainers.forEach((m) => set.set(m.stock.id, m.stock));
+        topMovers.losers.forEach((m) => set.set(m.stock.id, m.stock));
+        highestVolumeStocks.forEach((s) => set.set(s.id, s));
+        onTheRiseStocks.forEach((m) => set.set(m.stock.id, m.stock));
+        upsetAlertStocks.forEach((m) => set.set(m.stock.id, m.stock));
+        return Array.from(set.values());
+    }, [topMovers, highestVolumeStocks, onTheRiseStocks, upsetAlertStocks]);
+    const followedStocks = useMemo(() =>
+        allStocksFromSections.filter(s => followedStockIds.includes(s.id) && !ownedStockIds.has(s.id)),
+        [allStocksFromSections, followedStockIds, ownedStockIds]
+    );
 
-    const getPriceChange = (stockId: number) => {
-        const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stockId);
-        if (stockPriceHistory.length < 2) return { amount: 0, percentage: 0 };
-        const currentPrice = stockPriceHistory[stockPriceHistory.length - 1].price;
-        const previousPrice = stockPriceHistory[stockPriceHistory.length - 2].price;
-        const change = currentPrice - previousPrice;
-        const percentage = (change / previousPrice) * 100;
-        return { amount: change, percentage };
-    };
+    const getPriceChange = useCallback((stockId: number) => {
+        const g = topMovers.gainers.find(m => m.stock.id === stockId);
+        if (g) return { amount: g.change, percentage: g.changePercentage };
+        const l = topMovers.losers.find(m => m.stock.id === stockId);
+        if (l) return { amount: l.change, percentage: l.changePercentage };
+        const r = onTheRiseStocks.find(m => m.stock.id === stockId);
+        if (r) return { amount: 0, percentage: r.changePercentage };
+        const u = upsetAlertStocks.find(m => m.stock.id === stockId);
+        if (u) return { amount: 0, percentage: u.changePercentage };
+        return { amount: 0, percentage: 0 };
+    }, [topMovers, onTheRiseStocks, upsetAlertStocks]);
 
-    // Highest Volume stocks (top 9 by volume)
-    const highestVolumeStocks = React.useMemo(() => {
-        return [...stocks]
-            .sort((a, b) => b.volume - a.volume)
-            .slice(0, 9);
-    }, []);
-
-    // On the Rise - top 9 positive movers
-    const onTheRiseStocks = React.useMemo(() => {
-        const stockChanges: Array<{ stock: typeof stocks[0]; changePercentage: number }> = [];
-
-        stocks.forEach((stock) => {
-            const stockPriceHistory = priceHistory
-                .filter(ph => ph.stockID === stock.id)
-                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                .slice(0, 2);
-
-            if (stockPriceHistory.length >= 2) {
-                const current = stockPriceHistory[0];
-                const previous = stockPriceHistory[1];
-                const change = current.price - previous.price;
-                const changePercentage = ((change / previous.price) * 100);
-
-                if (changePercentage > 0) {
-                    stockChanges.push({
-                        stock,
-                        changePercentage,
-                    });
-                }
-            }
-        });
-
-        return stockChanges
-            .sort((a, b) => b.changePercentage - a.changePercentage)
-            .slice(0, 9);
-    }, []);
-
-    // Upset Alert - top 9 negative movers
-    const upsetAlertStocks = React.useMemo(() => {
-        const stockChanges: Array<{ stock: typeof stocks[0]; changePercentage: number }> = [];
-
-        stocks.forEach((stock) => {
-            const stockPriceHistory = priceHistory
-                .filter(ph => ph.stockID === stock.id)
-                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                .slice(0, 2);
-
-            if (stockPriceHistory.length >= 2) {
-                const current = stockPriceHistory[0];
-                const previous = stockPriceHistory[1];
-                const change = current.price - previous.price;
-                const changePercentage = ((change / previous.price) * 100);
-
-                if (changePercentage < 0) {
-                    stockChanges.push({
-                        stock,
-                        changePercentage,
-                    });
-                }
-            }
-        });
-
-        return stockChanges
-            .sort((a, b) => a.changePercentage - b.changePercentage) // Sort ascending (most negative first)
-            .slice(0, 9);
-    }, []);
+    const leagueButtons = useMemo(() => {
+        const order = ['NFL', 'NBA', 'NCAA Basketball', 'NCAA Football'];
+        const byName = new Map(leaguesList.map(l => [l.name, l]));
+        return order.map(name => {
+            const league = byName.get(name);
+            return league ? { id: league.id, name: league.name, image: leagueImages[league.name] ?? null } : null;
+        }).filter((b): b is { id: number; name: string; image: any } => b != null && b.image != null);
+    }, [leaguesList]);
 
     const handleSortSelect = (type: SortType) => {
         setSortType(type);
@@ -240,226 +249,284 @@ export default function HomeScreen() {
                 <AppHeader />
 
                 {/* Top Movers Banner */}
-                <TopMoversBanner onStockPress={handleStockPress} />
+                <TopMoversBanner
+                    onStockPress={handleStockPress}
+                    gainers={topMovers.gainers}
+                    losers={topMovers.losers}
+                    loading={sectionsLoading}
+                />
 
-
-                {/* Portfolio Summary Card */}
-                <View style={styles.cardContainer}>
-                    <GlassCard
-                        style={styles.portfolioCard}
-                        standard={false}
-                        padding={0}
-                        fullWidth={true}
-                    >
-                        <View style={styles.portfolioContent}>
-                            <Text style={[styles.portfolioTitle, { color: Color.baseText }]}>
-                                Total Value
-                            </Text>
-
-                            <Text style={[styles.portfolioValue, { color: Color.baseText }]}>
-                                {formatCurrency(portfolio.totalValue)}
-                            </Text>
-
-                            <View style={styles.portfolioStats}>
-                                <Text
-                                    style={[
-                                        styles.portfolioGainLoss,
-                                        { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
-                                    ]}
-                                >
-                                    {formatCurrency(portfolio.totalGainLoss)}
+                {/* Portfolio Summary Card - only when logged in */}
+                {isAuthenticated && (
+                    <View style={styles.cardContainer}>
+                        <GlassCard
+                            style={styles.portfolioCard}
+                            standard={false}
+                            padding={0}
+                            fullWidth={true}
+                        >
+                            <View style={styles.portfolioContent}>
+                                <Text style={[styles.portfolioTitle, { color: Color.baseText }]}>
+                                    Total Value
                                 </Text>
-                                <Text
-                                    style={[
-                                        styles.portfolioGainLoss,
-                                        { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
-                                    ]}
-                                >
-                                    ({formatPercentage(portfolio.totalGainLossPercentage)})
+
+                                <Text style={[styles.portfolioValue, { color: Color.baseText }]}>
+                                    {formatCurrency(portfolio?.totalValue ?? 0)}
                                 </Text>
-                                <Text style={[styles.portfolioToday, { color: Color.subText }]}>
-                                    Today
-                                </Text>
+
+                                <View style={styles.portfolioStats}>
+                                    <Text
+                                        style={[
+                                            styles.portfolioGainLoss,
+                                            { color: (portfolio?.totalGainLoss ?? 0) >= 0 ? Color.green : Color.red }
+                                        ]}
+                                    >
+                                        {formatCurrency(portfolio?.totalGainLoss ?? 0)}
+                                    </Text>
+                                    <Text
+                                        style={[
+                                            styles.portfolioGainLoss,
+                                            { color: (portfolio?.totalGainLoss ?? 0) >= 0 ? Color.green : Color.red }
+                                        ]}
+                                    >
+                                        ({formatPercentage(portfolio?.totalGainLossPercentage ?? 0)})
+                                    </Text>
+                                    <Text style={[styles.portfolioToday, { color: Color.subText }]}>
+                                        Today
+                                    </Text>
+                                </View>
+
+                                {chartLoading ? (
+                                    <View style={styles.chartPlaceholder}>
+                                        <ActivityIndicator size="large" color={Color.green} />
+                                    </View>
+                                ) : positions.length === 0 || !chartData || chartData.length === 0 ? (
+                                    <EmptyState
+                                        icon="stats-chart-outline"
+                                        title="No chart data yet"
+                                        subtitle="Buy your first stock to see price history here."
+                                        actionLabel="Browse stocks"
+                                        onAction={() => router.push('/(tabs)/search')}
+                                        style={styles.chartEmptyState}
+                                    />
+                                ) : (
+                                    <Chart
+                                        stockId={sortedPositions[0]?.stock.id ?? 1}
+                                        color={Color.green}
+                                        priceData={chartData}
+                                        hideTimePeriodSelector
+                                    />
+                                )}
                             </View>
+                        </GlassCard>
+                    </View>
+                )}
 
-                            <Chart stockId={1} color={Color.green} />
-                        </View>
-                    </GlassCard>
-                </View>
-
-                {/* My Investments Card */}
+                {/* My Portfolio: full content when logged in, CTA when logged out */}
                 <View style={styles.section}>
                     <GlassCard style={styles.investmentsCard} padding={0}>
                         <View style={styles.investmentsContent}>
-                            {/* My Investments Header */}
-                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                My Portfolio
-                            </Text>
-
-                            {/* Investment Overview */}
-                            <View style={styles.investmentOverview}>
-                                <View style={styles.investmentLeft}>
-                                    <Text style={[styles.investmentAmount, { color: Color.baseText }]}>
-                                        {formatCurrency(portfolio.totalInvested)}
+                            {isAuthenticated ? (
+                                <>
+                                    <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
+                                        My Portfolio
                                     </Text>
-                                    <Text style={[styles.investmentLabel, { color: Color.subText }]}>
-                                        Put In
-                                    </Text>
-                                </View>
-                                <View style={styles.investmentRight}>
-                                    <Text style={[
-                                        styles.investmentAmount,
-                                        { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
-                                    ]}>
-                                        {formatCurrency(portfolio.totalGainLoss)}
-                                    </Text>
-                                    <Text style={[styles.investmentLabel, { color: Color.subText }]}>
-                                        W/L
-                                    </Text>
-                                </View>
-                            </View>
 
-                            {/* Divider */}
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+                                    <View style={styles.investmentOverview}>
+                                        <View style={styles.investmentLeft}>
+                                            <Text style={[styles.investmentAmount, { color: Color.baseText }]}>
+                                                {formatCurrency(portfolio?.totalInvested ?? 0)}
+                                            </Text>
+                                            <Text style={[styles.investmentLabel, { color: Color.subText }]}>
+                                                Put In
+                                            </Text>
+                                        </View>
+                                        <View style={styles.investmentRight}>
+                                            <Text style={[
+                                                styles.investmentAmount,
+                                                { color: (portfolio?.totalGainLoss ?? 0) >= 0 ? Color.green : Color.red }
+                                            ]}>
+                                                {formatCurrency(portfolio?.totalGainLoss ?? 0)}
+                                            </Text>
+                                            <Text style={[styles.investmentLabel, { color: Color.subText }]}>
+                                                W/L
+                                            </Text>
+                                        </View>
+                                    </View>
 
-                            {/* Summary Details */}
-                            <View style={styles.summaryDetails}>
-                                <Text style={[styles.summaryLabel, { color: Color.subText }]}>
-                                    Total Value $
-                                </Text>
-                                <Text style={[styles.summaryValue, { color: Color.baseText }]}>
-                                    {formatCurrency(portfolio.totalValue)}
-                                </Text>
-                            </View>
-                            <View style={styles.summaryDetails}>
-                                <Text style={[styles.summaryLabel, { color: Color.subText }]}>
-                                    Total Gain %
-                                </Text>
-                                <Text style={[
-                                    styles.summaryValue,
-                                    { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
-                                ]}>
-                                    {formatPercentage(portfolio.totalGainLossPercentage)}
-                                </Text>
-                            </View>
+                                    <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
 
-                            {/* Divider */}
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
-
-                            {/* Stocks Owned Section */}
-                            <View style={styles.stocksOwnedHeader}>
-                                <View style={styles.stocksOwnedLeft}>
-                                    <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
-                                        My Teams
-                                    </Text>
-                                </View>
-                                <View style={styles.sortButtonContainer} ref={sortDropdownRef}>
-                                    <TouchableOpacity
-                                        style={[styles.sortButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
-                                        onPress={() => {
-                                            sortType === 'percentage' ? handleSortSelect('value') : handleSortSelect('percentage');
-                                            lightImpact();
-                                        }}
-                                        activeOpacity={0.7}
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        delayPressIn={0}
-                                    >
-                                        <Text style={[styles.sortButtonText, { color: Color.baseText }]}>
-                                            {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
+                                    <View style={styles.summaryDetails}>
+                                        <Text style={[styles.summaryLabel, { color: Color.subText }]}>
+                                            Total Value $
                                         </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+                                        <Text style={[styles.summaryValue, { color: Color.baseText }]}>
+                                            {formatCurrency(portfolio?.totalValue ?? 0)}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.summaryDetails}>
+                                        <Text style={[styles.summaryLabel, { color: Color.subText }]}>
+                                            Total Gain %
+                                        </Text>
+                                        <Text style={[
+                                            styles.summaryValue,
+                                            { color: (portfolio?.totalGainLossPercentage ?? 0) >= 0 ? Color.green : Color.red }
+                                        ]}>
+                                            {formatPercentage(portfolio?.totalGainLossPercentage ?? 0)}
+                                        </Text>
+                                    </View>
 
-                            {/* Stock List - Horizontal Scrollable */}
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
+                                    <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+
+                                    <View style={styles.stocksOwnedHeader}>
+                                        <View style={styles.stocksOwnedLeft}>
+                                            <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
+                                                My Teams
+                                            </Text>
+                                        </View>
+                                        <View style={styles.sortButtonContainer} ref={sortDropdownRef}>
                                             <TouchableOpacity
-                                                key={position.stock.id}
-                                                style={styles.stockItem}
+                                                style={[styles.sortButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
                                                 onPress={() => {
-                                                    handleStockPress(position.stock.id);
-                                                }}
-                                                onPressIn={() => {
-                                                    // Ensure touch is captured
+                                                    sortType === 'percentage' ? handleSortSelect('value') : handleSortSelect('percentage');
+                                                    lightImpact();
                                                 }}
                                                 activeOpacity={0.7}
                                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                                 delayPressIn={0}
                                             >
-                                                <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
-                                                    <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                        {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                    </Text>
-                                                </View>
-                                                <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                    {position.stock.name}
+                                                <Text style={[styles.sortButtonText, { color: Color.baseText }]}>
+                                                    {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
                                                 </Text>
-                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                    {sortType === 'percentage' ? (
-                                                        <View style={styles.stockValueContent}>
-                                                            <Ionicons
-                                                                name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
-                                                                size={14}
-                                                                color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
-                                                            />
-                                                            <Text style={[
-                                                                styles.stockValueText,
-                                                                { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
-                                                            ]}>
-                                                                {formatPercentage(position.gainLossPercentage)}
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
+                                    {sortedPositions.length === 0 ? (
+                                        <EmptyState
+                                            icon="wallet-outline"
+                                            title="No teams yet"
+                                            subtitle="Buy your first stock to start building your portfolio."
+                                            actionLabel="Browse stocks"
+                                            onAction={() => router.push('/(tabs)/search')}
+                                        />
+                                    ) : (
+                                    <>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        pagingEnabled
+                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                        snapToAlignment="center"
+                                        decelerationRate="fast"
+                                        onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
+                                        style={styles.stockScrollView}
+                                        contentContainerStyle={styles.stockScrollContent}
+                                        scrollEventThrottle={16}
+                                        nestedScrollEnabled={true}
+                                    >
+                                        {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
+                                            <View key={pageIndex} style={styles.stockPage}>
+                                                {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
+                                                    <TouchableOpacity
+                                                        key={position.stock.id}
+                                                        style={styles.stockItem}
+                                                        onPress={() => {
+                                                            handleStockPress(position.stock.id);
+                                                        }}
+                                                        onPressIn={() => {}}
+                                                        activeOpacity={0.7}
+                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                        delayPressIn={0}
+                                                    >
+                                                        <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
+                                                            <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                             </Text>
                                                         </View>
-                                                    ) : (
-                                                        <Text style={[
-                                                            styles.stockValueText,
-                                                            { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
-                                                        ]}>
-                                                            {formatCurrency(position.currentValue)}
+                                                        <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                            {position.stock.name}
                                                         </Text>
-                                                    )}
-                                                </View>
-                                            </TouchableOpacity>
+                                                        <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                            {sortType === 'percentage' ? (
+                                                                <View style={styles.stockValueContent}>
+                                                                    <Ionicons
+                                                                        name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
+                                                                        size={14}
+                                                                        color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
+                                                                    />
+                                                                    <Text style={[
+                                                                        styles.stockValueText,
+                                                                        { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
+                                                                    ]}>
+                                                                        {formatPercentage(position.gainLossPercentage)}
+                                                                    </Text>
+                                                                </View>
+                                                            ) : (
+                                                                <Text style={[
+                                                                    styles.stockValueText,
+                                                                    { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
+                                                                ]}>
+                                                                    {formatCurrency(position.currentValue)}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        ))}
+                                    </ScrollView>
+
+                                    <View style={styles.paginationDots}>
+                                        {Array.from({ length: pageCount }, (_, index) => (
+                                            <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
                                         ))}
                                     </View>
-                                ))}
-                            </ScrollView>
-
-                            {/* Pagination Dots */}
-                            <View style={styles.paginationDots}>
-                                {Array.from({ length: pageCount }, (_, index) => (
-                                    <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                ))}
-                            </View>
+                                    </>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
+                                        My Portfolio
+                                    </Text>
+                                    <Text style={[styles.portfolioCtaText, { color: Color.subText }]}>
+                                        Sign in to view your portfolio and track your teams.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={[styles.loginCtaButton, { backgroundColor: Color.green }]}
+                                        onPress={() => {
+                                            lightImpact();
+                                            setLoginBottomSheetOpen(true);
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={styles.loginCtaButtonText}>Log in</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
                         </View>
                     </GlassCard>
                 </View>
 
-                {/* Followed Stocks Section */}
-                {followedStocks.length > 0 && (
+                {/* Followed Stocks Section - when authenticated and has followed stocks or show empty */}
+                {isAuthenticated && (
                     <View style={styles.section}>
                         <GlassCard style={styles.investmentsCard} padding={0}>
                             <View style={styles.investmentsContent}>
-                                {/* Followed Stocks Header */}
                                 <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                     Following
                                 </Text>
-
-                                {/* Stock List - Horizontal Scrollable */}
+                                {followedStocks.length === 0 ? (
+                                    <EmptyState
+                                        icon="star-outline"
+                                        title="No followed stocks"
+                                        subtitle="Follow stocks you're interested in to see them here."
+                                        actionLabel="Discover stocks"
+                                        onAction={() => router.push('/(tabs)/search')}
+                                    />
+                                ) : (
+                                <>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -528,6 +595,8 @@ export default function HomeScreen() {
                                         ))}
                                     </View>
                                 )}
+                                </>
+                                )}
                             </View>
                         </GlassCard>
                     </View>
@@ -566,7 +635,14 @@ export default function HomeScreen() {
                             <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                 Highest Volume
                             </Text>
-
+                            {highestVolumeStocks.length === 0 && !sectionsLoading ? (
+                                <EmptyState
+                                    icon="bar-chart-outline"
+                                    title="No volume data yet"
+                                    subtitle="Trading volume will appear here once the market is active."
+                                />
+                            ) : (
+                                <>
                             <ScrollView
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
@@ -623,6 +699,8 @@ export default function HomeScreen() {
                                     ))}
                                 </View>
                             )}
+                                </>
+                            )}
                         </View>
                     </GlassCard>
                 </View>
@@ -637,7 +715,14 @@ export default function HomeScreen() {
                             <Text style={[styles.sectionSubtitle, { color: Color.subText }]}>
                                 These stocks were bought and sold more over the last 30 days than any other stocks available on SportStock.
                             </Text>
-
+                            {onTheRiseStocks.length === 0 && !sectionsLoading ? (
+                                <EmptyState
+                                    icon="trending-up-outline"
+                                    title="No risers yet"
+                                    subtitle="Stocks with positive movement will show up here."
+                                />
+                            ) : (
+                                <>
                             <ScrollView
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
@@ -701,6 +786,8 @@ export default function HomeScreen() {
                                     ))}
                                 </View>
                             )}
+                                </>
+                            )}
                         </View>
                     </GlassCard>
                 </View>
@@ -715,7 +802,14 @@ export default function HomeScreen() {
                             <Text style={[styles.sectionSubtitle, { color: Color.subText }]}>
                                 These teams gained or lost the most value today of any stock on SportStock.
                             </Text>
-
+                            {upsetAlertStocks.length === 0 && !sectionsLoading ? (
+                                <EmptyState
+                                    icon="trending-down-outline"
+                                    title="No upset data yet"
+                                    subtitle="Stocks with big drops will show up here."
+                                />
+                            ) : (
+                                <>
                             <ScrollView
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
@@ -779,6 +873,8 @@ export default function HomeScreen() {
                                     ))}
                                 </View>
                             )}
+                                </>
+                            )}
                         </View>
                     </GlassCard>
                 </View>
@@ -798,15 +894,24 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     cardContainer: {
-        marginTop: -25,
+        marginTop: 0,
         marginBottom: 24,
     },
     portfolioCard: {
         minHeight: 200,
     },
+    chartPlaceholder: {
+        minHeight: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    chartEmptyState: {
+        minHeight: 160,
+    },
     portfolioContent: {
         flex: 1,
         alignItems: 'center',
+        paddingTop: 20,
     },
     portfolioTitle: {
         fontSize: 24,
@@ -961,6 +1066,23 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 20,
         paddingHorizontal: 20,
+    },
+    portfolioCtaText: {
+        fontSize: 15,
+        marginBottom: 16,
+        paddingHorizontal: 20,
+        textAlign: 'center',
+    },
+    loginCtaButton: {
+        alignSelf: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    loginCtaButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     investmentOverview: {
         flexDirection: 'row',

@@ -2,11 +2,14 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { leagues, stocks, transactions } from '@/lib/dummy-data';
+import { fetchLeague } from '@/lib/leagues-api';
+import { fetchStock } from '@/lib/stocks-api';
+import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
+import type { League, Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 type TransactionDetailBottomSheetProps = {
@@ -18,6 +21,27 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const { activeTransaction, setActiveTransaction, setTransactionDetailBottomSheetOpen } = useStockStore();
+    const { portfolio, transactions } = usePortfolioStore();
+    const [stock, setStock] = useState<Stock | null>(null);
+    const [league, setLeague] = useState<League | null>(null);
+
+    useEffect(() => {
+        if (!activeTransaction) {
+            setStock(null);
+            setLeague(null);
+            return;
+        }
+        const fromPosition = (portfolio?.positions ?? []).find((p) => p.stock.id === activeTransaction.stockID)?.stock;
+        if (fromPosition) {
+            setStock(fromPosition);
+            fetchLeague(fromPosition.leagueID).then((l) => setLeague(l ?? null));
+        } else {
+            fetchStock(activeTransaction.stockID).then((s) => {
+                setStock(s ?? null);
+                if (s) fetchLeague(s.leagueID).then((l) => setLeague(l ?? null));
+            });
+        }
+    }, [activeTransaction, portfolio?.positions]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -32,24 +56,17 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
         []
     );
 
-    // Don't render if no transaction
     if (!activeTransaction) {
         return null;
     }
 
-    const stock = stocks.find(s => s.id === activeTransaction.stockID);
-    const league = leagues.find(l => l.id === stock?.leagueID);
     const primaryColor = stock?.color || Color.blue;
 
-    // Calculate returns for sell transactions
     const transactionReturns = useMemo(() => {
-        if (activeTransaction.action === 'buy') {
-            return null; // No returns for buy transactions
-        }
+        if (activeTransaction.action === 'buy') return null;
 
-        // Get all transactions for this stock by this user, sorted chronologically
-        const stockTransactions = transactions
-            .filter(t => t.stockID === activeTransaction.stockID && t.userID === activeTransaction.userID)
+        const stockTransactions = [...transactions]
+            .filter((t) => t.stockID === activeTransaction.stockID && t.userID === activeTransaction.userID)
             .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
         // Track buy queue (FIFO)

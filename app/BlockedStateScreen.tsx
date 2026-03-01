@@ -2,6 +2,7 @@ import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
+import { LEGAL_MIN_AGE } from '@/lib/state-restrictions';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React from 'react';
@@ -73,7 +74,7 @@ export default function BlockedStateScreen({ detectedState }: BlockedStateScreen
                                 Available States
                             </Text>
                             <Text style={[styles.mapSubtitle, { color: Color.subText }]}>
-                                SportStock is available in the highlighted states
+                                SportStock is available in the highlighted states (must be {LEGAL_MIN_AGE}+ in those states)
                             </Text>
                             <View style={styles.mapImageContainer}>
                                 <Image

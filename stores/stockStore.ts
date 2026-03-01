@@ -1,4 +1,4 @@
-import { Position, Transaction } from '@/types';
+import { Position, Stock, Transaction } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -6,6 +6,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 type StockStore = {
     activeStockId: number | null;
     setActiveStockId: (stockId: number | null) => void;
+    activeStock: Stock | null;
+    setActiveStock: (stock: Stock | null) => void;
     activeUserId: number | null;
     setActiveUserId: (userId: number | null) => void;
     buySellBottomSheetOpen: boolean;
@@ -20,6 +22,8 @@ type StockStore = {
     setPurchaseFanCoinsBottomSheetOpen: (open: boolean) => void;
     walletSystemBottomSheetOpen: boolean;
     setWalletSystemBottomSheetOpen: (open: boolean) => void;
+    loginBottomSheetOpen: boolean;
+    setLoginBottomSheetOpen: (open: boolean) => void;
     transactionDetailBottomSheetOpen: boolean;
     setTransactionDetailBottomSheetOpen: (open: boolean) => void;
     activeTransaction: Transaction | null;
@@ -39,6 +43,8 @@ export const useStockStore = create<StockStore>()(
         (set, get) => ({
             activeStockId: null,
             setActiveStockId: (stockId) => set({ activeStockId: stockId }),
+            activeStock: null,
+            setActiveStock: (stock) => set({ activeStock: stock }),
             activeUserId: null,
             setActiveUserId: (userId) => set({ activeUserId: userId }),
             buySellBottomSheetOpen: false,
@@ -53,6 +59,8 @@ export const useStockStore = create<StockStore>()(
             setPurchaseFanCoinsBottomSheetOpen: (open) => set({ purchaseFanCoinsBottomSheetOpen: open }),
             walletSystemBottomSheetOpen: false,
             setWalletSystemBottomSheetOpen: (open) => set({ walletSystemBottomSheetOpen: open }),
+            loginBottomSheetOpen: false,
+            setLoginBottomSheetOpen: (open) => set({ loginBottomSheetOpen: open }),
             transactionDetailBottomSheetOpen: false,
             setTransactionDetailBottomSheetOpen: (open) => set({ transactionDetailBottomSheetOpen: open }),
             activeTransaction: null,

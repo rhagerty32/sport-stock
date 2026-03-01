@@ -2,11 +2,15 @@ import Chart from '@/components/chart';
 import { Ticker } from '@/components/Ticker';
 import { brightenColor, isDarkColor, useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
-import { leagues, portfolio, priceHistory, stocks, transactions } from '@/lib/dummy-data';
-import { getSportKey } from '@/lib/odds-api';
+import { fetchLeague } from '@/lib/leagues-api';
+import { fetchPriceHistory, fetchStock } from '@/lib/stocks-api';
+import { fetchTransactions } from '@/lib/transactions-api';
+import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
+import type { League, Stock, Transaction } from '@/types';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { getSportKey } from '@/lib/odds-api';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import BuySellBottomSheet from '../BuySellBottomSheet';
@@ -22,11 +26,18 @@ type StockBottomSheetProps = {
 };
 
 export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomSheetProps) {
-    const { activeStockId, setActiveStockId, removeFollow, isFollowing } = useStockStore();
+    const { activeStockId, setActiveStockId, setActiveStock, removeFollow, isFollowing } = useStockStore();
+    const { portfolio } = usePortfolioStore();
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
     const { buySellBottomSheetOpen } = useStockStore();
     const { isDark } = useTheme();
     const Color = useColors();
+
+    const [stock, setStock] = useState<Stock | null>(null);
+    const [league, setLeague] = useState<League | null>(null);
+    const [stockPriceHistory, setStockPriceHistory] = useState<{ price: number }[]>([]);
+    const [stockTransactions, setStockTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (buySellBottomSheetOpen) {
@@ -35,6 +46,45 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
             buySellBottomSheetRef.current?.dismiss();
         }
     }, [buySellBottomSheetOpen]);
+
+    useEffect(() => {
+        if (!activeStockId) {
+            setStock(null);
+            setLeague(null);
+            setStockPriceHistory([]);
+            setStockTransactions([]);
+            setLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setLoading(true);
+        Promise.all([
+            fetchStock(activeStockId),
+            fetchPriceHistory(activeStockId),
+            fetchTransactions({ stockID: activeStockId, limit: 50 }),
+        ]).then(([s, history, txRes]) => {
+            if (cancelled) return;
+            setStock(s ?? null);
+            if (s) {
+                setActiveStock(s);
+                fetchLeague(s.leagueID).then((l) => {
+                    if (!cancelled) setLeague(l ?? null);
+                });
+            }
+            setStockPriceHistory(history.map((h) => ({ price: h.price })));
+            setStockTransactions(txRes.transactions ?? []);
+        }).catch(() => {
+            if (!cancelled) {
+                setStock(null);
+                setLeague(null);
+                setStockPriceHistory([]);
+                setStockTransactions([]);
+            }
+        }).finally(() => {
+            if (!cancelled) setLoading(false);
+        });
+        return () => { cancelled = true; };
+    }, [activeStockId, setActiveStock]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -49,24 +99,13 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         []
     );
 
-    // Find the stock by ID from the store
-    const stock = stocks.find(s => s.id === activeStockId);
-    const league = leagues.find(l => l.id === stock?.leagueID);
-    const stockPriceHistory = priceHistory.filter(ph => ph.stockID === stock?.id);
-
-    // Get team name and sport key for odds API
     const apiTeamName = useMemo(() => stock?.fullName || null, [stock]);
     const sportKey = useMemo(() => league ? getSportKey(league.name, league.sport) : null, [league]);
 
-    // Get user's position for this stock (before early return to satisfy hooks rules)
-    const userPosition = stock ? portfolio.positions.find(position => position.stock.id === stock.id) : null;
+    const userPosition = stock && portfolio?.positions
+        ? portfolio.positions.find((p) => p.stock.id === stock.id) ?? null
+        : null;
     const userOwnsStock = !!userPosition;
-
-    // Get transaction history for this stock
-    const stockTransactions = stock ? transactions
-        .filter(t => t.stockID === stock.id && t.userID === 1)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) // Most recent first
-        : [];
 
     // Check if user follows this stock
     const userFollowsStock = stock ? isFollowing(stock.id) : false;
@@ -88,14 +127,29 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         });
     }, [userFollowsStock]);
 
-    // Don't render anything if no stock is selected
-    if (!activeStockId || !stock) return null;
+    if (!activeStockId) return null;
+    if (loading || !stock) {
+        return (
+            <BottomSheetModal
+                ref={stockBottomSheetRef}
+                onDismiss={() => setActiveStockId(null)}
+                enableDynamicSizing
+                backdropComponent={renderBackdrop}
+                style={{ borderRadius: 25 }}
+                backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
+            >
+                <View style={{ padding: 48, alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={Color.green} />
+                    <Text style={[styles.leagueName, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
+                </View>
+            </BottomSheetModal>
+        );
+    }
 
-    // Calculate price change
     const currentPrice = stock.price;
     const previousPrice = stockPriceHistory.length > 1 ? stockPriceHistory[stockPriceHistory.length - 2].price : currentPrice;
     const priceChange = currentPrice - previousPrice;
-    const priceChangePercentage = (priceChange / previousPrice) * 100;
+    const priceChangePercentage = previousPrice ? (priceChange / previousPrice) * 100 : 0;
 
     // Get team colors
     const primaryColor = stock.color || Color.blue;
@@ -149,25 +203,19 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                 <ActionButtons userOwnsStock={userOwnsStock} userFollowsStock={userFollowsStock} stock={stock} />
 
                 {/* Position Details - Only show if user owns the stock */}
-                {(userOwnsStock && userPosition) ? (
+                {userOwnsStock && userPosition && (
                     <YourPosition userPosition={userPosition} currentPrice={currentPrice} />
-                ) : (
-                    <ActivityIndicator size="small" color="#000000" />
                 )}
 
                 {/* Trade History Section */}
                 <TradeHistory stockTransactions={stockTransactions} stock={stock} />
 
-                {(stock && apiTeamName && sportKey) ? (
+                {stock && apiTeamName && sportKey && (
                     <OddsSection apiTeamName={apiTeamName} sportKey={sportKey} stock={stock} />
-                ) : (
-                    <ActivityIndicator size="small" color="#000000" />
                 )}
 
-                {(league && stock) ? (
+                {league && stock && (
                     <PredictionMarkets league={league} stock={stock} />
-                ) : (
-                    <ActivityIndicator size="small" color="#000000" />
                 )}
 
                 {/* Bottom Spacing */}

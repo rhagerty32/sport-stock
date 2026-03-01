@@ -1,6 +1,7 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +16,11 @@ type PurchaseFanCoinsBottomSheetProps = {
     purchaseFanCoinsBottomSheetRef: React.RefObject<BottomSheetModal>;
 };
 
-const DUMMY_USER_ID = 1;
 const PRESET_AMOUNTS = [10, 25, 50, 100, 250];
 
 export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomSheetRef }: PurchaseFanCoinsBottomSheetProps) {
     const Color = useColors();
+    const user = useAuthStore((s) => s.user);
     const { setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen } = useStockStore();
     const { wallet, purchaseFanCoins, isLoading } = useWalletStore();
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -91,11 +92,11 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
     };
 
     const handlePurchase = async () => {
-        if (!selectedAmount) return;
+        if (!selectedAmount || !user?.id) return;
 
         try {
             lightImpact();
-            await purchaseFanCoins(DUMMY_USER_ID, selectedAmount, 'stripe');
+            await purchaseFanCoins(user.id, selectedAmount, 'stripe');
             success();
 
             // Reset form

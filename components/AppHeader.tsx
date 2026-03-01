@@ -1,11 +1,13 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
@@ -15,7 +17,9 @@ export function AppHeader() {
     const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
-    const { setPurchaseFanCoinsBottomSheetOpen } = useStockStore();
+    const router = useRouter();
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const { setPurchaseFanCoinsBottomSheetOpen, setLoginBottomSheetOpen } = useStockStore();
     const { wallet } = useWalletStore();
 
     const [showWalletDropdown, setShowWalletDropdown] = useState(false);
@@ -138,55 +142,70 @@ export function AppHeader() {
             <View style={styles.headerTop}>
                 <Text style={[styles.logo, { color: Color.baseText }]}>SportStock</Text>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 0 }}
-                        onPress={() => {
-                            setShowWalletDropdown(!showWalletDropdown);
-                            lightImpact();
-                        }}
-                    >
-                        {wallet ? (
-                            <View style={[styles.balanceContainer, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                <View style={styles.balanceSubContainer}>
-                                    <View style={styles.balanceAmountContainer}>
-                                        <AnimatedRollingNumber
-                                            value={selectedCurrency === 'GC' ? wallet.fanCoins : wallet.tradingCredits}
-                                            useGrouping={true}
-                                            enableCompactNotation={false}
-                                            compactToFixed={2}
-                                            textStyle={[styles.balance, { color: Color.baseText }]}
-                                            spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
-                                        />
-                                        <View style={styles.coinIconContainer}>
-                                            <Animated.View style={[styles.coinIconWrapper, gcIconAnimatedStyle]}>
-                                                <Image source={require('@/assets/images/goldCoin.png')} style={styles.balanceCoinIcon} contentFit="contain" />
-                                            </Animated.View>
-                                            <Animated.View style={[styles.coinIconWrapper, styles.scCoinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }, scIconAnimatedStyle]}>
-                                                <Image source={require('@/assets/images/sportstockLogo.png')} style={styles.balanceCoinIcon} contentFit="contain" />
-                                            </Animated.View>
+                    {isAuthenticated ? (
+                        <>
+                            <TouchableOpacity
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 0 }}
+                                onPress={() => {
+                                    setShowWalletDropdown(!showWalletDropdown);
+                                    lightImpact();
+                                }}
+                            >
+                                {wallet ? (
+                                    <View style={[styles.balanceContainer, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                        <View style={styles.balanceSubContainer}>
+                                            <View style={styles.balanceAmountContainer}>
+                                                <AnimatedRollingNumber
+                                                    value={selectedCurrency === 'GC' ? wallet.fanCoins : wallet.tradingCredits}
+                                                    useGrouping={true}
+                                                    enableCompactNotation={false}
+                                                    compactToFixed={2}
+                                                    textStyle={[styles.balance, { color: Color.baseText }]}
+                                                    spinningAnimationConfig={{ duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }}
+                                                />
+                                                <View style={styles.coinIconContainer}>
+                                                    <Animated.View style={[styles.coinIconWrapper, gcIconAnimatedStyle]}>
+                                                        <Image source={require('@/assets/images/goldCoin.png')} style={styles.balanceCoinIcon} contentFit="contain" />
+                                                    </Animated.View>
+                                                    <Animated.View style={[styles.coinIconWrapper, styles.scCoinIcon, { backgroundColor: isDark ? '#374151' : '#1F2937' }, scIconAnimatedStyle]}>
+                                                        <Image source={require('@/assets/images/sportstockLogo.png')} style={styles.balanceCoinIcon} contentFit="contain" />
+                                                    </Animated.View>
+                                                </View>
+                                            </View>
                                         </View>
+                                        <Ionicons name="chevron-down" size={20} color={selectedCurrency === 'GC' ? '#F7CE37' : Color.green} style={styles.chevron} />
                                     </View>
-                                </View>
-                                <Ionicons name="chevron-down" size={20} color={selectedCurrency === 'GC' ? '#F7CE37' : Color.green} style={styles.chevron} />
-                            </View>
-                        ) : (
-                            <Text style={[styles.balance, { color: Color.subText }]}>Loading...</Text>
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={[styles.addButton, { backgroundColor: Color.green }]}
-                        onPress={() => {
-                            setShowWalletDropdown(false);
-                            setPurchaseFanCoinsBottomSheetOpen(true);
-                            lightImpact();
-                        }}
-                    >
-                        <Ionicons name="add" size={24} color={isDark ? '#0B0F13' : '#fff'} />
-                    </TouchableOpacity>
+                                ) : (
+                                    <Text style={[styles.balance, { color: Color.subText }]}>Loading...</Text>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                style={[styles.addButton, { backgroundColor: Color.green }]}
+                                onPress={() => {
+                                    setShowWalletDropdown(false);
+                                    setPurchaseFanCoinsBottomSheetOpen(true);
+                                    lightImpact();
+                                }}
+                            >
+                                <Ionicons name="add" size={24} color={isDark ? '#0B0F13' : '#fff'} />
+                            </TouchableOpacity>
+                        </>
+                    ) : (
+                        <TouchableOpacity
+                            style={[styles.headerLoginButton, { backgroundColor: Color.green }]}
+                            onPress={() => {
+                                lightImpact();
+                                setLoginBottomSheetOpen(true);
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.headerLoginButtonText}>Log in</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
-            {isDropdownVisible && wallet && <WalletDropdownMenu />}
+            {isAuthenticated && isDropdownVisible && wallet && <WalletDropdownMenu />}
         </View>
     );
 }
@@ -263,6 +282,16 @@ const styles = StyleSheet.create({
     addButton: {
         padding: 3,
         borderRadius: 10,
+    },
+    headerLoginButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    headerLoginButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     dropdownWrapper: {
         position: 'absolute',

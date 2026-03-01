@@ -1,15 +1,19 @@
 import { useColors } from '@/components/utils';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { userOwnsStock: boolean, userFollowsStock: boolean, stock: Stock }) => {
     const Color = useColors();
-    // Animated opacity for Follow/Unfollow text fade
+    const router = useRouter();
+    const requireAuth = useAuthStore((s) => s.requireAuth);
+    const setLoginBottomSheetOpen = useStockStore((s) => s.setLoginBottomSheetOpen);
     const followTextOpacity = useSharedValue(1);
 
     const animatedTextStyle = useAnimatedStyle(() => {
@@ -24,14 +28,30 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
 
     const handleBuy = () => {
         lightImpact();
-        setBuySellMode('buy');
-        setBuySellBottomSheetOpen(true);
+        const ok = requireAuth(() => {
+            setBuySellMode('buy');
+            setBuySellBottomSheetOpen(true);
+        });
+        if (!ok) {
+            Alert.alert('Log in to trade', 'Sign in to buy and sell teams on SportStock.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Log in', onPress: () => setLoginBottomSheetOpen(true) },
+            ]);
+        }
     };
 
     const handleSell = () => {
         lightImpact();
-        setBuySellMode('sell');
-        setBuySellBottomSheetOpen(true);
+        const ok = requireAuth(() => {
+            setBuySellMode('sell');
+            setBuySellBottomSheetOpen(true);
+        });
+        if (!ok) {
+            Alert.alert('Log in to trade', 'Sign in to buy and sell teams on SportStock.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Log in', onPress: () => setLoginBottomSheetOpen(true) },
+            ]);
+        }
     };
 
     const handleFollow = (userFollowsStock: boolean, stock: Stock) => {

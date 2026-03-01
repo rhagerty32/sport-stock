@@ -23,6 +23,10 @@ interface ChartProps {
     stockId: number;
     color?: string;
     backgroundColor?: string;
+    /** When provided, chart uses this data instead of generating. Used for API-sourced data (e.g. portfolio summary). */
+    priceData?: PriceHistory[] | null;
+    /** Hide the time period selector when using external priceData (e.g. single period from API). */
+    hideTimePeriodSelector?: boolean;
 }
 
 // Generate price history data (simplified version of the one in dummy-data)
@@ -93,10 +97,32 @@ const generatePriceHistory = (
     return history;
 };
 
+/** Filter API-sourced price history by selected time period (by date). */
+function filterPriceDataByPeriod(data: PriceHistory[], period: TimePeriod): PriceHistory[] {
+    if (data.length === 0) return [];
+    const now = Date.now();
+    const sorted = [...data].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    let cutoff: number;
+    switch (period) {
+        case '1H': cutoff = now - 60 * 60 * 1000; break;
+        case '1D': cutoff = now - 24 * 60 * 60 * 1000; break;
+        case '1W': cutoff = now - 7 * 24 * 60 * 60 * 1000; break;
+        case '1M': cutoff = now - 30 * 24 * 60 * 60 * 1000; break;
+        case '3M': cutoff = now - 90 * 24 * 60 * 60 * 1000; break;
+        case '1Y': cutoff = now - 365 * 24 * 60 * 60 * 1000; break;
+        case '5Y': cutoff = now - 5 * 365 * 24 * 60 * 60 * 1000; break;
+        case 'ALL': return sorted;
+        default: return sorted;
+    }
+    return sorted.filter((p) => new Date(p.timestamp).getTime() >= cutoff);
+}
+
 const Chart: React.FC<ChartProps> = ({
     stockId,
     color = useColors()?.green,
-    backgroundColor = null
+    backgroundColor = null,
+    priceData: externalPriceData = null,
+    hideTimePeriodSelector = false,
 }) => {
     const Color = useColors();
     const [priceData, setPriceData] = useState<PriceHistory[]>([]);
@@ -384,7 +410,10 @@ const Chart: React.FC<ChartProps> = ({
     };
 
     useEffect(() => {
-        const data = getDataPoints(timePeriod);
+        const data =
+            externalPriceData != null && externalPriceData.length > 0
+                ? filterPriceDataByPeriod(externalPriceData, timePeriod)
+                : getDataPoints(timePeriod);
         setPriceData(data);
 
         // Start animation
@@ -394,7 +423,7 @@ const Chart: React.FC<ChartProps> = ({
         // Reset to smooth lines when data changes
         smoothness.value = 1;
         setSmoothnessState(1);
-    }, [timePeriod, stockId]);
+    }, [timePeriod, stockId, externalPriceData]);
 
 
     // Create interpolated path that smoothly transitions between smooth and sharp
@@ -682,7 +711,8 @@ const Chart: React.FC<ChartProps> = ({
                 </GestureHandlerRootView>
             </View>
 
-            {/* Time Period Selector */}
+            {/* Time Period Selector - hidden when using external data (e.g. portfolio chart) */}
+            {!hideTimePeriodSelector && (
             <View style={styles.timePeriodContainer}>
                 {['1H', '1D', '1M', '1Y', '5Y', 'ALL'].map((period) => {
                     const isActive = timePeriod === period;
@@ -708,6 +738,7 @@ const Chart: React.FC<ChartProps> = ({
                     );
                 })}
             </View>
+            )}
         </View>
     );
 };
