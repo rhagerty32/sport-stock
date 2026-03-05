@@ -410,10 +410,20 @@ const Chart: React.FC<ChartProps> = ({
     };
 
     useEffect(() => {
-        const data =
-            externalPriceData != null && externalPriceData.length > 0
-                ? filterPriceDataByPeriod(externalPriceData, timePeriod)
-                : getDataPoints(timePeriod);
+        let data: PriceHistory[];
+
+        if (externalPriceData != null) {
+            // When external data is provided, never fall back to generated data.
+            // If it's empty, we intentionally show an empty chart (no fake history).
+            data =
+                externalPriceData.length > 0
+                    ? filterPriceDataByPeriod(externalPriceData, timePeriod)
+                    : [];
+        } else {
+            // Only generate synthetic data when no external data is supplied.
+            data = getDataPoints(timePeriod);
+        }
+
         setPriceData(data);
 
         // Start animation

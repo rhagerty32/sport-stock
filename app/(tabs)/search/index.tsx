@@ -7,17 +7,18 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { fetchLeagues } from '@/lib/leagues-api';
 import { search as searchApi } from '@/lib/search-api';
+import { fetchStocks } from '@/lib/stocks-api';
 import { useStockStore } from '@/stores/stockStore';
 import type { League, Stock } from '@/types';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SearchScreen() {
     const Color = useColors();
     const { isDark } = useTheme();
-    const { selection } = useHaptics();
-    const { searchQuery } = useSearch();
-    const { setActiveStockId } = useStockStore();
+    const { lightImpact } = useHaptics();
+    const { setActiveStockId, setActiveStock } = useStockStore();
+    const { searchQuery, setSearchQuery } = useSearch();
     const [selectedLeague, setSelectedLeague] = useState<string>('All');
     const [leaguesList, setLeaguesList] = useState<League[]>([]);
     const [stocks, setStocks] = useState<Stock[]>([]);
@@ -38,39 +39,52 @@ export default function SearchScreen() {
     }, [selectedLeague, leaguesList]);
 
     useEffect(() => {
-        if (!searchQuery.trim()) {
-            setStocks([]);
-            setTotal(0);
-            return;
-        }
         let cancelled = false;
         setLoading(true);
-        searchApi(searchQuery.trim(), 'all', leagueIdForFilter)
-            .then((res) => {
-                if (!cancelled) {
-                    setStocks(res.stocks);
-                    setTotal(res.total);
-                }
+        if (searchQuery.trim()) {
+            searchApi(searchQuery.trim(), 'all', leagueIdForFilter)
+                .then((res) => {
+                    if (!cancelled) {
+                        setStocks(res.stocks);
+                        setTotal(res.total);
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) {
+                        setStocks([]);
+                        setTotal(0);
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) setLoading(false);
+                });
+        } else {
+            fetchStocks({
+                leagueID: leagueIdForFilter,
+                limit: 60,
+                offset: 0,
             })
-            .catch(() => {
-                if (!cancelled) {
-                    setStocks([]);
-                    setTotal(0);
-                }
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
+                .then((res) => {
+                    if (!cancelled) {
+                        setStocks(res.stocks);
+                        setTotal(res.total);
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) {
+                        setStocks([]);
+                        setTotal(0);
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) setLoading(false);
+                });
+        }
         return () => { cancelled = true; };
     }, [searchQuery, leagueIdForFilter]);
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-
-    const formatPercentage = (percentage: number) => {
-        const sign = percentage >= 0 ? '+' : '';
-        return `${sign}${percentage.toFixed(2)}%`;
-    };
 
     const getLeagueForStock = useCallback((stock: Stock) => leaguesList.find((l) => l.id === stock.leagueID), [leaguesList]);
 
@@ -79,8 +93,10 @@ export default function SearchScreen() {
         return (
             <TouchableOpacity
                 onPress={() => {
+                    Keyboard.dismiss();
+                    lightImpact();
+                    setActiveStock(stock);
                     setActiveStockId(stock.id);
-                    selection();
                 }}
                 style={styles.gridCardWrapper}
             >
@@ -102,11 +118,30 @@ export default function SearchScreen() {
         );
     };
 
-    const showEmpty = !loading && (searchQuery.trim() === '' || total === 0);
+    const showEmpty = !loading && searchQuery.trim() !== '' && total === 0;
     const leagueNames = useMemo(() => ['All', ...leaguesList.map((l) => l.name)], [leaguesList]);
 
     return (
         <ThemedView style={styles.container}>
+            <View style={[styles.header, { backgroundColor: isDark ? '#0B0F13' : Color.white }]}>
+                <Text style={[styles.headerTitle, { color: Color.baseText }]}>Search</Text>
+                <TextInput
+                    style={[
+                        styles.searchInput,
+                        {
+                            backgroundColor: isDark ? '#1A1D21' : '#F3F4F6',
+                            color: Color.baseText,
+                            borderColor: isDark ? '#4B5563' : '#E5E7EB',
+                        },
+                    ]}
+                    placeholder="Search teams..."
+                    placeholderTextColor={Color.subText}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                />
+            </View>
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
@@ -128,7 +163,7 @@ export default function SearchScreen() {
                                 ]}
                                 onPress={() => {
                                     setSelectedLeague(league);
-                                    selection();
+                                    lightImpact();
                                 }}
                             >
                                 <Text style={[styles.filterPillText, { color: selectedLeague === league ? '#FFFFFF' : Color.subText }]}>
@@ -141,7 +176,11 @@ export default function SearchScreen() {
 
                 <View style={styles.resultsContainer}>
                     <Text style={[styles.resultsText, { color: Color.subText }]}>
-                        {loading ? 'Searching…' : searchQuery.trim() ? `${total} teams found` : 'Enter a search term'}
+                        {loading
+                            ? (searchQuery.trim() ? 'Searching…' : 'Loading teams…')
+                            : searchQuery.trim()
+                                ? `${total} teams found`
+                                : `${total} teams`}
                     </Text>
                 </View>
 
@@ -152,8 +191,8 @@ export default function SearchScreen() {
                 ) : showEmpty ? (
                     <EmptyState
                         icon="search-outline"
-                        title={searchQuery.trim() ? 'No results' : 'Search stocks & leagues'}
-                        subtitle={searchQuery.trim() ? 'Try a different search or league filter.' : 'Type to find teams and leagues.'}
+                        title="No results"
+                        subtitle="Try a different search or league filter."
                     />
                 ) : (
                     <View style={styles.teamsContainer}>
@@ -177,6 +216,23 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
+    header: {
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 16,
+    },
+    headerTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 12,
+    },
+    searchInput: {
+        height: 44,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        fontSize: 16,
+        borderWidth: 1,
+    },
     scrollView: { flex: 1 },
     scrollContent: { flexGrow: 1 },
     filterContainer: { marginBottom: 20, marginTop: 10 },

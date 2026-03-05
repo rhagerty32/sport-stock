@@ -8,8 +8,9 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { followStock, unfollowStock } from '@/lib/follows-api';
 
-export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { userOwnsStock: boolean, userFollowsStock: boolean, stock: Stock }) => {
+export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { userOwnsStock: boolean; userFollowsStock: boolean; stock: Stock }) => {
     const Color = useColors();
     const router = useRouter();
     const requireAuth = useAuthStore((s) => s.requireAuth);
@@ -24,7 +25,7 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
 
     const { lightImpact } = useHaptics();
     const { setBuySellMode, setBuySellBottomSheetOpen } = useStockStore();
-    const { removeFollow, addFollow } = useStockStore();
+    const { removeFollow, addFollow, upsertFollowedStock, removeFollowedStockById } = useStockStore();
 
     const handleBuy = () => {
         lightImpact();
@@ -56,10 +57,37 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
 
     const handleFollow = (userFollowsStock: boolean, stock: Stock) => {
         lightImpact();
-        if (userFollowsStock) {
-            removeFollow(stock.id);
-        } else {
-            addFollow(stock.id);
+        const ok = requireAuth(async () => {
+            try {
+                if (userFollowsStock) {
+                    // Optimistically update local state
+                    removeFollow(stock.id);
+                    removeFollowedStockById(stock.id);
+                    await unfollowStock(stock.id);
+                } else {
+                    // Optimistically update local state
+                    addFollow(stock.id);
+                    upsertFollowedStock(stock);
+                    await followStock(stock.id);
+                }
+            } catch (err) {
+                // Roll back local state on error
+                if (userFollowsStock) {
+                    addFollow(stock.id);
+                    upsertFollowedStock(stock);
+                } else {
+                    removeFollow(stock.id);
+                    removeFollowedStockById(stock.id);
+                }
+                Alert.alert('Unable to update follow', 'Something went wrong saving your follow. Please try again.');
+            }
+        });
+
+        if (!ok) {
+            Alert.alert('Log in to follow', 'Sign in to follow teams on SportStock.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Log in', onPress: () => setLoginBottomSheetOpen(true) },
+            ]);
         }
     };
 

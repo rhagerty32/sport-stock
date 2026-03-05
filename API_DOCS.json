@@ -1,0 +1,2760 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "SportStock API",
+        "description": "Read-mostly API; auth for /me and orders.",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "summary": "Root",
+                "operationId": "root__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Register",
+                "description": "Register a new user. Balance is always set to 0.",
+                "operationId": "register_api_users__post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me": {
+            "get": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get Me",
+                "description": "Get current user. Requires auth.",
+                "operationId": "get_me_api_users_me_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update Me",
+                "description": "Update current user. Only name, phone_number, email. No balance.",
+                "operationId": "update_me_api_users_me_patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/markets/": {
+            "get": {
+                "tags": [
+                    "markets"
+                ],
+                "summary": "List Markets",
+                "description": "List all markets.",
+                "operationId": "list_markets_api_markets__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/MarketListItem"
+                                    },
+                                    "type": "array",
+                                    "title": "Response List Markets Api Markets  Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/markets/{market_id}/state": {
+            "get": {
+                "tags": [
+                    "markets"
+                ],
+                "summary": "Get Market State",
+                "description": "Get market state. No auth.",
+                "operationId": "get_market_state_api_markets__market_id__state_get",
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Market Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MarketStateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/markets/{market_id}/assets": {
+            "get": {
+                "tags": [
+                    "markets"
+                ],
+                "summary": "List Market Assets",
+                "description": "List assets for a market. No auth.",
+                "operationId": "list_market_assets_api_markets__market_id__assets_get",
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Market Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AssetResponse"
+                                    },
+                                    "title": "Response List Market Assets Api Markets  Market Id  Assets Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/markets/{market_id}": {
+            "get": {
+                "tags": [
+                    "markets"
+                ],
+                "summary": "Get Market",
+                "description": "Get full market (assets, prices, state). No per-user positions.",
+                "operationId": "get_market_api_markets__market_id__get",
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Market Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MarketResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/markets/{market_id}/positions": {
+            "get": {
+                "tags": [
+                    "markets"
+                ],
+                "summary": "List My Positions",
+                "description": "List current user's positions in this market. Auth required.",
+                "operationId": "list_my_positions_api_markets__market_id__positions_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Market Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PositionResponse"
+                                    },
+                                    "title": "Response List My Positions Api Markets  Market Id  Positions Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/markets/{market_id}/orders": {
+            "post": {
+                "tags": [
+                    "markets"
+                ],
+                "summary": "Submit Orders",
+                "description": "Submit buy/sell orders. All positions must belong to current user.\nBuys require user.balance >= total cost. Auth required.",
+                "operationId": "submit_orders_api_markets__market_id__orders_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Market Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrdersSubmit"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MarketStateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "List Stocks",
+                "description": "Get all stocks with optional filtering. Public.",
+                "operationId": "list_stocks_api_stocks_get",
+                "parameters": [
+                    {
+                        "name": "leagueID",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by league/market ID",
+                            "title": "Leagueid"
+                        },
+                        "description": "Filter by league/market ID"
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Search"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "default": 20,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "title": "Offset"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedStocks"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks/top-movers": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Top Movers",
+                "description": "Get top gainers and losers by price change vs initial value. Public.",
+                "operationId": "top_movers_api_stocks_top_movers_get",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "default": 5,
+                            "title": "Limit"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TopMoversResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks/highest-volume": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Highest Volume",
+                "description": "Get stocks sorted by total position quantity (volume proxy). Public.",
+                "operationId": "highest_volume_api_stocks_highest_volume_get",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "default": 9,
+                            "title": "Limit"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HighestVolumeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks/on-the-rise": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "On The Rise",
+                "description": "Get stocks with positive price movement. Public.",
+                "operationId": "on_the_rise_api_stocks_on_the_rise_get",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "default": 9,
+                            "title": "Limit"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OnTheRiseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks/upset-alert": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Upset Alert",
+                "description": "Get stocks with negative price movement. Public.",
+                "operationId": "upset_alert_api_stocks_upset_alert_get",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "default": 9,
+                            "title": "Limit"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OnTheRiseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks/{stock_id}": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Get Stock",
+                "description": "Get a single stock by ID (asset_id). Public.",
+                "operationId": "get_stock_api_stocks__stock_id__get",
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Stock"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stocks/{stock_id}/price-history": {
+            "get": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Get Price History",
+                "description": "Get price history for a stock. Currently returns empty history (no time-series table yet). Public.",
+                "operationId": "get_price_history_api_stocks__stock_id__price_history_get",
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    },
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": "1D",
+                            "title": "Period"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 500,
+                            "minimum": 1,
+                            "default": 100,
+                            "title": "Limit"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PriceHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/leagues": {
+            "get": {
+                "tags": [
+                    "leagues"
+                ],
+                "summary": "List Leagues",
+                "description": "Get all leagues (markets). Public.",
+                "operationId": "list_leagues_api_leagues_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/League"
+                                    },
+                                    "type": "array",
+                                    "title": "Response List Leagues Api Leagues Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/leagues/{league_id}": {
+            "get": {
+                "tags": [
+                    "leagues"
+                ],
+                "summary": "Get League",
+                "description": "Get a single league by ID (market_id). Public.",
+                "operationId": "get_league_api_leagues__league_id__get",
+                "parameters": [
+                    {
+                        "name": "league_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "League Id"
+                        }
+                    },
+                    {
+                        "name": "includeStocks",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Includestocks"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/League"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/portfolio": {
+            "get": {
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Get Portfolio",
+                "description": "Get the authenticated user's portfolio. Auth required.",
+                "operationId": "get_portfolio_api_portfolio_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Portfolio"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/portfolio/positions": {
+            "get": {
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "List Positions",
+                "description": "Get all positions for the authenticated user. Auth required.",
+                "operationId": "list_positions_api_portfolio_positions_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Sortby"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "default": 100,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "title": "Offset"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedPositions"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/portfolio/positions/{stock_id}": {
+            "get": {
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Get Position",
+                "description": "Get position for a specific stock (stock_id can be numeric API id or asset_id string).\nReturns 404 if user doesn't own the stock. Auth required.",
+                "operationId": "get_position_api_portfolio_positions__stock_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Position"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/transactions": {
+            "get": {
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "List Transactions",
+                "description": "List transactions for the authenticated user. Auth required.",
+                "operationId": "list_transactions_api_transactions_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stockID",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Stockid"
+                        }
+                    },
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Action"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "default": 20,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "title": "Offset"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedTransactions"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Create Transaction",
+                "description": "Create a buy/sell transaction by stock ID.\nResolves stock_id to your position and executes the order. Auth required.",
+                "operationId": "create_transaction_api_transactions_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TransactionCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Transaction"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/transactions/{transaction_id}": {
+            "get": {
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get Transaction",
+                "description": "Get a single transaction by ID. Auth required (own only).",
+                "operationId": "get_transaction_api_transactions__transaction_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transaction_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Transaction Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Transaction"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/bonus-info": {
+            "get": {
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Get Bonus Info",
+                "description": "Get bonus information (currently all zeros). Public.",
+                "operationId": "get_bonus_info_api_wallet_bonus_info_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BonusInfo"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/{user_id}": {
+            "get": {
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Get Wallet",
+                "description": "Get wallet balances for a user. Auth required; may only request own wallet.",
+                "operationId": "get_wallet_api_wallet__user_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "User Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Wallet"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/purchase": {
+            "post": {
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Purchase Fan Coins",
+                "description": "Purchase fan coins. Not implemented (dual-currency not in scope).",
+                "operationId": "purchase_fan_coins_api_wallet_purchase_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/{user_id}/history": {
+            "get": {
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Get Wallet History",
+                "description": "Get purchase history. Not implemented (dual-currency not in scope).",
+                "operationId": "get_wallet_history_api_wallet__user_id__history_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "User Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/search": {
+            "get": {
+                "tags": [
+                    "search"
+                ],
+                "summary": "Search",
+                "description": "Search stocks and leagues by name or ticker/id.\ntype: stock, league, or all. leagueID: filter stocks by market. Public.",
+                "operationId": "search_api_search_get",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "title": "Q"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "all",
+                            "title": "Type"
+                        }
+                    },
+                    {
+                        "name": "leagueID",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Leagueid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AssetResponse": {
+                "properties": {
+                    "asset_id": {
+                        "type": "string",
+                        "title": "Asset Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "initial_value": {
+                        "type": "number",
+                        "title": "Initial Value"
+                    },
+                    "volatility_params": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Volatility Params"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "asset_id",
+                    "name",
+                    "initial_value",
+                    "volatility_params"
+                ],
+                "title": "AssetResponse"
+            },
+            "BonusInfo": {
+                "properties": {
+                    "baseMultiplier": {
+                        "type": "number",
+                        "title": "Basemultiplier",
+                        "default": 0.0
+                    },
+                    "tierMultipliers": {
+                        "items": {
+                            "additionalProperties": {
+                                "type": "number"
+                            },
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Tiermultipliers"
+                    },
+                    "firstTimeBonus": {
+                        "type": "number",
+                        "title": "Firsttimebonus",
+                        "default": 0.0
+                    }
+                },
+                "type": "object",
+                "title": "BonusInfo",
+                "description": "Bonus information for purchases (currently all zeros)."
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "HighestVolumeResponse": {
+                "properties": {
+                    "stocks": {
+                        "items": {
+                            "$ref": "#/components/schemas/Stock"
+                        },
+                        "type": "array",
+                        "title": "Stocks"
+                    }
+                },
+                "type": "object",
+                "title": "HighestVolumeResponse"
+            },
+            "League": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "marketCap": {
+                        "type": "integer",
+                        "title": "Marketcap",
+                        "default": 0
+                    },
+                    "volume": {
+                        "type": "integer",
+                        "title": "Volume",
+                        "default": 0
+                    },
+                    "stocks": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/Stock"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stocks"
+                    },
+                    "photoUrl": {
+                        "type": "string",
+                        "title": "Photourl",
+                        "default": ""
+                    },
+                    "sport": {
+                        "type": "string",
+                        "title": "Sport",
+                        "default": ""
+                    },
+                    "createdAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Createdat"
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updatedat"
+                    },
+                    "playoffQuery": {
+                        "type": "string",
+                        "title": "Playoffquery",
+                        "default": ""
+                    },
+                    "divisionQuery": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Divisionquery"
+                    },
+                    "conferenceQuery": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conferencequery"
+                    },
+                    "championQuery": {
+                        "type": "string",
+                        "title": "Championquery",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "League",
+                "description": "Sports league. Maps from MarketModel."
+            },
+            "MarketListItem": {
+                "properties": {
+                    "market_id": {
+                        "type": "string",
+                        "title": "Market Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "name"
+                ],
+                "title": "MarketListItem"
+            },
+            "MarketResponse": {
+                "properties": {
+                    "market_id": {
+                        "type": "string",
+                        "title": "Market Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "tick_index": {
+                        "type": "integer",
+                        "title": "Tick Index"
+                    },
+                    "last_updated": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Last Updated"
+                    },
+                    "virtual_liquidity": {
+                        "type": "number",
+                        "title": "Virtual Liquidity"
+                    },
+                    "assets": {
+                        "items": {
+                            "$ref": "#/components/schemas/AssetResponse"
+                        },
+                        "type": "array",
+                        "title": "Assets"
+                    },
+                    "prices": {
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "type": "object",
+                        "title": "Prices"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "name",
+                    "tick_index",
+                    "last_updated",
+                    "virtual_liquidity",
+                    "assets",
+                    "prices"
+                ],
+                "title": "MarketResponse",
+                "description": "Full market; no per-user positions, only assets/prices/state."
+            },
+            "MarketStateResponse": {
+                "properties": {
+                    "tick_index": {
+                        "type": "integer",
+                        "title": "Tick Index"
+                    },
+                    "last_updated": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Last Updated"
+                    },
+                    "virtual_liquidity": {
+                        "type": "number",
+                        "title": "Virtual Liquidity"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tick_index",
+                    "last_updated",
+                    "virtual_liquidity"
+                ],
+                "title": "MarketStateResponse"
+            },
+            "MoverItem": {
+                "properties": {
+                    "stock": {
+                        "$ref": "#/components/schemas/Stock"
+                    },
+                    "change": {
+                        "type": "number",
+                        "title": "Change",
+                        "default": 0.0
+                    },
+                    "changePercentage": {
+                        "type": "number",
+                        "title": "Changepercentage",
+                        "default": 0.0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stock"
+                ],
+                "title": "MoverItem",
+                "description": "Stock with change info for top-movers / on-the-rise / upset-alert."
+            },
+            "OnTheRiseResponse": {
+                "properties": {
+                    "stocks": {
+                        "items": {
+                            "$ref": "#/components/schemas/MoverItem"
+                        },
+                        "type": "array",
+                        "title": "Stocks"
+                    }
+                },
+                "type": "object",
+                "title": "OnTheRiseResponse"
+            },
+            "OrderItem": {
+                "properties": {
+                    "position_id": {
+                        "type": "string",
+                        "title": "Position Id"
+                    },
+                    "delta_quantity": {
+                        "type": "number",
+                        "title": "Delta Quantity"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "position_id",
+                    "delta_quantity"
+                ],
+                "title": "OrderItem",
+                "description": "Single order: positive delta_quantity = buy, negative = sell."
+            },
+            "OrdersSubmit": {
+                "properties": {
+                    "orders": {
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItem"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Orders"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "orders"
+                ],
+                "title": "OrdersSubmit"
+            },
+            "PaginatedPositions": {
+                "properties": {
+                    "positions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Position"
+                        },
+                        "type": "array",
+                        "title": "Positions"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "title": "PaginatedPositions"
+            },
+            "PaginatedStocks": {
+                "properties": {
+                    "stocks": {
+                        "items": {
+                            "$ref": "#/components/schemas/Stock"
+                        },
+                        "type": "array",
+                        "title": "Stocks"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total",
+                        "default": 0
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "title": "Limit",
+                        "default": 20
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "title": "Offset",
+                        "default": 0
+                    },
+                    "hasMore": {
+                        "type": "boolean",
+                        "title": "Hasmore",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "PaginatedStocks"
+            },
+            "PaginatedTransactions": {
+                "properties": {
+                    "transactions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Transaction"
+                        },
+                        "type": "array",
+                        "title": "Transactions"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total",
+                        "default": 0
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "title": "Limit",
+                        "default": 20
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "title": "Offset",
+                        "default": 0
+                    },
+                    "hasMore": {
+                        "type": "boolean",
+                        "title": "Hasmore",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "PaginatedTransactions"
+            },
+            "Portfolio": {
+                "properties": {
+                    "totalValue": {
+                        "type": "number",
+                        "title": "Totalvalue",
+                        "default": 0.0
+                    },
+                    "totalInvested": {
+                        "type": "number",
+                        "title": "Totalinvested",
+                        "default": 0.0
+                    },
+                    "totalGainLoss": {
+                        "type": "number",
+                        "title": "Totalgainloss",
+                        "default": 0.0
+                    },
+                    "totalGainLossPercentage": {
+                        "type": "number",
+                        "title": "Totalgainlosspercentage",
+                        "default": 0.0
+                    },
+                    "positions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Position"
+                        },
+                        "type": "array",
+                        "title": "Positions"
+                    }
+                },
+                "type": "object",
+                "title": "Portfolio",
+                "description": "User's complete portfolio summary."
+            },
+            "Position": {
+                "properties": {
+                    "stock": {
+                        "$ref": "#/components/schemas/Stock"
+                    },
+                    "entries": {
+                        "type": "number",
+                        "title": "Entries",
+                        "default": 0.0
+                    },
+                    "avgEntryPrice": {
+                        "type": "number",
+                        "title": "Avgentryprice",
+                        "default": 0.0
+                    },
+                    "currentValue": {
+                        "type": "number",
+                        "title": "Currentvalue",
+                        "default": 0.0
+                    },
+                    "totalGainLoss": {
+                        "type": "number",
+                        "title": "Totalgainloss",
+                        "default": 0.0
+                    },
+                    "gainLossPercentage": {
+                        "type": "number",
+                        "title": "Gainlosspercentage",
+                        "default": 0.0
+                    },
+                    "colors": {
+                        "items": {
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Colors"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stock"
+                ],
+                "title": "Position",
+                "description": "User's position in a stock (computed from transactions)."
+            },
+            "PositionResponse": {
+                "properties": {
+                    "position_id": {
+                        "type": "string",
+                        "title": "Position Id"
+                    },
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "asset_id": {
+                        "type": "string",
+                        "title": "Asset Id"
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "title": "Quantity"
+                    },
+                    "locked_quantity": {
+                        "type": "number",
+                        "title": "Locked Quantity"
+                    },
+                    "cost_basis": {
+                        "type": "number",
+                        "title": "Cost Basis"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "position_id",
+                    "user_id",
+                    "asset_id",
+                    "quantity",
+                    "locked_quantity",
+                    "cost_basis"
+                ],
+                "title": "PositionResponse"
+            },
+            "PriceHistoryPoint": {
+                "properties": {
+                    "stockId": {
+                        "type": "integer",
+                        "title": "Stockid",
+                        "default": 0
+                    },
+                    "timestamp": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timestamp"
+                    },
+                    "price": {
+                        "type": "number",
+                        "title": "Price",
+                        "default": 0.0
+                    },
+                    "change": {
+                        "type": "number",
+                        "title": "Change",
+                        "default": 0.0
+                    },
+                    "changePercentage": {
+                        "type": "number",
+                        "title": "Changepercentage",
+                        "default": 0.0
+                    }
+                },
+                "type": "object",
+                "title": "PriceHistoryPoint",
+                "description": "Single point in price history."
+            },
+            "PriceHistoryResponse": {
+                "properties": {
+                    "stockId": {
+                        "type": "integer",
+                        "title": "Stockid"
+                    },
+                    "history": {
+                        "items": {
+                            "$ref": "#/components/schemas/PriceHistoryPoint"
+                        },
+                        "type": "array",
+                        "title": "History"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stockId"
+                ],
+                "title": "PriceHistoryResponse",
+                "description": "Response for GET /api/stocks/{stockId}/price-history."
+            },
+            "SearchResponse": {
+                "properties": {
+                    "stocks": {
+                        "items": {
+                            "$ref": "#/components/schemas/Stock"
+                        },
+                        "type": "array",
+                        "title": "Stocks"
+                    },
+                    "leagues": {
+                        "items": {
+                            "$ref": "#/components/schemas/League"
+                        },
+                        "type": "array",
+                        "title": "Leagues"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "title": "Total",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "title": "SearchResponse",
+                "description": "Response for GET /api/search."
+            },
+            "Stock": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "fullName": {
+                        "type": "string",
+                        "title": "Fullname",
+                        "default": ""
+                    },
+                    "leagueId": {
+                        "type": "integer",
+                        "title": "Leagueid"
+                    },
+                    "photoUrl": {
+                        "type": "string",
+                        "title": "Photourl",
+                        "default": ""
+                    },
+                    "price": {
+                        "type": "number",
+                        "title": "Price",
+                        "default": 0.0
+                    },
+                    "about": {
+                        "type": "string",
+                        "title": "About",
+                        "default": ""
+                    },
+                    "ticker": {
+                        "type": "string",
+                        "title": "Ticker",
+                        "default": ""
+                    },
+                    "coach": {
+                        "type": "string",
+                        "title": "Coach",
+                        "default": ""
+                    },
+                    "founded": {
+                        "type": "integer",
+                        "title": "Founded",
+                        "default": 0
+                    },
+                    "topThreePlayers": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Topthreeplayers"
+                    },
+                    "volume": {
+                        "type": "integer",
+                        "title": "Volume",
+                        "default": 0
+                    },
+                    "color": {
+                        "type": "string",
+                        "title": "Color",
+                        "default": "#000000"
+                    },
+                    "secondaryColor": {
+                        "type": "string",
+                        "title": "Secondarycolor",
+                        "default": "#000000"
+                    },
+                    "createdAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Createdat"
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updatedat"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "leagueId"
+                ],
+                "title": "Stock",
+                "description": "Sports team/stock that users can trade. Maps from AssetModel + price."
+            },
+            "TopMoversResponse": {
+                "properties": {
+                    "gainers": {
+                        "items": {
+                            "$ref": "#/components/schemas/MoverItem"
+                        },
+                        "type": "array",
+                        "title": "Gainers"
+                    },
+                    "losers": {
+                        "items": {
+                            "$ref": "#/components/schemas/MoverItem"
+                        },
+                        "type": "array",
+                        "title": "Losers"
+                    }
+                },
+                "type": "object",
+                "title": "TopMoversResponse"
+            },
+            "Transaction": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "buy",
+                            "sell"
+                        ],
+                        "title": "Action"
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "title": "Quantity",
+                        "default": 0.0
+                    },
+                    "price": {
+                        "type": "number",
+                        "title": "Price",
+                        "default": 0.0
+                    },
+                    "totalPrice": {
+                        "type": "number",
+                        "title": "Totalprice",
+                        "default": 0.0
+                    },
+                    "userId": {
+                        "type": "integer",
+                        "title": "Userid"
+                    },
+                    "stockId": {
+                        "type": "integer",
+                        "title": "Stockid"
+                    },
+                    "createdAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Createdat"
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updatedat"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "action",
+                    "userId",
+                    "stockId"
+                ],
+                "title": "Transaction",
+                "description": "Buy or sell transaction."
+            },
+            "TransactionCreate": {
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "buy",
+                            "sell"
+                        ],
+                        "title": "Action"
+                    },
+                    "stockId": {
+                        "type": "integer",
+                        "title": "Stockid"
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Quantity"
+                    },
+                    "price": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action",
+                    "stockId",
+                    "quantity"
+                ],
+                "title": "TransactionCreate",
+                "description": "Request body for POST /api/transactions."
+            },
+            "UserCreate": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "User Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Name"
+                    },
+                    "phone_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Phone Number"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "name",
+                    "phone_number",
+                    "email"
+                ],
+                "title": "UserCreate",
+                "description": "Register; backend always sets balance=0."
+            },
+            "UserResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "phone_number": {
+                        "type": "string",
+                        "title": "Phone Number"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "balance": {
+                        "type": "number",
+                        "title": "Balance"
+                    },
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updated At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "name",
+                    "phone_number",
+                    "email",
+                    "balance"
+                ],
+                "title": "UserResponse"
+            },
+            "UserUpdate": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name"
+                    },
+                    "phone_number": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Phone Number"
+                    },
+                    "email": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "email"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Email"
+                    }
+                },
+                "type": "object",
+                "title": "UserUpdate",
+                "description": "Update self; only name, phone, email. No balance."
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "Wallet": {
+                "properties": {
+                    "fanCoins": {
+                        "type": "number",
+                        "title": "Fancoins",
+                        "default": 0.0
+                    },
+                    "tradingCredits": {
+                        "type": "number",
+                        "title": "Tradingcredits",
+                        "default": 0.0
+                    },
+                    "userId": {
+                        "type": "integer",
+                        "title": "Userid"
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updatedat"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "userId"
+                ],
+                "title": "Wallet",
+                "description": "User's wallet balances. tradingCredits maps to UserModel.balance."
+            }
+        },
+        "securitySchemes": {
+            "HTTPBearer": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        }
+    }
+}

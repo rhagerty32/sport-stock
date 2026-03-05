@@ -1,54 +1,14 @@
-import { useColors } from '@/components/utils';
-import { SearchProvider, useSearch } from '@/contexts/SearchContext';
-import { useTheme } from '@/hooks/use-theme';
-import { Stack } from 'expo-router';
-import { Text } from 'react-native';
+import { SearchProvider } from '@/contexts/SearchContext';
+import { Slot } from 'expo-router';
 
-function SearchLayoutContent() {
-    const Color = useColors();
-    const { setSearchQuery } = useSearch();
-    const { isDark } = useTheme();
-
-    return (
-        <Stack>
-            <Stack.Screen
-                name="index"
-                options={{
-                    title: 'Search',
-                    headerShown: true,
-                    headerStyle: { backgroundColor: isDark ? '#0B0F13' : Color.white },
-                    // Instead of relying on headerTitleAlign (not always respected on all platforms), 
-                    // make the title left-aligned manually by using a custom headerTitle component
-                    headerTitle: () => (
-                        <Text style={{
-                            fontSize: 28,
-                            fontWeight: 'bold',
-                            textAlign: 'left',
-                            width: '100%',
-                            alignSelf: 'flex-start',
-                            color: Color.baseText
-                        }}
-                        >
-                            Search
-                        </Text>
-                    ),
-                    headerSearchBarOptions: {
-                        placement: 'automatic',
-                        placeholder: 'Search teams...',
-                        onChangeText: (event) => {
-                            setSearchQuery(event.nativeEvent.text);
-                        },
-                    },
-                }}
-            />
-        </Stack>
-    );
-}
-
+/**
+ * Same flat hierarchy as home (index) - just SearchProvider + Slot.
+ * No nested Stack, so search is in the same view hierarchy as home/profile.
+ */
 export default function SearchLayout() {
     return (
         <SearchProvider>
-            <SearchLayoutContent />
+            <Slot />
         </SearchProvider>
     );
 }

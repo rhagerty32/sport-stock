@@ -82,44 +82,6 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
         return userPosition.currentValue;
     }, [userPosition]);
 
-    // Don't render anything if no stock is selected
-    if (!activeStockId) {
-        return null;
-    }
-    // Show loading while resolving stock
-    if (!stock) {
-        return (
-            <BottomSheetView style={styles.guardContainer}>
-                <ActivityIndicator size="large" color={Color.green} />
-                <Text style={[styles.guardSubtext, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
-            </BottomSheetView>
-        );
-    }
-
-    // Safety net: when not authenticated, show login CTA instead of buy/sell form
-    if (!isAuthenticated) {
-        return (
-            <BottomSheetView style={styles.guardContainer}>
-                <Text style={[styles.guardText, { color: Color.baseText }]}>
-                    Log in to trade
-                </Text>
-                <Text style={[styles.guardSubtext, { color: Color.subText }]}>
-                    Sign in to buy and sell teams on SportStock.
-                </Text>
-                <TouchableOpacity
-                    style={[styles.guardButton, { backgroundColor: Color.green }]}
-                    onPress={() => {
-                        setBuySellBottomSheetOpen(false);
-                        setLoginBottomSheetOpen(true);
-                    }}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.guardButtonText}>Log in</Text>
-                </TouchableOpacity>
-            </BottomSheetView>
-        );
-    }
-
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -236,6 +198,69 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
         }
     }, [buySellMode, wallet?.tradingCredits, availableSellValue]);
 
+    // Content that must always live inside BottomSheetModal so BottomSheetView has context
+    const renderModalContent = () => {
+        if (!stock) {
+            return (
+                <BottomSheetView style={styles.guardContainer}>
+                    <ActivityIndicator size="large" color={Color.green} />
+                    <Text style={[styles.guardSubtext, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
+                </BottomSheetView>
+            );
+        }
+        if (!isAuthenticated) {
+            return (
+                <BottomSheetView style={styles.guardContainer}>
+                    <Text style={[styles.guardText, { color: Color.baseText }]}>
+                        Log in to trade
+                    </Text>
+                    <Text style={[styles.guardSubtext, { color: Color.subText }]}>
+                        Sign in to buy and sell teams on SportStock.
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.guardButton, { backgroundColor: Color.green }]}
+                        onPress={() => {
+                            setBuySellBottomSheetOpen(false);
+                            setLoginBottomSheetOpen(true);
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.guardButtonText}>Log in</Text>
+                    </TouchableOpacity>
+                </BottomSheetView>
+            );
+        }
+        return null; // main form is rendered below in the normal return
+    };
+
+    // After all hooks: handle early-return cases
+    if (!activeStockId) {
+        return null;
+    }
+
+    const earlyContent = renderModalContent();
+    if (earlyContent) {
+        return (
+            <BottomSheetModal
+                ref={buySellBottomSheetRef}
+                onDismiss={() => {
+                    setBuySellBottomSheetOpen(false);
+                    setSelectedAmount(null);
+                }}
+                stackBehavior='push'
+                enableDynamicSizing={true}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                handleStyle={{ display: 'none' }}
+                enableOverDrag={true}
+                style={{ borderRadius: 20 }}
+                backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
+            >
+                {earlyContent}
+            </BottomSheetModal>
+        );
+    }
+
     return (
         <BottomSheetModal
             ref={buySellBottomSheetRef}
@@ -253,7 +278,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: Color.baseText }]}>
-                        {buySellMode === 'buy' ? 'Buy' : 'Sell'} {stock.name}
+                        {buySellMode === 'buy' ? 'Buy' : 'Sell'} {stock!.name}
                     </Text>
                     <Text style={[styles.subtitle, { color: Color.subText }]}>
                         Single Bet
@@ -370,7 +395,7 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                                 Not Enough Holdings
                             </Text>
                             <Text style={[styles.warningText, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>
-                                You can only sell up to {formatCurrency(availableSellValue)} worth of {stock.name}.
+                                You can only sell up to {formatCurrency(availableSellValue)} worth of {stock!.name}.
                             </Text>
                         </View>
                     </View>

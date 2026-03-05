@@ -33,9 +33,13 @@ type StockStore = {
     activePosition: Position | null;
     setActivePosition: (position: Position | null) => void;
     followedStockIds: number[];
+    followedStocks: Stock[];
     addFollow: (stockId: number) => void;
     removeFollow: (stockId: number) => void;
     isFollowing: (stockId: number) => boolean;
+    setFollowedStocks: (stocks: Stock[]) => void;
+    upsertFollowedStock: (stock: Stock) => void;
+    removeFollowedStockById: (stockId: number) => void;
 };
 
 export const useStockStore = create<StockStore>()(
@@ -70,6 +74,7 @@ export const useStockStore = create<StockStore>()(
             activePosition: null,
             setActivePosition: (position) => set({ activePosition: position }),
             followedStockIds: [],
+            followedStocks: [],
             addFollow: (stockId: number) => {
                 const { followedStockIds } = get();
                 if (!followedStockIds.includes(stockId)) {
@@ -83,6 +88,25 @@ export const useStockStore = create<StockStore>()(
             isFollowing: (stockId: number) => {
                 const { followedStockIds } = get();
                 return followedStockIds.includes(stockId);
+            },
+            setFollowedStocks: (stocks: Stock[]) => {
+                set({ followedStocks: stocks });
+            },
+            upsertFollowedStock: (stock: Stock) => {
+                set((state) => {
+                    const existingIndex = state.followedStocks.findIndex((s) => s.id === stock.id);
+                    if (existingIndex >= 0) {
+                        const next = [...state.followedStocks];
+                        next[existingIndex] = stock;
+                        return { followedStocks: next };
+                    }
+                    return { followedStocks: [...state.followedStocks, stock] };
+                });
+            },
+            removeFollowedStockById: (stockId: number) => {
+                set((state) => ({
+                    followedStocks: state.followedStocks.filter((s) => s.id !== stockId),
+                }));
             },
         }),
         {

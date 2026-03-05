@@ -30,6 +30,11 @@ export const API_ENDPOINTS = {
     STOCKS_ON_THE_RISE: '/api/stocks/on-the-rise',
     STOCKS_UPSET_ALERT: '/api/stocks/upset-alert',
 
+    // Follows
+    FOLLOWS: '/api/follows',
+    FOLLOW: (stockId: string) => `/api/follows/${stockId}`,
+    FOLLOWS_NOT_OWNED: '/api/follows/not-owned',
+
     // Leagues
     LEAGUES: '/api/leagues',
     LEAGUE: (leagueId: string) => `/api/leagues/${leagueId}`,

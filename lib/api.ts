@@ -29,12 +29,18 @@ function buildUrl(path: string, params?: Record<string, string | number | boolea
     return qs ? `${url}?${qs}` : url;
 }
 
-export async function apiGet<T>(path: string, params?: Record<string, string | number | boolean | undefined>, options?: { auth?: boolean }): Promise<T> {
+export async function apiGet<T>(
+    path: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    options?: { auth?: boolean }
+): Promise<T> {
     const headers = options?.auth === false ? { 'Content-Type': 'application/json' } : getAuthHeaders();
     const url = buildUrl(path, params);
+    console.log('url', url);
     const res = await fetch(url, { method: 'GET', headers });
     if (!res.ok) {
         const text = await res.text();
+        console.log('res', text);
         throw new Error(text || `Request failed: ${res.status}`);
     }
     if (res.status === 204 || res.headers.get('content-length') === '0') {
@@ -68,6 +74,23 @@ export async function apiPatch<T>(path: string, body: unknown, options?: { auth?
         method: 'PATCH',
         headers,
         body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Request failed: ${res.status}`);
+    }
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+        return undefined as T;
+    }
+    return res.json() as Promise<T>;
+}
+
+export async function apiDelete<T>(path: string, options?: { auth?: boolean }): Promise<T> {
+    const headers = options?.auth === false ? { 'Content-Type': 'application/json' } : getAuthHeaders();
+    const url = `${API_BASE_URL}${path}`;
+    const res = await fetch(url, {
+        method: 'DELETE',
+        headers,
     });
     if (!res.ok) {
         const text = await res.text();

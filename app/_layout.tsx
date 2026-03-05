@@ -19,6 +19,7 @@ import { useEffect, useRef } from 'react';
 import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import StockBottomSheet from './bottomSheets/StockSheet/StockBottomSheet';
 import BlockedStateScreen from './BlockedStateScreen';
 import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
@@ -27,7 +28,6 @@ import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
 import PositionDetailBottomSheet from './bottomSheets/PositionDetailBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
 import PurchaseFanCoinsBottomSheet from './bottomSheets/PurchaseFanCoinsBottomSheet';
-import StockBottomSheet from './bottomSheets/StockSheet/StockBottomSheet';
 import TransactionDetailBottomSheet from './bottomSheets/TransactionDetailBottomSheet';
 import WalletSystemBottomSheet from './bottomSheets/WalletSystemBottomSheet';
 
@@ -79,7 +79,10 @@ export default function RootLayout() {
 
     useEffect(() => {
         if (activeStockId) {
-            stockBottomSheetRef.current?.present();
+            const timer = setTimeout(() => {
+                stockBottomSheetRef.current?.present();
+            }, 100);
+            return () => clearTimeout(timer);
         } else {
             stockBottomSheetRef.current?.dismiss();
         }
@@ -291,6 +294,10 @@ export default function RootLayout() {
                             <Stack.Screen
                                 name="league/[id]"
                                 options={{ headerShown: false, presentation: 'card' }}
+                            />
+                            <Stack.Screen
+                                name="stock/[id]"
+                                options={{ headerShown: false, presentation: 'transparentModal' }}
                             />
                         </Stack>
 

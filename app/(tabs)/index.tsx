@@ -8,6 +8,7 @@ import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { fetchHighestVolume, fetchOnTheRise, fetchPriceHistory, fetchTopMovers, fetchUpsetAlert } from '@/lib/stocks-api';
+import { fetchFollowedStocksNotOwned } from '@/lib/follows-api';
 import { fetchLeagues } from '@/lib/leagues-api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePortfolioStore } from '@/stores/portfolioStore';
@@ -51,7 +52,14 @@ export default function HomeScreen() {
     const [chartLoading, setChartLoading] = useState(false);
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const user = useAuthStore((s) => s.user);
-    const { setActiveStockId, setPurchaseFanCoinsBottomSheetOpen, setLoginBottomSheetOpen, followedStockIds } = useStockStore();
+    const {
+        setActiveStockId,
+        setPurchaseFanCoinsBottomSheetOpen,
+        setLoginBottomSheetOpen,
+        followedStockIds,
+        followedStocks,
+        setFollowedStocks,
+    } = useStockStore();
     const { wallet, loadWallet, initializeWallet } = useWalletStore();
     const { portfolio, loadPortfolio } = usePortfolioStore();
     const sortDropdownRef = useRef<View>(null);
@@ -113,6 +121,29 @@ export default function HomeScreen() {
         });
         return () => { cancelled = true; };
     }, []);
+
+    // Load followed stocks from backend so Following section reflects DB state
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setFollowedStocks([]);
+            return;
+        }
+        let cancelled = false;
+        fetchFollowedStocksNotOwned()
+            .then((stocks) => {
+                if (!cancelled) {
+                    setFollowedStocks(stocks);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    // On error, leave any existing followedStocks from local state
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, setFollowedStocks]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -183,10 +214,22 @@ export default function HomeScreen() {
         upsetAlertStocks.forEach((m) => set.set(m.stock.id, m.stock));
         return Array.from(set.values());
     }, [topMovers, highestVolumeStocks, onTheRiseStocks, upsetAlertStocks]);
-    const followedStocks = useMemo(() =>
-        allStocksFromSections.filter(s => followedStockIds.includes(s.id) && !ownedStockIds.has(s.id)),
-        [allStocksFromSections, followedStockIds, ownedStockIds]
-    );
+    const followedStocksSection = useMemo(() => {
+        const map = new Map<number, Stock>();
+        // Start with stocks from backend (already filtered to not-owned)
+        followedStocks.forEach((s) => {
+            map.set(s.id, s);
+        });
+        // Add any locally-followed stocks that appear in other sections
+        allStocksFromSections.forEach((s) => {
+            if (followedStockIds.includes(s.id) && !ownedStockIds.has(s.id)) {
+                if (!map.has(s.id)) {
+                    map.set(s.id, s);
+                }
+            }
+        });
+        return Array.from(map.values());
+    }, [followedStocks, allStocksFromSections, followedStockIds, ownedStockIds]);
 
     const getPriceChange = useCallback((stockId: number) => {
         const g = topMovers.gainers.find(m => m.stock.id === stockId);
@@ -517,7 +560,7 @@ export default function HomeScreen() {
                                 <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                     Following
                                 </Text>
-                                {followedStocks.length === 0 ? (
+                                {followedStocksSection.length === 0 ? (
                                     <EmptyState
                                         icon="star-outline"
                                         title="No followed stocks"
@@ -539,9 +582,9 @@ export default function HomeScreen() {
                                     scrollEventThrottle={16}
                                     nestedScrollEnabled={true}
                                 >
-                                    {Array.from({ length: Math.ceil(followedStocks.length / 3) }, (_, pageIndex) => (
+                                    {Array.from({ length: Math.ceil(followedStocksSection.length / 3) }, (_, pageIndex) => (
                                         <View key={pageIndex} style={styles.stockPage}>
-                                            {followedStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
+                                            {followedStocksSection.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
                                                 const priceChange = getPriceChange(stock.id);
                                                 return (
                                                     <TouchableOpacity
@@ -588,9 +631,9 @@ export default function HomeScreen() {
                                 </ScrollView>
 
                                 {/* Pagination Dots */}
-                                {Math.ceil(followedStocks.length / 3) > 1 && (
+                                {Math.ceil(followedStocksSection.length / 3) > 1 && (
                                     <View style={styles.paginationDots}>
-                                        {Array.from({ length: Math.ceil(followedStocks.length / 3) }, (_, index) => (
+                                        {Array.from({ length: Math.ceil(followedStocksSection.length / 3) }, (_, index) => (
                                             <View key={index} style={[styles.paginationDot, { backgroundColor: index === 0 ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
                                         ))}
                                     </View>
