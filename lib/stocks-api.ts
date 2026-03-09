@@ -2,8 +2,23 @@ import { API_ENDPOINTS } from '@/constants/api-config';
 import type { PriceHistory, Stock } from '@/types';
 import { apiGet } from '@/lib/api';
 import { normalizePriceHistoryPoint, normalizeStock } from '@/lib/api-normalizers';
+import { useQuery } from '@tanstack/react-query';
 
 export type MoverItem = { stock: Stock; change: number; changePercentage: number };
+
+export const stocksKeys = {
+    all: ['stocks'] as const,
+    lists: () => [...stocksKeys.all, 'list'] as const,
+    list: (params: Record<string, unknown> | undefined) => [...stocksKeys.lists(), params] as const,
+    details: () => [...stocksKeys.all, 'detail'] as const,
+    detail: (id: string | number) => [...stocksKeys.details(), id] as const,
+    topMovers: (limit?: number) => [...stocksKeys.all, 'topMovers', limit] as const,
+    highestVolume: (limit?: number) => [...stocksKeys.all, 'highestVolume', limit] as const,
+    onTheRise: (limit?: number) => [...stocksKeys.all, 'onTheRise', limit] as const,
+    upsetAlert: (limit?: number) => [...stocksKeys.all, 'upsetAlert', limit] as const,
+    priceHistory: (stockId: string | number, period?: string, limit?: number) =>
+        [...stocksKeys.detail(stockId), 'priceHistory', period, limit] as const,
+};
 
 export async function fetchStocks(params?: {
     leagueID?: string;
@@ -90,11 +105,75 @@ export async function fetchPriceHistory(
 ): Promise<PriceHistory[]> {
     const params: Record<string, string | number | undefined> = { limit };
     if (period != null) params.period = period;
-    const data = await apiGet<{ history?: unknown[] }>(
-        API_ENDPOINTS.STOCK_PRICE_HISTORY(String(stockId)),
-        params,
-        { auth: false }
-    );
-    const list = Array.isArray(data?.history) ? data.history : [];
-    return list.map((p: unknown) => normalizePriceHistoryPoint(p));
+    try {
+        const data = await apiGet<{ history?: unknown[] }>(
+            API_ENDPOINTS.STOCK_PRICE_HISTORY(String(stockId)),
+            params,
+            { auth: false }
+        );
+        const list = Array.isArray(data?.history) ? data.history : [];
+        return list.map((p: unknown) => normalizePriceHistoryPoint(p));
+    } catch {
+        return [];
+    }
+}
+
+export function useStock(stockId: string | number | null) {
+    return useQuery({
+        queryKey: stockId != null ? stocksKeys.detail(stockId) : ['stocks', 'detail', 'disabled'],
+        queryFn: () => fetchStock(stockId!),
+        enabled: stockId != null,
+    });
+}
+
+export function useStocks(params?: {
+    leagueID?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+}) {
+    return useQuery({
+        queryKey: stocksKeys.list(params ?? {}),
+        queryFn: () => fetchStocks(params),
+    });
+}
+
+export function useTopMovers(limit = 5) {
+    return useQuery({
+        queryKey: stocksKeys.topMovers(limit),
+        queryFn: () => fetchTopMovers(limit),
+    });
+}
+
+export function useHighestVolume(limit = 9) {
+    return useQuery({
+        queryKey: stocksKeys.highestVolume(limit),
+        queryFn: () => fetchHighestVolume(limit),
+    });
+}
+
+export function useOnTheRise(limit = 9) {
+    return useQuery({
+        queryKey: stocksKeys.onTheRise(limit),
+        queryFn: () => fetchOnTheRise(limit),
+    });
+}
+
+export function useUpsetAlert(limit = 9) {
+    return useQuery({
+        queryKey: stocksKeys.upsetAlert(limit),
+        queryFn: () => fetchUpsetAlert(limit),
+    });
+}
+
+export function usePriceHistory(
+    stockId: string | number | null,
+    period?: string,
+    limit = 100
+) {
+    return useQuery({
+        queryKey: stockId != null ? stocksKeys.priceHistory(stockId, period, limit) : ['stocks', 'priceHistory', 'disabled'],
+        queryFn: () => fetchPriceHistory(stockId!, period, limit),
+        enabled: stockId != null,
+    });
 }

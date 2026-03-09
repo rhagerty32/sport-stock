@@ -1,32 +1,48 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { DynamicColorIOS } from 'react-native';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { DynamicColorIOS, Platform } from 'react-native';
 
 export default function TabsLayout() {
     const Color = useColors();
     const { isDark } = useTheme();
 
+    const tintColor = Platform.select({
+        ios: DynamicColorIOS({ dark: Color.green, light: Color.green }),
+        default: Color.green,
+    });
+    const labelColor = Platform.select({
+        ios: DynamicColorIOS({ dark: '#ccc', light: Color.black }),
+        default: isDark ? '#ccc' : Color.black,
+    });
+
     return (
         <NativeTabs
-            tintColor={DynamicColorIOS({ dark: Color.green, light: Color.green })}
-            labelStyle={{
-                color: DynamicColorIOS({ dark: isDark ? '#ccc' : Color.black, light: isDark ? '#ccc' : Color.black }),
-            }}
+            tintColor={tintColor}
+            labelStyle={{ color: labelColor }}
         >
             <NativeTabs.Trigger name="index">
-                <Icon sf={{ default: 'chart.line.uptrend.xyaxis', selected: 'chart.line.uptrend.xyaxis' }} />
-                <Label>Home</Label>
+                <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+                <NativeTabs.Trigger.Icon
+                    sf={{ default: 'chart.line.uptrend.xyaxis', selected: 'chart.line.uptrend.xyaxis' }}
+                    md="candlestick_chart"
+                />
             </NativeTabs.Trigger>
 
             <NativeTabs.Trigger name="search">
-                <Icon sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }} />
-                <Label>Search</Label>
+                <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
+                <NativeTabs.Trigger.Icon
+                    sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }}
+                    md="search"
+                />
             </NativeTabs.Trigger>
 
             <NativeTabs.Trigger name="profile">
-                <Icon sf={{ default: 'person', selected: 'person.fill' }} />
-                <Label>Profile</Label>
+                <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+                <NativeTabs.Trigger.Icon
+                    sf={{ default: 'person', selected: 'person.fill' }}
+                    md="person"
+                />
             </NativeTabs.Trigger>
         </NativeTabs>
     );

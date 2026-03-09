@@ -1,16 +1,16 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { createTransaction } from '@/lib/transactions-api';
-import { usePortfolioStore } from '@/stores/portfolioStore';
+import { useCreateTransaction } from '@/lib/transactions-api';
+import { usePortfolio } from '@/lib/portfolio-api';
+import { useStock } from '@/lib/stocks-api';
+import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
-import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { fetchStock } from '@/lib/stocks-api';
 import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
 import { Easing } from "react-native-reanimated";
 
@@ -21,11 +21,13 @@ type BuySellBottomSheetProps = {
 export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBottomSheetProps) {
     const Color = useColors();
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const user = useAuthStore((s) => s.user);
     const { activeStockId, activeStock: storeStock, setActiveStock, setBuySellBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setLoginBottomSheetOpen, removeFollow, buySellMode, setBuySellMode } = useStockStore();
-    const { wallet } = useWalletStore();
-    const { portfolio, refreshAfterTrade } = usePortfolioStore();
-    const [stock, setStock] = useState(storeStock);
-    const [tradeLoading, setTradeLoading] = useState(false);
+    const { data: wallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
+    const { data: portfolio } = usePortfolio();
+    const { data: fetchedStock } = useStock(activeStockId);
+    const stock = fetchedStock ?? (storeStock?.id === activeStockId ? storeStock : null);
+    const createTransactionMutation = useCreateTransaction();
     const [tradeError, setTradeError] = useState<string | null>(null);
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
     const [showCustomAmount, setShowCustomAmount] = useState(false);
@@ -33,27 +35,8 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
     const customAmountInputRef = useRef<any>(null);
 
     useEffect(() => {
-        if (!activeStockId) {
-            setStock(null);
-            return;
-        }
-        if (storeStock?.id === activeStockId) {
-            setStock(storeStock);
-            return;
-        }
-        let cancelled = false;
-        fetchStock(activeStockId).then((s) => {
-            if (!cancelled && s) {
-                setStock(s);
-                setActiveStock(s);
-            } else if (!cancelled) {
-                setStock(null);
-            }
-        }).catch(() => {
-            if (!cancelled) setStock(null);
-        });
-        return () => { cancelled = true; };
-    }, [activeStockId, storeStock?.id, setActiveStock]);
+        if (fetchedStock) setActiveStock(fetchedStock);
+    }, [fetchedStock, setActiveStock]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -98,26 +81,25 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
         if (!selectedAmount || !stock || stock.price <= 0) return;
         const quantity = selectedAmount / stock.price;
         if (quantity <= 0) return;
-        setTradeLoading(true);
         setTradeError(null);
         try {
-            await createTransaction({
-                action: buySellMode,
-                stockId: stock.id,
-                quantity,
-                price: stock.price,
+            await createTransactionMutation.mutateAsync({
+                body: {
+                    action: buySellMode,
+                    stockId: stock.id,
+                    quantity,
+                    price: stock.price,
+                },
+                stockContext: { leagueID: stock.leagueID, ticker: stock.ticker },
             });
-            await refreshAfterTrade();
             if (activeStockId) removeFollow(activeStockId);
             lightImpact();
             closeModal();
         } catch (err) {
             setTradeError(err instanceof Error ? err.message : 'Trade failed');
             lightImpact();
-        } finally {
-            setTradeLoading(false);
         }
-    }, [selectedAmount, stock, buySellMode, activeStockId, removeFollow, refreshAfterTrade, lightImpact]);
+    }, [selectedAmount, stock, buySellMode, activeStockId, removeFollow, createTransactionMutation, lightImpact]);
 
     const handleBuy = () => {
         if (selectedAmount && wallet && wallet.tradingCredits >= selectedAmount) {
@@ -497,9 +479,9 @@ export default function BuySellBottomSheet({ buySellBottomSheetRef }: BuySellBot
                             }
                         ]}
                         onPress={buySellMode === 'buy' ? handleBuy : handleSell}
-                        disabled={!selectedAmount || hasInsufficientCredits || hasInsufficientHoldings || tradeLoading}
+                        disabled={!selectedAmount || hasInsufficientCredits || hasInsufficientHoldings || createTransactionMutation.isPending}
                     >
-                        {tradeLoading ? (
+                        {createTransactionMutation.isPending ? (
                             <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : selectedAmount ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>

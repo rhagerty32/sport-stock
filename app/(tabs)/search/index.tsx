@@ -5,12 +5,11 @@ import { useColors } from '@/components/utils';
 import { useSearch } from '@/contexts/SearchContext';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { fetchLeagues } from '@/lib/leagues-api';
-import { search as searchApi } from '@/lib/search-api';
-import { fetchStocks } from '@/lib/stocks-api';
+import { useLeagues } from '@/lib/leagues-api';
+import { useSearchResults } from '@/lib/search-api';
 import { useStockStore } from '@/stores/stockStore';
 import type { League, Stock } from '@/types';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SearchScreen() {
@@ -20,68 +19,21 @@ export default function SearchScreen() {
     const { setActiveStockId, setActiveStock } = useStockStore();
     const { searchQuery, setSearchQuery } = useSearch();
     const [selectedLeague, setSelectedLeague] = useState<string>('All');
-    const [leaguesList, setLeaguesList] = useState<League[]>([]);
-    const [stocks, setStocks] = useState<Stock[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [leaguesLoading, setLeaguesLoading] = useState(true);
 
-    useEffect(() => {
-        fetchLeagues().then((list) => {
-            setLeaguesList(Array.isArray(list) ? list : []);
-        }).finally(() => setLeaguesLoading(false));
-    }, []);
-
+    const { data: leaguesList = [] } = useLeagues();
     const leagueIdForFilter = useMemo(() => {
         if (selectedLeague === 'All') return undefined;
         const league = leaguesList.find((l) => l.name === selectedLeague);
         return league ? String(league.id) : undefined;
     }, [selectedLeague, leaguesList]);
 
-    useEffect(() => {
-        let cancelled = false;
-        setLoading(true);
-        if (searchQuery.trim()) {
-            searchApi(searchQuery.trim(), 'all', leagueIdForFilter)
-                .then((res) => {
-                    if (!cancelled) {
-                        setStocks(res.stocks);
-                        setTotal(res.total);
-                    }
-                })
-                .catch(() => {
-                    if (!cancelled) {
-                        setStocks([]);
-                        setTotal(0);
-                    }
-                })
-                .finally(() => {
-                    if (!cancelled) setLoading(false);
-                });
-        } else {
-            fetchStocks({
-                leagueID: leagueIdForFilter,
-                limit: 60,
-                offset: 0,
-            })
-                .then((res) => {
-                    if (!cancelled) {
-                        setStocks(res.stocks);
-                        setTotal(res.total);
-                    }
-                })
-                .catch(() => {
-                    if (!cancelled) {
-                        setStocks([]);
-                        setTotal(0);
-                    }
-                })
-                .finally(() => {
-                    if (!cancelled) setLoading(false);
-                });
-        }
-        return () => { cancelled = true; };
-    }, [searchQuery, leagueIdForFilter]);
+    const { data: searchResults, isLoading: loading } = useSearchResults(
+        searchQuery,
+        leagueIdForFilter,
+        60
+    );
+    const stocks = searchResults?.stocks ?? [];
+    const total = searchResults?.total ?? 0;
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);

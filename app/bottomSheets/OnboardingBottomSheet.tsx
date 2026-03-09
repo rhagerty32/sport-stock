@@ -1,13 +1,15 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { fetchPriceHistory, stocksKeys, useTopMovers } from '@/lib/stocks-api';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { PriceHistory } from '@/types';
+import { useQueries } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Dimensions, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Dimensions, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import Animated, {
     Easing,
     FadeIn,
@@ -197,42 +199,16 @@ type OnboardingBottomSheetProps = {
 const CARD_GAP = 0; // Gap between cards
 const getPageWidth = () => Dimensions.get('window').width; // Full screen width
 
-// Generate price history for mini charts
-const generateMiniPriceHistory = (stockId: number, days: number = 7): PriceHistory[] => {
-    const history: PriceHistory[] = [];
-    let currentPrice = Math.random() * 100 + 20;
-
-    for (let i = 0; i < days; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - (days - i));
-        const change = (Math.random() - 0.45) * 0.05;
-        currentPrice = Math.max(1, currentPrice * (1 + change));
-
-        const changeAmount = i > 0 ? currentPrice - history[i - 1].price : 0;
-        const changePercentage = i > 0 ? (changeAmount / history[i - 1].price) * 100 : 0;
-
-        history.push({
-            stockID: stockId,
-            timestamp: date,
-            price: Math.round(currentPrice * 100) / 100,
-            change: Math.round(changeAmount * 100) / 100,
-            changePercentage: Math.round(changePercentage * 100) / 100,
-        });
-    }
-
-    return history;
+/** Carousel stock shape: API-sourced with optional price history for mini chart. */
+export type OnboardingStock = {
+    id: number;
+    name: string;
+    ticker: string;
+    price: number;
+    changePercent: number;
+    color: string;
+    priceHistory: PriceHistory[];
 };
-
-// Sample stocks for the second page
-const sampleStocks = [
-    { id: 62, name: 'Ohio State Football', ticker: 'OSU', price: 99.89, changePercent: 37.89, color: '#BB0000' },
-    { id: 20, name: 'PHI Eagles', ticker: 'PHI', price: 90.69, changePercent: 37.89, color: '#006BB6' },
-    { id: 61, name: 'Michigan Football', ticker: 'MICH', price: 15.29, changePercent: -37.89, color: '#00274C' },
-    { id: 1, name: 'Kansas City Chiefs', ticker: 'KC', price: 125.50, changePercent: 12.45, color: '#E31837' },
-    { id: 11, name: 'Los Angeles Lakers', ticker: 'LAL', price: 156.80, changePercent: 8.23, color: '#552583' },
-    { id: 45, name: 'Duke Blue Devils', ticker: 'DUKE', price: 72.85, changePercent: 15.67, color: '#001A57' },
-    { id: 74, name: 'Kansas Jayhawks', ticker: 'KU', price: 65.30, changePercent: -5.32, color: '#0051BA' },
-];
 
 // Mini Chart Component
 function MiniChart({
@@ -441,14 +417,14 @@ function StockCard({
     shouldAnimate,
     cardWidth
 }: {
-    stock: typeof sampleStocks[0];
+    stock: OnboardingStock;
     isDark: boolean;
     index: number;
     shouldAnimate: boolean;
     cardWidth: number;
 }) {
     const Color = useColors();
-    const [priceData] = useState(() => generateMiniPriceHistory(stock.id, 7));
+    const priceData = stock.priceHistory ?? [];
     const isPositive = stock.changePercent >= 0;
 
     return (
@@ -537,40 +513,40 @@ const ONBOARDING_PAGES = [
 function StockCarouselPage({
     page,
     isDark,
-    isActive
+    isActive,
+    stocks,
+    loading
 }: {
     page: typeof ONBOARDING_PAGES[1];
     isDark: boolean;
     isActive: boolean;
+    stocks: OnboardingStock[];
+    loading: boolean;
 }) {
     const Color = useColors();
     const carouselTranslateX = useSharedValue(0);
     const screenWidth = Dimensions.get('window').width;
-    // Calculate card width: full screen width divided by 3, with gaps
     const gapBetweenCards = 12;
     const cardWidth = (screenWidth - (gapBetweenCards * 2)) / 3;
     const totalCardWidth = cardWidth + gapBetweenCards;
 
-    // Duplicate stocks for seamless infinite scroll
-    const duplicatedStocks = [...sampleStocks, ...sampleStocks, ...sampleStocks];
+    const duplicatedStocks = stocks.length > 0 ? [...stocks, ...stocks, ...stocks] : [];
 
     useEffect(() => {
-        if (isActive) {
-            // Start infinite scroll animation
+        if (isActive && stocks.length > 0) {
             carouselTranslateX.value = 0;
             carouselTranslateX.value = withRepeat(
-                withTiming(-totalCardWidth * sampleStocks.length, {
-                    duration: 30000, // 30 seconds for slow movement
+                withTiming(-totalCardWidth * stocks.length, {
+                    duration: 30000,
                     easing: Easing.linear,
                 }),
                 -1,
                 false
             );
         } else {
-            // Reset when not active
             carouselTranslateX.value = 0;
         }
-    }, [isActive, totalCardWidth]);
+    }, [isActive, totalCardWidth, stocks.length]);
 
     const animatedCarouselStyle = useAnimatedStyle(() => ({
         transform: [{ translateX: carouselTranslateX.value }],
@@ -584,32 +560,47 @@ function StockCarouselPage({
                     {
                         color: Color.baseText,
                         marginBottom: 10,
-                        paddingHorizontal: 20, // Add padding only to title
+                        paddingHorizontal: 20,
                     },
                 ]}
             >
                 {page.title}
             </Text>
             <View style={styles.stocksCarouselWrapper}>
-                <Animated.View style={[styles.stocksCarousel, animatedCarouselStyle]}>
-                    {duplicatedStocks.map((stock, stockIndex) => (
-                        <StockCard
-                            key={`${stock.id}-${stockIndex}`}
-                            stock={stock}
-                            isDark={isDark}
-                            index={stockIndex}
-                            shouldAnimate={isActive}
-                            cardWidth={cardWidth}
-                        />
-                    ))}
-                </Animated.View>
+                {loading ? (
+                    <View style={[styles.carouselLoading, { minHeight: 120 }]}>
+                        <ActivityIndicator size="large" color={Color.green} />
+                        <Text style={[styles.carouselLoadingText, { color: Color.subText }]}>
+                            Loading teams...
+                        </Text>
+                    </View>
+                ) : duplicatedStocks.length > 0 ? (
+                    <Animated.View style={[styles.stocksCarousel, animatedCarouselStyle]}>
+                        {duplicatedStocks.map((stock, stockIndex) => (
+                            <StockCard
+                                key={`${stock.id}-${stockIndex}`}
+                                stock={stock}
+                                isDark={isDark}
+                                index={stockIndex}
+                                shouldAnimate={isActive}
+                                cardWidth={cardWidth}
+                            />
+                        ))}
+                    </Animated.View>
+                ) : (
+                    <View style={[styles.carouselLoading, { minHeight: 120 }]}>
+                        <Text style={[styles.carouselLoadingText, { color: Color.subText }]}>
+                            No teams to show right now.
+                        </Text>
+                    </View>
+                )}
             </View>
             <Text
                 style={[
                     styles.description,
                     {
                         color: Color.subText,
-                        paddingHorizontal: 20, // Add padding only to description
+                        paddingHorizontal: 20,
                     },
                 ]}
             >
@@ -1063,11 +1054,48 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
     const { lightImpact, mediumImpact, success } = useHaptics();
     const { completeOnboarding } = useSettingsStore();
 
-    // Dev variable: Set to 0-3 to start at a specific step (0 = first page, 1 = second, etc.)
     const DEV_START_PAGE = 0;
-
     const [currentPage, setCurrentPage] = useState(DEV_START_PAGE);
     const translateX = useSharedValue(0);
+
+    const { data: topMoversData } = useTopMovers(7);
+    const topMoversSlice = useMemo(() => {
+        if (!topMoversData) return [];
+        const { gainers, losers } = topMoversData;
+        const combined = [
+            ...gainers.map((g) => ({ stock: g.stock, changePercent: g.changePercentage })),
+            ...losers.map((l) => ({ stock: l.stock, changePercent: l.changePercentage })),
+        ];
+        const unique = combined.filter(
+            (item, i, arr) => arr.findIndex((x) => x.stock.id === item.stock.id) === i
+        );
+        return unique.slice(0, 7);
+    }, [topMoversData]);
+
+    const priceHistoryQueries = useQueries({
+        queries: topMoversSlice.map(({ stock }) => ({
+            queryKey: stocksKeys.priceHistory(stock.id, '1W', 7),
+            queryFn: () => fetchPriceHistory(stock.id, '1W', 7),
+        })),
+    });
+
+    const carouselStocks: OnboardingStock[] = useMemo(() => {
+        if (topMoversSlice.length === 0) return [];
+        return topMoversSlice.map(({ stock, changePercent }, i) => {
+            const priceHistory = priceHistoryQueries[i]?.data ?? [];
+            return {
+                id: stock.id,
+                name: stock.name ?? stock.fullName ?? `Stock ${stock.id}`,
+                ticker: stock.ticker ?? String(stock.id),
+                price: stock.price ?? 0,
+                changePercent: typeof changePercent === 'number' ? changePercent : 0,
+                color: stock.color ?? '#217C0A',
+                priceHistory: Array.isArray(priceHistory) ? priceHistory : [],
+            };
+        });
+    }, [topMoversSlice, priceHistoryQueries]);
+
+    const carouselLoading = !topMoversData || priceHistoryQueries.some((q) => q.isLoading);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -1178,11 +1206,12 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
                                         // First page with image
                                         <FirstPageContent page={page} isDark={isDark} index={index} />
                                     ) : index === 1 ? (
-                                        // Second page with stock cards carousel
                                         <StockCarouselPage
                                             page={page}
                                             isDark={isDark}
                                             isActive={currentPage === 1}
+                                            stocks={carouselStocks}
+                                            loading={carouselLoading}
                                         />
                                     ) : index === 2 ? (
                                         // Third page with factors and badges
@@ -1408,6 +1437,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         paddingBottom: 12,
+    },
+    carouselLoading: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 24,
+        gap: 12,
+    },
+    carouselLoadingText: {
+        fontSize: 14,
     },
     stockCard: {
         borderRadius: 12,

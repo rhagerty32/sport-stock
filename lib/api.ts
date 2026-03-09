@@ -16,6 +16,28 @@ export function getAuthHeaders(): Record<string, string> {
     return headers;
 }
 
+const LOG_API = true;
+
+function logApi(method: string, url: string, body?: unknown, status?: number, response?: unknown) {
+    if (!LOG_API) return;
+    const payload: Record<string, unknown> = { method, url };
+    if (body !== undefined) payload.requestBody = body;
+    if (status !== undefined) payload.status = status;
+    if (response !== undefined) payload.response = response;
+    // console.log('[API]', JSON.stringify(payload, null, 2));
+}
+
+/** Parse API error response (JSON with error.message or plain text). */
+export function parseApiErrorResponse(text: string): string {
+    try {
+        const json = JSON.parse(text) as { error?: { message?: string; code?: string }; message?: string };
+        const msg = json?.error?.message ?? json?.message ?? text;
+        return typeof msg === 'string' ? msg : text;
+    } catch {
+        return text;
+    }
+}
+
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
     const url = `${API_BASE_URL}${path}`;
     if (!params) return url;
@@ -36,17 +58,20 @@ export async function apiGet<T>(
 ): Promise<T> {
     const headers = options?.auth === false ? { 'Content-Type': 'application/json' } : getAuthHeaders();
     const url = buildUrl(path, params);
-    console.log('url', url);
     const res = await fetch(url, { method: 'GET', headers });
+    const text = await res.text();
+    console.log('apiGet', url);
     if (!res.ok) {
-        const text = await res.text();
-        console.log('res', text);
-        throw new Error(text || `Request failed: ${res.status}`);
+        logApi('GET', url, undefined, res.status, text);
+        throw new Error(parseApiErrorResponse(text) || `Request failed: ${res.status}`);
     }
-    if (res.status === 204 || res.headers.get('content-length') === '0') {
+    if (res.status === 204 || text === '') {
+        logApi('GET', url, undefined, res.status, undefined);
         return undefined as T;
     }
-    return res.json() as Promise<T>;
+    const data = JSON.parse(text) as T;
+    logApi('GET', url, undefined, res.status, data);
+    return data;
 }
 
 export async function apiPost<T>(path: string, body?: unknown, options?: { auth?: boolean }): Promise<T> {
@@ -57,14 +82,18 @@ export async function apiPost<T>(path: string, body?: unknown, options?: { auth?
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    const text = await res.text();
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed: ${res.status}`);
+        logApi('POST', url, body, res.status, text);
+        throw new Error(parseApiErrorResponse(text) || `Request failed: ${res.status}`);
     }
-    if (res.status === 204 || res.headers.get('content-length') === '0') {
+    if (res.status === 204 || text === '') {
+        logApi('POST', url, body, res.status, undefined);
         return undefined as T;
     }
-    return res.json() as Promise<T>;
+    const data = JSON.parse(text) as T;
+    logApi('POST', url, body, res.status, data);
+    return data;
 }
 
 export async function apiPatch<T>(path: string, body: unknown, options?: { auth?: boolean }): Promise<T> {
@@ -75,14 +104,18 @@ export async function apiPatch<T>(path: string, body: unknown, options?: { auth?
         headers,
         body: JSON.stringify(body),
     });
+    const text = await res.text();
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed: ${res.status}`);
+        logApi('PATCH', url, body, res.status, text);
+        throw new Error(parseApiErrorResponse(text) || `Request failed: ${res.status}`);
     }
-    if (res.status === 204 || res.headers.get('content-length') === '0') {
+    if (res.status === 204 || text === '') {
+        logApi('PATCH', url, body, res.status, undefined);
         return undefined as T;
     }
-    return res.json() as Promise<T>;
+    const data = JSON.parse(text) as T;
+    logApi('PATCH', url, body, res.status, data);
+    return data;
 }
 
 export async function apiDelete<T>(path: string, options?: { auth?: boolean }): Promise<T> {
@@ -92,14 +125,18 @@ export async function apiDelete<T>(path: string, options?: { auth?: boolean }): 
         method: 'DELETE',
         headers,
     });
+    const text = await res.text();
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed: ${res.status}`);
+        logApi('DELETE', url, undefined, res.status, text);
+        throw new Error(parseApiErrorResponse(text) || `Request failed: ${res.status}`);
     }
-    if (res.status === 204 || res.headers.get('content-length') === '0') {
+    if (res.status === 204 || text === '') {
+        logApi('DELETE', url, undefined, res.status, undefined);
         return undefined as T;
     }
-    return res.json() as Promise<T>;
+    const data = JSON.parse(text) as T;
+    logApi('DELETE', url, undefined, res.status, data);
+    return data;
 }
 
 export { API_ENDPOINTS };

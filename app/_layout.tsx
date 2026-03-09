@@ -53,8 +53,67 @@ export default function RootLayout() {
     const transactionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
     const positionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
     const loginBottomSheetRef = useRef<BottomSheetModal>(null);
-    const { activeStockId, activeUserId, profileBottomSheetOpen, lightDarkBottomSheetOpen, purchaseFanCoinsBottomSheetOpen, walletSystemBottomSheetOpen, transactionDetailBottomSheetOpen, positionDetailBottomSheetOpen, loginBottomSheetOpen } = useStockStore();
+    const {
+        activeStockId,
+        activeUserId,
+        profileBottomSheetOpen,
+        lightDarkBottomSheetOpen,
+        purchaseFanCoinsBottomSheetOpen,
+        walletSystemBottomSheetOpen,
+        transactionDetailBottomSheetOpen,
+        positionDetailBottomSheetOpen,
+        loginBottomSheetOpen,
+        setActiveStockId,
+        setProfileBottomSheetOpen,
+        setLightDarkBottomSheetOpen,
+        setPurchaseFanCoinsBottomSheetOpen,
+        setWalletSystemBottomSheetOpen,
+        setTransactionDetailBottomSheetOpen,
+        setPositionDetailBottomSheetOpen,
+        setLoginBottomSheetOpen,
+    } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
+
+    // Reset all sheet-open state on app load so no sheet is stuck visible from persistence or a previous run
+    const hasResetSheetsOnMount = useRef(false);
+    useEffect(() => {
+        if (hasResetSheetsOnMount.current) return;
+        hasResetSheetsOnMount.current = true;
+        setActiveStockId(null);
+        setProfileBottomSheetOpen(false);
+        setLightDarkBottomSheetOpen(false);
+        setPurchaseFanCoinsBottomSheetOpen(false);
+        setWalletSystemBottomSheetOpen(false);
+        setTransactionDetailBottomSheetOpen(false);
+        setPositionDetailBottomSheetOpen(false);
+        setLoginBottomSheetOpen(false);
+    }, [
+        setActiveStockId,
+        setProfileBottomSheetOpen,
+        setLightDarkBottomSheetOpen,
+        setPurchaseFanCoinsBottomSheetOpen,
+        setWalletSystemBottomSheetOpen,
+        setTransactionDetailBottomSheetOpen,
+        setPositionDetailBottomSheetOpen,
+        setLoginBottomSheetOpen,
+    ]);
+
+    // Safety: force-dismiss all sheets shortly after mount in case a backdrop is stuck (e.g. ref was set after state was restored)
+    useEffect(() => {
+        const t = setTimeout(() => {
+            stockBottomSheetRef.current?.dismiss();
+            buySellBottomSheetRef.current?.dismiss();
+            profileBottomSheetRef.current?.dismiss();
+            lightDarkBottomSheetRef.current?.dismiss();
+            purchaseFanCoinsBottomSheetRef.current?.dismiss();
+            walletSystemBottomSheetRef.current?.dismiss();
+            onboardingBottomSheetRef.current?.dismiss();
+            transactionDetailBottomSheetRef.current?.dismiss();
+            positionDetailBottomSheetRef.current?.dismiss();
+            loginBottomSheetRef.current?.dismiss();
+        }, 400);
+        return () => clearTimeout(t);
+    }, []);
 
     // Check user location for state restrictions
     const { locationInfo, loading: locationLoading } = useLocation();

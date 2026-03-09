@@ -2,8 +2,9 @@ import { useColors } from '@/components/utils';
 import WalletBalance from '@/components/wallet/WalletBalance';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useWallet } from '@/lib/wallet-api';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
-import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import React, { useCallback } from 'react';
@@ -15,8 +16,9 @@ type WalletSystemBottomSheetProps = {
 
 export default function WalletSystemBottomSheet({ walletSystemBottomSheetRef }: WalletSystemBottomSheetProps) {
     const Color = useColors();
+    const user = useAuthStore((s) => s.user);
     const { setWalletSystemBottomSheetOpen } = useStockStore();
-    const { wallet } = useWalletStore();
+    const { data: wallet } = useWallet(user?.id ?? null);
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
 

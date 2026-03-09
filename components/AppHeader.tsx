@@ -1,9 +1,9 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
-import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
@@ -19,8 +19,9 @@ export function AppHeader() {
     const { lightImpact } = useHaptics();
     const router = useRouter();
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const user = useAuthStore((s) => s.user);
     const { setPurchaseFanCoinsBottomSheetOpen, setLoginBottomSheetOpen } = useStockStore();
-    const { wallet } = useWalletStore();
+    const { data: wallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
 
     const [showWalletDropdown, setShowWalletDropdown] = useState(false);
     const [selectedCurrency, setSelectedCurrency] = useState<'GC' | 'SC'>('SC');

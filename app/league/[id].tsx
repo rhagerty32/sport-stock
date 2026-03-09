@@ -3,12 +3,12 @@ import { ThemedView } from '@/components/themed-view';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { fetchLeague } from '@/lib/leagues-api';
-import type { League, Stock } from '@/types';
+import { useLeague } from '@/lib/leagues-api';
+import type { Stock } from '@/types';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function LeaguePage() {
@@ -18,28 +18,7 @@ export default function LeaguePage() {
     const { setActiveStockId } = useStockStore();
     const router = useRouter();
     const Color = useColors();
-    const [league, setLeague] = useState<League | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!id) {
-            setLoading(false);
-            return;
-        }
-        let cancelled = false;
-        setLoading(true);
-        fetchLeague(id, true)
-            .then((l) => {
-                if (!cancelled) setLeague(l ?? null);
-            })
-            .catch(() => {
-                if (!cancelled) setLeague(null);
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-        return () => { cancelled = true; };
-    }, [id]);
+    const { data: league, isLoading: loading } = useLeague(id ?? null, true);
 
     const leagueTeams: Stock[] = league?.stocks ?? [];
     const leagueName = league?.name ?? id ?? 'League';

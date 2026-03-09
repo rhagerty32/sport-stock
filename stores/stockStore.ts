@@ -90,7 +90,19 @@ export const useStockStore = create<StockStore>()(
                 return followedStockIds.includes(stockId);
             },
             setFollowedStocks: (stocks: Stock[]) => {
-                set({ followedStocks: stocks });
+                set((state) => {
+                    const apiIds = new Set(stocks.map((s) => s.id));
+                    // Keep stocks user follows locally that weren't in the API response (e.g. API empty or lag)
+                    const keptLocal = state.followedStocks.filter(
+                        (s) => state.followedStockIds.includes(s.id) && !apiIds.has(s.id)
+                    );
+                    const mergedStocks = [...stocks, ...keptLocal];
+                    const mergedIds = [...new Set([...stocks.map((s) => s.id), ...state.followedStockIds])];
+                    return {
+                        followedStocks: mergedStocks,
+                        followedStockIds: mergedIds,
+                    };
+                });
             },
             upsertFollowedStock: (stock: Stock) => {
                 set((state) => {
@@ -112,9 +124,8 @@ export const useStockStore = create<StockStore>()(
         {
             name: 'stock-storage',
             storage: createJSONStorage(() => AsyncStorage),
-            // Don't persist bottom sheet states as they should reset on app restart
+            // Only persist follow state; do not persist activeStockId so we never auto-open a sheet on app load (avoids stuck dim overlay)
             partialize: (state) => ({
-                activeStockId: state.activeStockId,
                 followedStockIds: state.followedStockIds,
             }),
         }

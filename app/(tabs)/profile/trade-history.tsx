@@ -3,25 +3,57 @@ import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useHaptics } from '@/hooks/useHaptics';
+import { fetchStock, stocksKeys } from '@/lib/stocks-api';
+import { usePortfolio } from '@/lib/portfolio-api';
+import { useTransactions } from '@/lib/transactions-api';
 import { useAuthStore } from '@/stores/authStore';
-import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useQueries } from '@tanstack/react-query';
 
 export default function TradeHistoryScreen() {
     const Color = useColors();
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-    const { portfolio, transactions, loadTransactions } = usePortfolioStore();
+    const { data: portfolio } = usePortfolio();
+    const { data: transactionsData } = useTransactions(
+        isAuthenticated ? { limit: 100 } : undefined
+    );
+    const transactions = transactionsData?.transactions ?? [];
     const { setActiveTransaction, setTransactionDetailBottomSheetOpen } = useStockStore();
 
-    useEffect(() => {
-        if (isAuthenticated) loadTransactions({ limit: 100 });
-    }, [isAuthenticated, loadTransactions]);
+    const positionStockIds = useMemo(
+        () => new Set((portfolio?.positions ?? []).map((p) => p.stock.id)),
+        [portfolio?.positions]
+    );
+
+    const missingStockIds = useMemo(
+        () =>
+            [...new Set(transactions.map((t) => t.stockID))].filter((id) => !positionStockIds.has(id)),
+        [transactions, positionStockIds]
+    );
+
+    const stockQueries = useQueries({
+        queries: missingStockIds.map((id) => ({
+            queryKey: stocksKeys.detail(id),
+            queryFn: () => fetchStock(id),
+        })),
+    });
+
+    const stockNameCache = useMemo(() => {
+        const map: Record<number, string> = {};
+        stockQueries.forEach((q, i) => {
+            const id = missingStockIds[i];
+            const stock = q.data;
+            if (id != null && stock)
+                map[id] = stock.name ?? stock.fullName ?? `Stock #${id}`;
+        });
+        return map;
+    }, [missingStockIds, stockQueries]);
 
     const userTransactions = useMemo(
         () => [...transactions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
@@ -31,8 +63,15 @@ export default function TradeHistoryScreen() {
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
-    const getStockName = (stockID: number) =>
-        (portfolio?.positions ?? []).find(p => p.stock.id === stockID)?.stock.name ?? `Stock #${stockID}`;
+    const getStockName = useCallback(
+        (stockID: number) => {
+            const fromPosition = (portfolio?.positions ?? []).find((p) => p.stock.id === stockID)?.stock.name;
+            if (fromPosition) return fromPosition;
+            if (stockNameCache[stockID]) return stockNameCache[stockID];
+            return `Stock #${stockID}`;
+        },
+        [portfolio?.positions, stockNameCache]
+    );
 
     return (
         <ThemedView style={styles.container}>

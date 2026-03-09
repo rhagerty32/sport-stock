@@ -68,6 +68,8 @@ export function getCurrentSession(): Promise<SessionResult | null> {
 }
 
 export function signIn(email: string, password: string): Promise<SessionResult> {
+    const label = '[Auth] Cognito signIn';
+    console.time(label);
     return new Promise((resolve, reject) => {
         const userPool = getCognitoUserPool();
         const cognitoUser = new CognitoUser({
@@ -81,6 +83,7 @@ export function signIn(email: string, password: string): Promise<SessionResult> 
         });
         cognitoUser.authenticateUser(authDetails, {
             onSuccess: (session: CognitoUserSession) => {
+                console.timeEnd(label);
                 const idToken = session.getIdToken();
                 const payload = idToken.decodePayload();
                 resolve({
@@ -89,7 +92,10 @@ export function signIn(email: string, password: string): Promise<SessionResult> 
                     email: payload.email || payload['cognito:username'] || email,
                 });
             },
-            onFailure: (err) => reject(err),
+            onFailure: (err) => {
+                console.timeEnd(label);
+                reject(err);
+            },
         });
     });
 }
@@ -163,7 +169,12 @@ export function resendConfirmationCode(email: string): Promise<void> {
     });
 }
 
-export function forgotPassword(email: string): Promise<void> {
+export type ForgotPasswordResult = {
+    /** Masked destination where the code was sent (e.g. "j***@e***.com"). Present when Cognito returns CodeDeliveryDetails. */
+    destination?: string;
+};
+
+export function forgotPassword(email: string): Promise<ForgotPasswordResult> {
     return new Promise((resolve, reject) => {
         const userPool = getCognitoUserPool();
         const cognitoUser = new CognitoUser({
@@ -172,8 +183,11 @@ export function forgotPassword(email: string): Promise<void> {
             Storage: cognitoStorage,
         });
         cognitoUser.forgotPassword({
-            onSuccess: () => resolve(),
-            onFailure: (err) => reject(err),
+            onSuccess: (data: { CodeDeliveryDetails?: { Destination?: string }; codeDeliveryDetails?: { Destination?: string } }) => {
+                const dest = data?.CodeDeliveryDetails?.Destination ?? data?.codeDeliveryDetails?.Destination;
+                resolve({ destination: dest ?? undefined });
+            },
+            onFailure: (err: Error & { code?: string; name?: string }) => reject(err),
         });
     });
 }

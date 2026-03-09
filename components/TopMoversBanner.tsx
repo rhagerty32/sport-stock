@@ -3,7 +3,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useColors } from './utils';
@@ -11,20 +11,23 @@ import { useColors } from './utils';
 export type MoverItem = { stock: Stock; change: number; changePercentage: number };
 
 interface TopMoversBannerProps {
-    onStockPress?: (stockId: number) => void;
+    onStockPress?: (stock: Stock) => void;
     gainers?: MoverItem[];
     losers?: MoverItem[];
     loading?: boolean;
 }
 
+const CARD_WIDTH = 132;
+const CARD_GAP = 12;
+const SCROLL_PADDING_LEFT = 20;
+
 export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loading = false }: TopMoversBannerProps) {
     const Color = useColors();
-    const cardWidth = 132;
     const translateX = useSharedValue(0);
     const gestureStartX = useSharedValue(0);
     const isMountedRef = useRef(true);
-    const animationRef = useRef<(() => void) | null>(null);
     const halfWidthRef = useRef(0);
+    const animationRef = useRef<(() => void) | null>(null);
 
     const { allMovers, duplicatedMovers } = useMemo(() => {
         const all = [...gainers, ...losers];
@@ -62,10 +65,12 @@ export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loadi
 
     useEffect(() => {
         isMountedRef.current = true;
-        const halfWidth = (duplicatedMovers.length / 2) * cardWidth;
+        animationRef.current = startAnimation;
+        const n = duplicatedMovers.length / 2;
+        // Exact width of one "lap" (padding + N cards including gap) so reset at 0 matches -halfWidth (seamless loop)
+        const halfWidth = SCROLL_PADDING_LEFT + n * (CARD_WIDTH + CARD_GAP) - CARD_GAP;
         halfWidthRef.current = halfWidth;
 
-        animationRef.current = startAnimation;
         translateX.value = 0;
         startAnimation();
 
@@ -77,9 +82,8 @@ export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loadi
         };
     }, [duplicatedMovers.length, startAnimation]);
 
-    const handlePress = (stockId: number) => {
-        // Call the handler immediately
-        onStockPress?.(stockId);
+    const handlePress = (stock: Stock) => {
+        onStockPress?.(stock);
     };
 
     const formatCurrency = (amount: number) => {
@@ -144,25 +148,31 @@ export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loadi
         [restartAnimationFrom]
     );
 
+    const fadeOpacity = useSharedValue(0);
     const animatedStyle = useAnimatedStyle(() => {
         return {
             transform: [{ translateX: translateX.value }],
         };
     });
+    const fadeStyle = useAnimatedStyle(() => ({
+        opacity: fadeOpacity.value,
+    }));
+
+    useEffect(() => {
+        if (!loading && allMovers.length > 0) {
+            fadeOpacity.value = withTiming(1, { duration: 300 });
+        }
+    }, [loading, allMovers.length]);
 
     if (loading) {
-        return (
-            <View style={[styles.container, { justifyContent: 'center', minHeight: 120 }]}>
-                <ActivityIndicator size="small" color={Color.green} />
-            </View>
-        );
+        return null;
     }
     if (allMovers.length === 0) {
         return null;
     }
 
     return (
-        <View style={styles.container} pointerEvents="box-none">
+        <Animated.View style={[styles.container, fadeStyle]} pointerEvents="box-none">
             <View style={styles.scrollContainer} pointerEvents="box-none">
                 <GestureDetector gesture={panGesture}>
                     <Animated.View
@@ -179,7 +189,7 @@ export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loadi
                                 <TouchableOpacity
                                     key={`${stock.id}-${index}`}
                                     activeOpacity={0.7}
-                                    onPress={() => handlePress(stock.id)}
+                                    onPress={() => handlePress(stock)}
                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     style={styles.cardWrapper}
                                 >
@@ -190,7 +200,7 @@ export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loadi
                     </Animated.View>
                 </GestureDetector>
             </View>
-        </View>
+        </Animated.View>
     );
 }
 

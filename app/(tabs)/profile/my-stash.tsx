@@ -5,12 +5,12 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { usePortfolio } from '@/lib/portfolio-api';
 import { useAuthStore } from '@/stores/authStore';
-import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function MyStashScreen() {
@@ -19,12 +19,8 @@ export default function MyStashScreen() {
     const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-    const { portfolio, loadPortfolio } = usePortfolioStore();
+    const { data: portfolio } = usePortfolio();
     const { setActivePosition, setPositionDetailBottomSheetOpen } = useStockStore();
-
-    useEffect(() => {
-        if (isAuthenticated) loadPortfolio();
-    }, [isAuthenticated, loadPortfolio]);
 
     const positions = portfolio?.positions ?? [];
     const formatCurrency = (amount: number) =>

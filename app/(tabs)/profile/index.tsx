@@ -8,11 +8,12 @@ import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useLocation } from '@/hooks/useLocation';
+import { usePortfolio } from '@/lib/portfolio-api';
+import { useTransactions } from '@/lib/transactions-api';
+import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
-import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
-import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
@@ -33,8 +34,12 @@ export default function ProfileScreen() {
     const authUser = useAuthStore((s) => s.user);
     const signOut = useAuthStore((s) => s.signOut);
     const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, setActiveTransaction, setTransactionDetailBottomSheetOpen, setActivePosition, setPositionDetailBottomSheetOpen, setLoginBottomSheetOpen } = useStockStore();
-    const { wallet, initializeWallet, loadWallet } = useWalletStore();
-    const { portfolio, transactions, loadPortfolio, loadTransactions } = usePortfolioStore();
+    const { data: wallet } = useWallet(isAuthenticated && authUser?.id ? authUser.id : null);
+    const { data: portfolio } = usePortfolio();
+    const { data: transactionsData } = useTransactions(
+        isAuthenticated && authUser?.id ? { limit: 100 } : undefined
+    );
+    const transactions = transactionsData?.transactions ?? [];
     const { resetOnboarding } = useSettingsStore();
     const { locationInfo, loading: locationLoading } = useLocation();
     const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -110,14 +115,6 @@ export default function ProfileScreen() {
         }
         return realizedGains + (portfolio?.totalGainLoss ?? 0);
     }, [userTransactions, portfolio?.totalGainLoss]);
-
-    useEffect(() => {
-        if (!isAuthenticated || !authUser?.id) return;
-        initializeWallet();
-        if (!wallet) loadWallet(authUser.id);
-        loadPortfolio();
-        loadTransactions({ limit: 100 });
-    }, [isAuthenticated, authUser?.id]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {

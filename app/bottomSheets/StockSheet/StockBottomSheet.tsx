@@ -2,15 +2,15 @@ import Chart from '@/components/chart';
 import { Ticker } from '@/components/Ticker';
 import { brightenColor, isDarkColor, useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchLeague } from '@/lib/leagues-api';
+import { useLeague } from '@/lib/leagues-api';
 import { getSportKey } from '@/lib/odds-api';
-import { fetchPriceHistory, fetchStock } from '@/lib/stocks-api';
-import { fetchTransactions } from '@/lib/transactions-api';
-import { usePortfolioStore } from '@/stores/portfolioStore';
+import { usePriceHistory, useStock } from '@/lib/stocks-api';
+import { useTransactions } from '@/lib/transactions-api';
+import { usePortfolio } from '@/lib/portfolio-api';
 import { useStockStore } from '@/stores/stockStore';
 import type { League, PriceHistory, Stock, Transaction } from '@/types';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import BuySellBottomSheet from '../BuySellBottomSheet';
@@ -27,17 +27,29 @@ type StockBottomSheetProps = {
 
 export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomSheetProps) {
     const { activeStockId, activeStock, setActiveStockId, setActiveStock, removeFollow, isFollowing } = useStockStore();
-    const { portfolio } = usePortfolioStore();
+    const { data: portfolio } = usePortfolio();
     const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
     const { buySellBottomSheetOpen } = useStockStore();
     const { isDark } = useTheme();
     const Color = useColors();
 
-    const [stock, setStock] = useState<Stock | null>(null);
-    const [league, setLeague] = useState<League | null>(null);
-    const [stockPriceHistory, setStockPriceHistory] = useState<PriceHistory[]>([]);
-    const [stockTransactions, setStockTransactions] = useState<Transaction[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: fetchedStock } = useStock(activeStockId);
+    const { data: league } = useLeague(
+        fetchedStock?.leagueID ?? null
+    );
+    const { data: stockPriceHistory = [] } = usePriceHistory(activeStockId, undefined, 100);
+    const { data: txData } = useTransactions(
+        activeStockId ? { stockID: activeStockId, limit: 50 } : undefined
+    );
+    const stock = fetchedStock ?? activeStock ?? null;
+    const stockTransactions: Transaction[] = txData?.transactions ?? [];
+    const loading =
+        (!!activeStockId && fetchedStock === undefined && !activeStock) ||
+        (!!activeStockId && txData === undefined);
+
+    useEffect(() => {
+        if (fetchedStock) setActiveStock(fetchedStock);
+    }, [fetchedStock, setActiveStock]);
 
     useEffect(() => {
         if (buySellBottomSheetOpen) {
@@ -46,79 +58,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
             buySellBottomSheetRef.current?.dismiss();
         }
     }, [buySellBottomSheetOpen]);
-
-    useEffect(() => {
-        if (!activeStockId) {
-            setStock(null);
-            setLeague(null);
-            setStockPriceHistory([]);
-            setStockTransactions([]);
-            setLoading(false);
-            return;
-        }
-        let cancelled = false;
-        setLoading(true);
-
-        (async () => {
-            try {
-                const [stockResult, historyResult, txResult] = await Promise.allSettled([
-                    fetchStock(activeStockId),
-                    fetchPriceHistory(activeStockId),
-                    fetchTransactions({ stockID: activeStockId, limit: 50 }),
-                ]);
-
-                if (cancelled) return;
-
-                const fetchedStock =
-                    stockResult.status === 'fulfilled' ? stockResult.value : null;
-                if (stockResult.status === 'rejected') {
-                    console.error('fetchStock failed', activeStockId, stockResult.reason);
-                }
-
-                const history =
-                    historyResult.status === 'fulfilled' ? historyResult.value : [];
-                if (historyResult.status === 'rejected') {
-                    console.error('fetchPriceHistory failed', activeStockId, historyResult.reason);
-                }
-
-                const txData =
-                    txResult.status === 'fulfilled' ? txResult.value : { transactions: [] };
-                if (txResult.status === 'rejected') {
-                    console.error('fetchTransactions failed', activeStockId, txResult.reason);
-                }
-
-                // Prefer freshly fetched stock data, but fall back to any existing activeStock
-                const nextStock = fetchedStock ?? activeStock ?? null;
-                setStock(nextStock);
-
-                if (fetchedStock) {
-                    setActiveStock(fetchedStock);
-                    fetchLeague(fetchedStock.leagueID).then((l) => {
-                        if (!cancelled) setLeague(l ?? null);
-                    }).catch((err) => {
-                        console.error('fetchLeague failed', fetchedStock.leagueID, err);
-                    });
-                }
-
-                setStockPriceHistory(history);
-                setStockTransactions(txData.transactions ?? []);
-            } catch (err) {
-                if (!cancelled) {
-                    console.error('Error loading StockBottomSheet data', activeStockId, err);
-                    setStock(null);
-                    setLeague(null);
-                    setStockPriceHistory([]);
-                    setStockTransactions([]);
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [activeStockId, activeStock, setActiveStock]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -199,7 +138,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                 {!activeStockId ? (
                     <View />
                 ) : (loading && !hasStock) ? (
-                    <View style={{ flex: 1, padding: 48, alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ minHeight: 400, padding: 48, alignItems: 'center', justifyContent: 'center' }}>
                         <ActivityIndicator size="large" color={Color.green} />
                         <Text style={[styles.leagueName, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
                     </View>

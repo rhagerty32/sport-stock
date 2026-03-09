@@ -1,5 +1,6 @@
 import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
 import type { AuthUser } from '@/stores/authStore';
+import { useMutation } from '@tanstack/react-query';
 
 export type ApiMeResponse = {
     user_id: string;
@@ -27,6 +28,8 @@ export function mapApiMeToAuthUser(me: ApiMeResponse): AuthUser {
  * Fetch current user from GET /api/users/me. Use after login/signup when you have idToken but have not yet updated the auth store.
  */
 export async function fetchCurrentUser(idToken: string): Promise<AuthUser> {
+    const label = '[Auth] fetchCurrentUser (GET /api/users/me)';
+    console.time(label);
     const token = idToken?.trim();
     if (!token) {
         throw new Error('No auth token available. Please try logging in again.');
@@ -42,6 +45,7 @@ export async function fetchCurrentUser(idToken: string): Promise<AuthUser> {
     try {
         response = await fetch(url, { method: 'GET', headers });
     } catch (err: any) {
+        console.timeEnd(label);
         const msg = err?.message || String(err);
         if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed')) {
             throw new Error(
@@ -52,10 +56,12 @@ export async function fetchCurrentUser(idToken: string): Promise<AuthUser> {
     }
 
     if (!response.ok) {
+        console.timeEnd(label);
         const text = await response.text();
         throw new Error(text || `Failed to load user: ${response.status}`);
     }
     const data = (await response.json()) as ApiMeResponse;
+    console.timeEnd(label);
     return mapApiMeToAuthUser(data);
 }
 
@@ -100,4 +106,11 @@ export async function registerUser(idToken: string, body: RegisterUserBody): Pro
         throw new Error(text || `Register failed: ${response.status}`);
     }
     return response.json();
+}
+
+export function useRegisterUser() {
+    return useMutation({
+        mutationFn: ({ idToken, body }: { idToken: string; body: RegisterUserBody }) =>
+            registerUser(idToken, body),
+    });
 }

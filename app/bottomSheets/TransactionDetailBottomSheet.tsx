@@ -2,14 +2,15 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { fetchLeague } from '@/lib/leagues-api';
-import { fetchStock } from '@/lib/stocks-api';
-import { usePortfolioStore } from '@/stores/portfolioStore';
+import { useLeague } from '@/lib/leagues-api';
+import { useStock } from '@/lib/stocks-api';
+import { usePortfolio } from '@/lib/portfolio-api';
+import { useTransactions } from '@/lib/transactions-api';
 import { useStockStore } from '@/stores/stockStore';
 import type { League, Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 type TransactionDetailBottomSheetProps = {
@@ -21,27 +22,15 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const { activeTransaction, setActiveTransaction, setTransactionDetailBottomSheetOpen } = useStockStore();
-    const { portfolio, transactions } = usePortfolioStore();
-    const [stock, setStock] = useState<Stock | null>(null);
-    const [league, setLeague] = useState<League | null>(null);
-
-    useEffect(() => {
-        if (!activeTransaction) {
-            setStock(null);
-            setLeague(null);
-            return;
-        }
-        const fromPosition = (portfolio?.positions ?? []).find((p) => p.stock.id === activeTransaction.stockID)?.stock;
-        if (fromPosition) {
-            setStock(fromPosition);
-            fetchLeague(fromPosition.leagueID).then((l) => setLeague(l ?? null));
-        } else {
-            fetchStock(activeTransaction.stockID).then((s) => {
-                setStock(s ?? null);
-                if (s) fetchLeague(s.leagueID).then((l) => setLeague(l ?? null));
-            });
-        }
-    }, [activeTransaction, portfolio?.positions]);
+    const { data: portfolio } = usePortfolio();
+    const { data: transactionsData } = useTransactions({ limit: 100 });
+    const transactions = transactionsData?.transactions ?? [];
+    const fromPositionStock = activeTransaction
+        ? (portfolio?.positions ?? []).find((p) => p.stock.id === activeTransaction.stockID)?.stock
+        : null;
+    const { data: fetchedStock } = useStock(activeTransaction?.stockID ?? null);
+    const stock: Stock | null = fromPositionStock ?? fetchedStock ?? null;
+    const { data: league } = useLeague(stock?.leagueID ?? null);
 
     const renderBackdrop = useCallback(
         (props: any) => (

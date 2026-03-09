@@ -7,13 +7,19 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { fetchHighestVolume, fetchOnTheRise, fetchPriceHistory, fetchTopMovers, fetchUpsetAlert } from '@/lib/stocks-api';
-import { fetchFollowedStocksNotOwned } from '@/lib/follows-api';
-import { fetchLeagues } from '@/lib/leagues-api';
+import {
+    useHighestVolume,
+    useOnTheRise,
+    usePriceHistory,
+    useTopMovers,
+    useUpsetAlert,
+} from '@/lib/stocks-api';
+import { useFollowedStocksNotOwned } from '@/lib/follows-api';
+import { useLeagues } from '@/lib/leagues-api';
+import { usePortfolio } from '@/lib/portfolio-api';
+import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
-import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useStockStore } from '@/stores/stockStore';
-import { useWalletStore } from '@/stores/walletStore';
 import type { League, PriceHistory, Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -42,108 +48,49 @@ export default function HomeScreen() {
     const [upsetAlertPage, setUpsetAlertPage] = useState(0);
     const [sortType, setSortType] = useState<SortType>(null);
     const [showSortDropdown, setShowSortDropdown] = useState(false);
-    const [topMovers, setTopMovers] = useState<{ gainers: { stock: Stock; change: number; changePercentage: number }[]; losers: { stock: Stock; change: number; changePercentage: number }[] }>({ gainers: [], losers: [] });
-    const [highestVolumeStocks, setHighestVolumeStocks] = useState<Stock[]>([]);
-    const [onTheRiseStocks, setOnTheRiseStocks] = useState<{ stock: Stock; changePercentage: number }[]>([]);
-    const [upsetAlertStocks, setUpsetAlertStocks] = useState<{ stock: Stock; changePercentage: number }[]>([]);
-    const [leaguesList, setLeaguesList] = useState<League[]>([]);
-    const [sectionsLoading, setSectionsLoading] = useState(true);
-    const [chartData, setChartData] = useState<PriceHistory[] | null>(null);
-    const [chartLoading, setChartLoading] = useState(false);
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const user = useAuthStore((s) => s.user);
     const {
         setActiveStockId,
+        setActiveStock,
         setPurchaseFanCoinsBottomSheetOpen,
         setLoginBottomSheetOpen,
         followedStockIds,
-        followedStocks,
-        setFollowedStocks,
     } = useStockStore();
-    const { wallet, loadWallet, initializeWallet } = useWalletStore();
-    const { portfolio, loadPortfolio } = usePortfolioStore();
     const sortDropdownRef = useRef<View>(null);
+
+    const { data: portfolio } = usePortfolio();
+    const { data: wallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
+    const firstPosition = portfolio?.positions?.[0];
+    const firstStockId = firstPosition?.stock?.id ?? null;
+    const { data: chartData = null, isLoading: chartLoading } = usePriceHistory(
+        isAuthenticated && firstStockId != null ? firstStockId : null,
+        '1M',
+        90
+    );
+
+    const topMoversQuery = useTopMovers(5);
+    const highestVolumeQuery = useHighestVolume(9);
+    const onTheRiseQuery = useOnTheRise(9);
+    const upsetAlertQuery = useUpsetAlert(9);
+    const leaguesQuery = useLeagues();
+    const { data: followedStocksFromApi = [] } = useFollowedStocksNotOwned(isAuthenticated);
+
+    const topMovers = topMoversQuery.data ?? { gainers: [], losers: [] };
+    const highestVolumeStocks = highestVolumeQuery.data ?? [];
+    const onTheRiseStocks = onTheRiseQuery.data ?? [];
+    const upsetAlertStocks = upsetAlertQuery.data ?? [];
+    const leaguesList: League[] = leaguesQuery.data ?? [];
+    const sectionsLoading =
+        topMoversQuery.isLoading ||
+        highestVolumeQuery.isLoading ||
+        onTheRiseQuery.isLoading ||
+        upsetAlertQuery.isLoading ||
+        leaguesQuery.isLoading;
 
     // Animation values for sort dropdown
     const sortDropdownOpacity = useSharedValue(0);
     const sortDropdownScale = useSharedValue(0.8);
-
-    useEffect(() => {
-        if (!isAuthenticated || !user?.id) return;
-        initializeWallet();
-        if (!wallet) loadWallet(user.id);
-        loadPortfolio();
-    }, [isAuthenticated, user?.id]);
-
-    // Fetch chart data (price history for first position) when logged in and have positions
-    const firstPosition = portfolio?.positions?.[0];
-    const firstStockId = firstPosition?.stock?.id ?? null;
-    useEffect(() => {
-        if (!isAuthenticated || firstStockId == null) {
-            setChartData(null);
-            return;
-        }
-        let cancelled = false;
-        setChartLoading(true);
-        fetchPriceHistory(firstStockId, '1M', 90)
-            .then((history) => {
-                if (!cancelled) {
-                    setChartData(Array.isArray(history) ? history : []);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setChartData([]);
-            })
-            .finally(() => {
-                if (!cancelled) setChartLoading(false);
-            });
-        return () => { cancelled = true; };
-    }, [isAuthenticated, firstStockId]);
-
-    useEffect(() => {
-        let cancelled = false;
-        setSectionsLoading(true);
-        Promise.all([
-            fetchTopMovers(5),
-            fetchHighestVolume(9),
-            fetchOnTheRise(9),
-            fetchUpsetAlert(9),
-            fetchLeagues(),
-        ]).then(([movers, highVol, rise, upset, leagues]) => {
-            if (cancelled) return;
-            setTopMovers(movers);
-            setHighestVolumeStocks(highVol);
-            setOnTheRiseStocks(rise);
-            setUpsetAlertStocks(upset);
-            setLeaguesList(Array.isArray(leagues) ? leagues : []);
-        }).catch(() => {}).finally(() => {
-            if (!cancelled) setSectionsLoading(false);
-        });
-        return () => { cancelled = true; };
-    }, []);
-
-    // Load followed stocks from backend so Following section reflects DB state
-    useEffect(() => {
-        if (!isAuthenticated) {
-            setFollowedStocks([]);
-            return;
-        }
-        let cancelled = false;
-        fetchFollowedStocksNotOwned()
-            .then((stocks) => {
-                if (!cancelled) {
-                    setFollowedStocks(stocks);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    // On error, leave any existing followedStocks from local state
-                }
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [isAuthenticated, setFollowedStocks]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -189,9 +136,14 @@ export default function HomeScreen() {
         setUpsetAlertPage(Math.round(page / (styles.stockPage.width + (styles.stockPage.marginRight / 2))));
     };
 
-    const handleStockPress = (stockId: number) => {
+    const handleStockPress = (stockOrId: Stock | number) => {
         lightImpact();
-        setActiveStockId(stockId);
+        if (typeof stockOrId === 'object') {
+            setActiveStock(stockOrId);
+            setActiveStockId(stockOrId.id);
+        } else {
+            setActiveStockId(stockOrId);
+        }
     };
 
     const positions = portfolio?.positions ?? [];
@@ -217,7 +169,7 @@ export default function HomeScreen() {
     const followedStocksSection = useMemo(() => {
         const map = new Map<number, Stock>();
         // Start with stocks from backend (already filtered to not-owned)
-        followedStocks.forEach((s) => {
+        followedStocksFromApi.forEach((s) => {
             map.set(s.id, s);
         });
         // Add any locally-followed stocks that appear in other sections
@@ -229,7 +181,7 @@ export default function HomeScreen() {
             }
         });
         return Array.from(map.values());
-    }, [followedStocks, allStocksFromSections, followedStockIds, ownedStockIds]);
+    }, [followedStocksFromApi, allStocksFromSections, followedStockIds, ownedStockIds]);
 
     const getPriceChange = useCallback((stockId: number) => {
         const g = topMovers.gainers.find(m => m.stock.id === stockId);
@@ -291,13 +243,15 @@ export default function HomeScreen() {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
                 <AppHeader />
 
-                {/* Top Movers Banner */}
-                <TopMoversBanner
-                    onStockPress={handleStockPress}
-                    gainers={topMovers.gainers}
-                    losers={topMovers.losers}
-                    loading={sectionsLoading}
-                />
+                {/* Top Movers Banner - wrapper reserves space so content below doesn't snap when banner loads */}
+                <View style={styles.topMoversBannerWrapper}>
+                    <TopMoversBanner
+                        onStockPress={(stock) => handleStockPress(stock)}
+                        gainers={topMovers.gainers}
+                        losers={topMovers.losers}
+                        loading={sectionsLoading}
+                    />
+                </View>
 
                 {/* Portfolio Summary Card - only when logged in */}
                 {isAuthenticated && (
@@ -475,7 +429,7 @@ export default function HomeScreen() {
                                                         key={position.stock.id}
                                                         style={styles.stockItem}
                                                         onPress={() => {
-                                                            handleStockPress(position.stock.id);
+                                                            handleStockPress(position.stock);
                                                         }}
                                                         onPressIn={() => {}}
                                                         activeOpacity={0.7}
@@ -591,7 +545,7 @@ export default function HomeScreen() {
                                                         key={stock.id}
                                                         style={styles.stockItem}
                                                         onPress={() => {
-                                                            handleStockPress(stock.id);
+                                                            handleStockPress(stock);
                                                         }}
                                                         onPressIn={() => {
                                                             // Ensure touch is captured
@@ -707,7 +661,7 @@ export default function HomeScreen() {
                                                     key={stock.id}
                                                     style={styles.stockItem}
                                                     onPress={() => {
-                                                        handleStockPress(stock.id);
+                                                        handleStockPress(stock);
                                                     }}
                                                     activeOpacity={0.7}
                                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -787,7 +741,7 @@ export default function HomeScreen() {
                                                     key={item.stock.id}
                                                     style={styles.stockItem}
                                                     onPress={() => {
-                                                        handleStockPress(item.stock.id);
+                                                        handleStockPress(item.stock);
                                                     }}
                                                     activeOpacity={0.7}
                                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -874,7 +828,7 @@ export default function HomeScreen() {
                                                     key={item.stock.id}
                                                     style={styles.stockItem}
                                                     onPress={() => {
-                                                        handleStockPress(item.stock.id);
+                                                        handleStockPress(item.stock);
                                                     }}
                                                     activeOpacity={0.7}
                                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -935,6 +889,9 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+    topMoversBannerWrapper: {
+        minHeight: 88, // banner height 80 + marginBottom 24 + marginTop -16 = 88; reserves space so no snap when it loads
     },
     cardContainer: {
         marginTop: 0,

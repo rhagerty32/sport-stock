@@ -1,4 +1,5 @@
-import { useWalletStore } from '@/stores/walletStore';
+import { useWallet } from '@/lib/wallet-api';
+import { useAuthStore } from '@/stores/authStore';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useColors } from '../utils';
@@ -14,7 +15,8 @@ export default function WalletBalance({
     size = 'medium',
     variant = 'default',
 }: WalletBalanceProps) {
-    const { wallet } = useWalletStore();
+    const user = useAuthStore((s) => s.user);
+    const { data: wallet } = useWallet(user?.id ?? null);
     const Color = useColors();
 
     if (!wallet) {

@@ -10,6 +10,8 @@ import Animated, {
     useAnimatedReaction,
     useAnimatedStyle,
     useSharedValue,
+    withRepeat,
+    withSequence,
     withTiming
 } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
@@ -18,6 +20,9 @@ import { useColors } from './utils';
 const { width: screenWidth } = Dimensions.get('window');
 const CHART_WIDTH = screenWidth;
 const CHART_HEIGHT = 200;
+const FLAT_LINE_Y = CHART_HEIGHT / 2;
+const PULSE_DOT_RADIUS = 5;
+const PULSE_DOT_RIGHT_MARGIN = 12;
 
 interface ChartProps {
     stockId: number;
@@ -28,74 +33,6 @@ interface ChartProps {
     /** Hide the time period selector when using external priceData (e.g. single period from API). */
     hideTimePeriodSelector?: boolean;
 }
-
-// Generate price history data (simplified version of the one in dummy-data)
-const generatePriceHistory = (
-    stockId: number,
-    days: number = 365,
-    interval: 'daily' | 'hourly' | 'minute' | 'weekly' | 'monthly' = 'daily'
-): PriceHistory[] => {
-    const history: PriceHistory[] = [];
-    let currentPrice = Math.random() * 100 + 20; // Start between $20-$120
-
-    let totalIntervals: number;
-    if (interval === 'minute') {
-        totalIntervals = days * 24 * 60; // minutes
-    } else if (interval === 'hourly') {
-        totalIntervals = days * 24; // hours
-    } else if (interval === 'weekly') {
-        totalIntervals = Math.ceil(days / 7); // weeks (rounded up)
-    } else if (interval === 'monthly') {
-        totalIntervals = Math.ceil(days / 30); // months (approximate, rounded up)
-    } else {
-        totalIntervals = days; // days
-    }
-
-    for (let i = 0; i < totalIntervals; i++) {
-        const date = new Date();
-        if (interval === 'minute') {
-            date.setMinutes(date.getMinutes() - (totalIntervals - i));
-        } else if (interval === 'hourly') {
-            date.setHours(date.getHours() - (totalIntervals - i));
-        } else if (interval === 'weekly') {
-            date.setDate(date.getDate() - ((totalIntervals - i) * 7));
-        } else if (interval === 'monthly') {
-            date.setMonth(date.getMonth() - (totalIntervals - i));
-        } else {
-            date.setDate(date.getDate() - (days - i));
-        }
-
-        // Random walk with slight upward bias
-        // Smaller changes for smaller intervals (less volatility per interval)
-        let volatility: number;
-        if (interval === 'minute') {
-            volatility = 0.002; // Very small changes per minute
-        } else if (interval === 'hourly') {
-            volatility = 0.01; // Small changes per hour
-        } else if (interval === 'weekly') {
-            volatility = 0.15; // Moderate changes per week
-        } else if (interval === 'monthly') {
-            volatility = 0.5; // Larger changes per month
-        } else {
-            volatility = 0.05; // Normal changes per day
-        }
-        const change = (Math.random() - 0.45) * volatility; // Slight upward bias
-        currentPrice = Math.max(1, currentPrice * (1 + change));
-
-        const changeAmount = i > 0 ? currentPrice - history[i - 1].price : 0;
-        const changePercentage = i > 0 ? (changeAmount / history[i - 1].price) * 100 : 0;
-
-        history.push({
-            stockID: stockId,
-            timestamp: date,
-            price: Math.round(currentPrice * 100) / 100,
-            change: Math.round(changeAmount * 100) / 100,
-            changePercentage: Math.round(changePercentage * 100) / 100,
-        });
-    }
-
-    return history;
-};
 
 /** Filter API-sourced price history by selected time period (by date). */
 function filterPriceDataByPeriod(data: PriceHistory[], period: TimePeriod): PriceHistory[] {
@@ -129,6 +66,8 @@ const Chart: React.FC<ChartProps> = ({
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('1H');
     const { isDark } = useTheme();
     const animationProgress = useSharedValue(0);
+    const pingScale = useSharedValue(1);
+    const pingOpacity = useSharedValue(0.7);
 
     // Interactive chart state
     const [isScrubbing, setIsScrubbing] = useState(false);
@@ -371,57 +310,18 @@ const Chart: React.FC<ChartProps> = ({
         setCurrentDate(null);
     };
 
-    // Get data points based on time period
-    const getDataPoints = (period: TimePeriod) => {
-        switch (period) {
-            case '1H':
-                // Generate minute-by-minute data for last hour (60 minutes = 60 data points)
-                // Generate at least 2 hours of minute data to ensure we have enough
-                // 2 hours = 2/24 days = 1/12 days
-                const minuteData = generatePriceHistory(stockId, 2 / 24, 'minute');
-                return minuteData.slice(-60); // Last 60 minutes
-            case '1D':
-                // Generate hourly data for last 24 hours (24 data points)
-                // Generate at least 2 days of hourly data to ensure we have enough
-                const dayHourlyData = generatePriceHistory(stockId, 2, 'hourly');
-                return dayHourlyData.slice(-24); // Last 24 hours
-            case '1W':
-                // Daily data for last 7 days
-                return generatePriceHistory(stockId, 7, 'daily');
-            case '1M':
-                // Daily data for last 30 days
-                return generatePriceHistory(stockId, 30, 'daily');
-            case '3M':
-                // Daily data for last 90 days
-                return generatePriceHistory(stockId, 90, 'daily');
-            case '1Y':
-                // Daily data for last year
-                return generatePriceHistory(stockId, 365, 'daily');
-            case '5Y':
-                // Weekly data for last 5 years (much more performant than daily)
-                // 5 years = ~1825 days = ~260 weeks
-                return generatePriceHistory(stockId, 1825, 'weekly');
-            case 'ALL':
-                // Weekly data for all available data (optimized for performance)
-                return generatePriceHistory(stockId, 1825, 'weekly');
-            default:
-                return generatePriceHistory(stockId, 1, 'hourly').slice(-24);
-        }
-    };
-
     useEffect(() => {
         let data: PriceHistory[];
 
         if (externalPriceData != null) {
-            // When external data is provided, never fall back to generated data.
-            // If it's empty, we intentionally show an empty chart (no fake history).
+            // Use API-sourced data; filter by selected time period. Empty array shows empty chart.
             data =
                 externalPriceData.length > 0
                     ? filterPriceDataByPeriod(externalPriceData, timePeriod)
                     : [];
         } else {
-            // Only generate synthetic data when no external data is supplied.
-            data = getDataPoints(timePeriod);
+            // No priceData provided: show empty chart. Callers must pass real API data.
+            data = [];
         }
 
         setPriceData(data);
@@ -434,6 +334,32 @@ const Chart: React.FC<ChartProps> = ({
         smoothness.value = 1;
         setSmoothnessState(1);
     }, [timePeriod, stockId, externalPriceData]);
+
+    const hasNoPriceHistory = priceData.length < 2;
+
+    // Ping: one dot expands and fades out, then resets (solid dot stays put)
+    useEffect(() => {
+        pingScale.value = withRepeat(
+            withSequence(
+                withTiming(2.5, { duration: 2000 }),
+                withTiming(1, { duration: 0 })
+            ),
+            -1,
+            false
+        );
+        pingOpacity.value = withRepeat(
+            withSequence(
+                withTiming(0, { duration: 2000 }),
+                withTiming(0.7, { duration: 0 })
+            ),
+            -1,
+            false
+        );
+        return () => {
+            pingScale.value = 1;
+            pingOpacity.value = 0.7;
+        };
+    }, []);
 
 
     // Create interpolated path that smoothly transitions between smooth and sharp
@@ -594,6 +520,17 @@ const Chart: React.FC<ChartProps> = ({
         opacity: tooltipOpacity.value,
     }));
 
+    const pingDotStyle = useAnimatedStyle(() => ({
+        opacity: pingOpacity.value,
+        transform: [{ scale: pingScale.value }],
+    }));
+
+    // Dot at end of line: center when no history, last price y when we have data
+    const pulseDotY =
+        priceData.length < 2
+            ? FLAT_LINE_Y - PULSE_DOT_RADIUS
+            : getYForPrice(priceData[priceData.length - 1].price) - PULSE_DOT_RADIUS;
+
     return (
         <View style={{ width: '100%' }}>
             {/* Chart */}
@@ -622,24 +559,41 @@ const Chart: React.FC<ChartProps> = ({
                                     </ClipPath>
                                 </Defs>
 
-                                {/* Area under the line */}
-                                <Path
-                                    d={createInterpolatedAreaPath(priceData, smoothnessState)}
-                                    fill="url(#gradient)"
-                                />
+                                {hasNoPriceHistory ? (
+                                    <>
+                                        {/* Flat line when no price history (Robinhood-style) */}
+                                        <Line
+                                            x1={0}
+                                            y1={FLAT_LINE_Y}
+                                            x2={CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS * 2}
+                                            y2={FLAT_LINE_Y}
+                                            stroke={color}
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* Area under the line */}
+                                        <Path
+                                            d={createInterpolatedAreaPath(priceData, smoothnessState)}
+                                            fill="url(#gradient)"
+                                        />
 
-                                {/* Line */}
-                                <Path
-                                    d={createInterpolatedPath(priceData, smoothnessState)}
-                                    stroke={color}
-                                    strokeWidth="2"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
+                                        {/* Line */}
+                                        <Path
+                                            d={createInterpolatedPath(priceData, smoothnessState)}
+                                            stroke={color}
+                                            strokeWidth="2"
+                                            fill="none"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </>
+                                )}
 
-                                {/* Crosshairs */}
-                                {isScrubbing && currentPrice && (
+                                {/* Crosshairs (only when we have data to scrub) */}
+                                {!hasNoPriceHistory && isScrubbing && currentPrice && (
                                     <>
                                         {/* Vertical crosshair */}
                                         <Line
@@ -665,6 +619,35 @@ const Chart: React.FC<ChartProps> = ({
                                     </>
                                 )}
                             </Svg>
+
+                            {/* End dot: ping ring (expands + fades) then solid dot on top */}
+                            <Animated.View
+                                style={[
+                                    styles.pulseDot,
+                                    {
+                                        left: CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS * 2,
+                                        top: pulseDotY,
+                                        width: PULSE_DOT_RADIUS * 2,
+                                        height: PULSE_DOT_RADIUS * 2,
+                                        borderRadius: PULSE_DOT_RADIUS,
+                                        backgroundColor: color,
+                                    },
+                                    pingDotStyle,
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.pulseDot,
+                                    {
+                                        left: CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS * 2,
+                                        top: pulseDotY,
+                                        width: PULSE_DOT_RADIUS * 2,
+                                        height: PULSE_DOT_RADIUS * 2,
+                                        borderRadius: PULSE_DOT_RADIUS,
+                                        backgroundColor: color,
+                                    },
+                                ]}
+                            />
 
                             {/* Price tooltip */}
                             {isScrubbing && currentPrice && (
@@ -708,14 +691,16 @@ const Chart: React.FC<ChartProps> = ({
                                 </Animated.View>
                             )}
 
-                            {/* Animated mask that reveals the chart from left to right */}
-                            <Animated.View
-                                style={[
-                                    styles.chartMask,
-                                    { backgroundColor: backgroundColor || Colors[isDark ? 'dark' : 'light'].background },
-                                    animatedClipStyle
-                                ]}
-                            />
+                            {/* Animated mask that reveals the chart from left to right (hidden when no history) */}
+                            {!hasNoPriceHistory && (
+                                <Animated.View
+                                    style={[
+                                        styles.chartMask,
+                                        { backgroundColor: backgroundColor || Colors[isDark ? 'dark' : 'light'].background },
+                                        animatedClipStyle
+                                    ]}
+                                />
+                            )}
                         </Animated.View>
                     </PanGestureHandler>
                 </GestureHandlerRootView>
@@ -723,31 +708,31 @@ const Chart: React.FC<ChartProps> = ({
 
             {/* Time Period Selector - hidden when using external data (e.g. portfolio chart) */}
             {!hideTimePeriodSelector && (
-            <View style={styles.timePeriodContainer}>
-                {['1H', '1D', '1M', '1Y', '5Y', 'ALL'].map((period) => {
-                    const isActive = timePeriod === period;
-                    return (
-                        <TouchableOpacity
-                            key={period}
-                            style={[
-                                styles.timePeriodButton,
-                                isActive && styles.activeTimePeriod,
-                                isActive && { backgroundColor: color }
-                            ]}
-                            onPress={() => setTimePeriod(period as TimePeriod)}
-                        >
-                            <Text style={[
-                                styles.timePeriodText,
-                                isActive && styles.activeTimePeriodText,
-                                isActive && { color: backgroundColor || '#FFFFFF' },
-                                !isActive && { color: isDark ? Color.gray500 : '#666' }
-                            ]}>
-                                {period}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
+                <View style={styles.timePeriodContainer}>
+                    {['1H', '1D', '1M', '1Y', '5Y', 'ALL'].map((period) => {
+                        const isActive = timePeriod === period;
+                        return (
+                            <TouchableOpacity
+                                key={period}
+                                style={[
+                                    styles.timePeriodButton,
+                                    isActive && styles.activeTimePeriod,
+                                    isActive && { backgroundColor: color }
+                                ]}
+                                onPress={() => setTimePeriod(period as TimePeriod)}
+                            >
+                                <Text style={[
+                                    styles.timePeriodText,
+                                    isActive && styles.activeTimePeriodText,
+                                    isActive && { color: backgroundColor || '#FFFFFF' },
+                                    !isActive && { color: isDark ? Color.gray500 : '#666' }
+                                ]}>
+                                    {period}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
             )}
         </View>
     );
@@ -786,6 +771,9 @@ const styles = StyleSheet.create({
         top: 0,
         right: 0,
         height: CHART_HEIGHT,
+    },
+    pulseDot: {
+        position: 'absolute',
     },
     timePeriodContainer: {
         flexDirection: 'row',

@@ -1,9 +1,9 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useWallet, usePurchaseFanCoins } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
-import { useWalletStore } from '@/stores/walletStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
@@ -22,7 +22,9 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
     const Color = useColors();
     const user = useAuthStore((s) => s.user);
     const { setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen } = useStockStore();
-    const { wallet, purchaseFanCoins, isLoading } = useWalletStore();
+    const { data: wallet } = useWallet(user?.id ?? null);
+    const purchaseFanCoinsMutation = usePurchaseFanCoins();
+    const isLoading = purchaseFanCoinsMutation.isPending;
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
     const [showCustomAmount, setShowCustomAmount] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
@@ -96,7 +98,11 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
 
         try {
             lightImpact();
-            await purchaseFanCoins(user.id, selectedAmount, 'stripe');
+            await purchaseFanCoinsMutation.mutateAsync({
+                userId: user.id,
+                amount: selectedAmount,
+                paymentMethod: 'stripe',
+            });
             success();
 
             // Reset form

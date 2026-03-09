@@ -39,6 +39,13 @@ export const API_ENDPOINTS = {
     LEAGUES: '/api/leagues',
     LEAGUE: (leagueId: string) => `/api/leagues/${leagueId}`,
 
+    // Markets (per API_DOCS: league_id = market_id for markets endpoints)
+    MARKETS: '/api/markets',
+    MARKET: (marketId: string) => `/api/markets/${marketId}`,
+    MARKET_POSITIONS: (marketId: string) => `/api/markets/${marketId}/positions`,
+    MARKET_ORDERS: (marketId: string) => `/api/markets/${marketId}/orders`,
+    MARKET_ASSETS: (marketId: string) => `/api/markets/${marketId}/assets`,
+
     // Search
     SEARCH: '/api/search',
 } as const;

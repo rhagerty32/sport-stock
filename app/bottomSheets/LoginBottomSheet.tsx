@@ -10,6 +10,10 @@ import {
     signIn as cognitoSignIn,
     signUp as cognitoSignUp,
 } from '@/lib/cognito';
+import {
+    signInWithCognitoHostedUI,
+    type CognitoHostedUIProvider,
+} from '@/lib/cognito-hosted-ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,9 +56,12 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
     const [code, setCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null);
     const [resendLoading, setResendLoading] = useState(false);
     const [resendSuccess, setResendSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    /** After sending reset code, show where it was sent (e.g. "j***@e***.com") and hints. */
+    const [forgotCodeSentTo, setForgotCodeSentTo] = useState<string | null>(null);
 
     const isUserAlreadyExistsError = (err: any): boolean => {
         const name = err?.name || '';
@@ -84,6 +91,7 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
         setNewPassword('');
         setError(null);
         setResendSuccess(null);
+        setForgotCodeSentTo(null);
     }, []);
 
     const closeModal = useCallback(() => {
@@ -111,9 +119,12 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
             return;
         }
         setLoading(true);
+        const loginLabel = '[Auth] Login total (modal open)';
+        console.time(loginLabel);
         await new Promise((r) => setTimeout(r, 0));
         try {
             const session = await cognitoSignIn(email.trim(), password);
+            console.timeEnd(loginLabel);
             authSignIn({
                 user: { id: session.sub, email: session.email ?? email.trim() },
                 idToken: session.idToken,
@@ -122,9 +133,43 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
             closeModal();
             fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
         } catch (err: any) {
+            console.timeEnd(loginLabel);
             setError(err?.message || 'Login failed');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSignInWithProvider = async (provider: CognitoHostedUIProvider) => {
+        setError(null);
+        setSocialLoading(provider === 'SignInWithApple' ? 'apple' : 'google');
+        try {
+            const session = await signInWithCognitoHostedUI(provider);
+            try {
+                await fetchCurrentUser(session.idToken);
+            } catch {
+                try {
+                    await registerUser(session.idToken, {
+                        user_id: session.sub,
+                        name: session.name || session.email || 'User',
+                        phone_number: 'N/A',
+                        email: session.email || '',
+                    });
+                } catch {
+                    // User may already exist in backend; continue to sign in
+                }
+            }
+            authSignIn({
+                user: { id: session.sub, email: session.email },
+                idToken: session.idToken,
+            });
+            lightImpact();
+            closeModal();
+            fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
+        } catch (err: any) {
+            setError(err?.message || 'Sign-in failed');
+        } finally {
+            setSocialLoading(null);
         }
     };
 
@@ -258,17 +303,27 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
 
     const handleForgotSend = async () => {
         setError(null);
+        setForgotCodeSentTo(null);
         if (!email.trim()) {
             setError('Enter your email');
             return;
         }
         setLoading(true);
         try {
-            await forgotPassword(email.trim());
+            const result = await forgotPassword(email.trim());
+            setForgotCodeSentTo(result.destination ?? null);
             setMode('forgot_confirm');
             setError(null);
         } catch (err: any) {
-            setError(err?.message || 'Failed to send reset code');
+            const code = err?.code ?? err?.name;
+            const msg = err?.message ?? 'Failed to send reset code';
+            if (code === 'UserNotFoundException' || msg?.toLowerCase().includes('user not found')) {
+                setError('No account found with this email. Check the address or sign up.');
+            } else if (code === 'LimitExceededException' || msg?.toLowerCase().includes('limit exceeded')) {
+                setError('Too many attempts. Please wait a few minutes and try again.');
+            } else {
+                setError(msg);
+            }
         } finally {
             setLoading(false);
         }
@@ -361,6 +416,42 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                     >
                         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Log in</Text>}
                     </TouchableOpacity>
+
+                    <View style={styles.socialDivider}>
+                        <View style={[styles.socialDividerLine, { backgroundColor: Color.subText }]} />
+                        <Text style={[styles.socialDividerText, { color: Color.subText }]}>or</Text>
+                        <View style={[styles.socialDividerLine, { backgroundColor: Color.subText }]} />
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.socialButton, { backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#333' : '#ddd' }]}
+                        onPress={() => handleSignInWithProvider('SignInWithApple')}
+                        disabled={!!socialLoading}
+                    >
+                        {socialLoading === 'apple' ? (
+                            <ActivityIndicator size="small" color={Color.baseText} />
+                        ) : (
+                            <>
+                                <Ionicons name="logo-apple" size={20} color={Color.baseText} style={styles.socialIcon} />
+                                <Text style={[styles.socialButtonText, { color: Color.baseText }]}>Sign in with Apple</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.socialButton, { backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#333' : '#ddd' }]}
+                        onPress={() => handleSignInWithProvider('Google')}
+                        disabled={!!socialLoading}
+                    >
+                        {socialLoading === 'google' ? (
+                            <ActivityIndicator size="small" color={Color.baseText} />
+                        ) : (
+                            <>
+                                <Ionicons name="logo-google" size={20} color={Color.baseText} style={styles.socialIcon} />
+                                <Text style={[styles.socialButtonText, { color: Color.baseText }]}>Sign in with Google</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+
                     <TouchableOpacity style={styles.linkButton} onPress={() => { setMode('signup'); setError(null); lightImpact(); }}>
                         <Text style={[styles.linkText, { color: Color.green }]}>Sign up</Text>
                     </TouchableOpacity>
@@ -494,6 +585,13 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
 
             {mode === 'forgot_confirm' && (
                 <>
+                    <View style={[styles.forgotHintBox, { backgroundColor: isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.08)' }]}>
+                        <Text style={[styles.forgotHintText, { color: Color.subText }]}>
+                            {forgotCodeSentTo
+                                ? `Code sent to ${forgotCodeSentTo}. Check your inbox and spam folder—it can take a few minutes.`
+                                : 'Check your email (and spam folder) for the code. It can take a few minutes to arrive.'}
+                        </Text>
+                    </View>
                     <Text style={labelStyle}>Verification code</Text>
                     <BottomSheetTextInput
                         style={inputStyle}
@@ -520,6 +618,13 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                         disabled={loading}
                     >
                         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Reset password</Text>}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={handleForgotSend}
+                        disabled={loading}
+                    >
+                        <Text style={[styles.linkText, { color: Color.green }]}>Resend code</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.linkButton} onPress={() => { setMode('login'); setCode(''); setNewPassword(''); setError(null); lightImpact(); }}>
                         <Text style={[styles.linkText, { color: Color.subText }]}>Back to login</Text>
@@ -574,6 +679,8 @@ const styles = StyleSheet.create({
     },
     errorBox: { padding: 12, borderRadius: 12, marginBottom: 12 },
     errorText: { fontSize: 14 },
+    forgotHintBox: { padding: 12, borderRadius: 12, marginBottom: 16 },
+    forgotHintText: { fontSize: 13, lineHeight: 18 },
     primaryButton: {
         marginTop: 20,
         paddingVertical: 14,
@@ -583,6 +690,33 @@ const styles = StyleSheet.create({
         minHeight: 48,
     },
     primaryButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+    socialDivider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 12,
+    },
+    socialDividerLine: {
+        flex: 1,
+        height: 1,
+        opacity: 0.5,
+    },
+    socialDividerText: {
+        marginHorizontal: 12,
+        fontSize: 13,
+    },
+    socialButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        minHeight: 48,
+        marginBottom: 10,
+    },
+    socialIcon: { marginRight: 10 },
+    socialButtonText: { fontSize: 16, fontWeight: '500' },
     linkButton: { marginTop: 12, alignItems: 'center', paddingVertical: 8 },
     linkText: { fontSize: 15 },
     resendSuccess: { fontSize: 14, marginTop: 8, textAlign: 'center' },
