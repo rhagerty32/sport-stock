@@ -79,10 +79,18 @@ export async function listMarketPositions(marketId: string): Promise<MarketPosit
  * API_DOCS: submit_orders_api_markets__market_id__orders_post
  * Returns MarketStateResponse (tick_index, last_updated, virtual_liquidity).
  */
+
 export async function submitMarketOrders(
     marketId: string,
     orders: OrderItem[]
 ): Promise<{ tick_index?: number; last_updated?: string; virtual_liquidity?: number }> {
+    // Debug logging for markets API buy fallback (orders may include buys/sells)
+    // eslint-disable-next-line no-console
+    console.log('[submitMarketOrders] request', {
+        marketId,
+        orders,
+    });
+
     return apiPost(API_ENDPOINTS.MARKET_ORDERS(marketId), { orders });
 }
 

@@ -147,17 +147,15 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                         {/* Header */}
                         <View style={[styles.header, { backgroundColor: primaryColor }]}>
                             <View style={styles.headerContent}>
-                                <View style={styles.stockInfo}>
-                                    <View style={styles.stockDetails}>
-                                        <View style={styles.stockNameRow}>
-                                            <Text style={styles.stockName}>{effectiveStock!.name}</Text>
-                                            <Ticker ticker={effectiveStock!.ticker} color={effectiveStock!.secondaryColor} size="small" />
-                                        </View>
+                                <Text style={styles.stockName}>{effectiveStock!.name}</Text>
+                                <View style={styles.headerBottomRow}>
+                                    <View style={styles.headerLeftGroup}>
                                         <Text style={styles.leagueName}>{league?.name}</Text>
+                                        <Ticker ticker={effectiveStock!.ticker} color={effectiveStock!.secondaryColor} size="small" />
                                     </View>
-                                </View>
-                                <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
-                                    <Text style={[styles.currentPrice, { color: Color.baseText }]}>{formatCurrency(currentPrice)}</Text>
+                                    <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
+                                        <Text style={[styles.currentPrice, { color: Color.baseText }]}>{formatCurrency(currentPrice)}</Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
@@ -222,28 +220,25 @@ const styles = StyleSheet.create({
         padding: 20
     },
     headerContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    stockInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    stockDetails: {
-        flex: 1,
-    },
-    stockNameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'column',
         gap: 8,
-        marginBottom: 4,
     },
     stockName: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#FFFFFF',
+    },
+    headerBottomRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    headerLeftGroup: {
+        flex: 1,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 8,
     },
     leagueName: {
         fontSize: 16,
@@ -251,6 +246,7 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     priceContainer: {
+        flexShrink: 0,
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,

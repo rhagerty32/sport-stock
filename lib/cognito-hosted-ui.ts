@@ -4,12 +4,29 @@
  * Set EXPO_PUBLIC_COGNITO_OAUTH_DOMAIN (e.g. https://your-domain.auth.us-east-1.amazonaws.com).
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import type { SessionResult } from './cognito';
 
-export type HostedUISessionResult = SessionResult & { name?: string };
+const HOSTED_UI_REFRESH_TOKEN_KEY = '@sportstock_hosted_ui_refresh_token';
+
+export type HostedUISessionResult = SessionResult & { name?: string; refreshToken?: string };
+
+/** Persist refresh token for use when the app restarts after id_token has expired. */
+export async function saveHostedUIRefreshToken(refreshToken: string): Promise<void> {
+    await AsyncStorage.setItem(HOSTED_UI_REFRESH_TOKEN_KEY, refreshToken);
+}
+
+export async function getHostedUIRefreshToken(): Promise<string | null> {
+    return AsyncStorage.getItem(HOSTED_UI_REFRESH_TOKEN_KEY);
+}
+
+/** Clear Hosted UI refresh token (call on sign out). */
+export async function clearHostedUISession(): Promise<void> {
+    await AsyncStorage.removeItem(HOSTED_UI_REFRESH_TOKEN_KEY);
+}
 
 const ClientId = process.env.EXPO_PUBLIC_COGNITO_CLIENT_ID || '';
 const OAuthDomain = process.env.EXPO_PUBLIC_COGNITO_OAUTH_DOMAIN || '';
@@ -39,14 +56,29 @@ async function generatePKCE(): Promise<{ codeVerifier: string; codeChallenge: st
     return { codeVerifier, codeChallenge };
 }
 
+/** Safe base64 decoder that tolerates missing atob in some environments. */
+function base64Decode(input: string): string {
+    if (typeof atob === 'function') {
+        return atob(input);
+    }
+    // Minimal polyfill using global Buffer if available (e.g. in Node/testing)
+    // React Native / Expo generally provide atob; this is a fallback.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyGlobal = globalThis as any;
+    if (anyGlobal?.Buffer?.from) {
+        return anyGlobal.Buffer.from(input, 'base64').toString('binary');
+    }
+    throw new Error('Base64 decode is not available in this environment.');
+}
+
 /** Decode JWT payload (middle segment) without verification (Cognito already validated). */
-function decodeJwtPayload(token: string): Record<string, unknown> {
+export function decodeJwtPayload(token: string): Record<string, unknown> {
     try {
         const parts = token.split('.');
         if (parts.length !== 3) throw new Error('Invalid JWT');
         const payload = parts[1];
         const padded = payload.replace(/-/g, '+').replace(/_/g, '/');
-        const decoded = atob(padded);
+        const decoded = base64Decode(padded);
         return JSON.parse(decoded) as Record<string, unknown>;
     } catch {
         return {};
@@ -115,6 +147,41 @@ async function exchangeCodeForTokens(
 }
 
 /**
+ * Use the refresh_token to obtain new id_token and access_token.
+ * Call this when the app loads and the id_token is expired but we have a stored refresh_token.
+ */
+export async function refreshHostedUIToken(
+    refreshToken: string
+): Promise<{ id_token: string; refresh_token?: string }> {
+    const tokenUrl = `${OAuthDomain.replace(/\/$/, '')}/oauth2/token`;
+    const body = new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: ClientId,
+        refresh_token: refreshToken,
+    });
+    const res = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Token refresh failed: ${res.status}`);
+    }
+    const data = (await res.json()) as {
+        id_token?: string;
+        refresh_token?: string;
+        error?: string;
+    };
+    if (data.error) throw new Error(data.error);
+    if (!data.id_token) throw new Error('No id_token in refresh response');
+    return {
+        id_token: data.id_token,
+        refresh_token: data.refresh_token,
+    };
+}
+
+/**
  * Run the Hosted UI flow for Apple or Google. Opens the browser; on redirect back,
  * exchanges the code for tokens and returns a SessionResult compatible with the rest of the app.
  */
@@ -165,5 +232,6 @@ export async function signInWithCognitoHostedUI(
         sub,
         email,
         name,
+        refreshToken: tokens.refresh_token,
     };
 }

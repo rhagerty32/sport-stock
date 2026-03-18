@@ -38,6 +38,18 @@ export async function createTransaction(
     stockContext?: TransactionStockContext
 ): Promise<Transaction> {
     try {
+        if (body.action === 'buy') {
+            // Debug logging for buy requests
+            // eslint-disable-next-line no-console
+            console.log('[createTransaction][BUY] request body', {
+                action: body.action,
+                stockId: body.stockId,
+                quantity: body.quantity,
+                price: body.price,
+                stockContext,
+            });
+        }
+
         const data = await apiPost<unknown>(API_ENDPOINTS.TRANSACTIONS, {
             action: body.action,
             stockId: body.stockId,

@@ -11,6 +11,7 @@ import {
     signUp as cognitoSignUp,
 } from '@/lib/cognito';
 import {
+    saveHostedUIRefreshToken,
     signInWithCognitoHostedUI,
     type CognitoHostedUIProvider,
 } from '@/lib/cognito-hosted-ui';
@@ -158,6 +159,9 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                 } catch {
                     // User may already exist in backend; continue to sign in
                 }
+            }
+            if (session.refreshToken) {
+                await saveHostedUIRefreshToken(session.refreshToken);
             }
             authSignIn({
                 user: { id: session.sub, email: session.email },

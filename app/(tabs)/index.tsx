@@ -23,6 +23,7 @@ import { useStockStore } from '@/stores/stockStore';
 import type { League, PriceHistory, Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -40,7 +41,7 @@ const leagueImages: Record<string, any> = {
 export default function HomeScreen() {
     const Color = useColors();
     const { isDark } = useTheme();
-    const { lightImpact } = useHaptics();
+    const { lightImpact, mediumImpact } = useHaptics();
     const router = useRouter();
     const [activePage, setActivePage] = useState(0);
     const [highestVolumePage, setHighestVolumePage] = useState(0);
@@ -53,13 +54,21 @@ export default function HomeScreen() {
     const {
         setActiveStockId,
         setActiveStock,
+        setActivePosition,
+        setPositionDetailBottomSheetOpen,
         setPurchaseFanCoinsBottomSheetOpen,
         setLoginBottomSheetOpen,
         followedStockIds,
     } = useStockStore();
     const sortDropdownRef = useRef<View>(null);
 
-    const { data: portfolio } = usePortfolio();
+    const { data: portfolio, refetch: refetchPortfolio } = usePortfolio();
+
+    useFocusEffect(
+        useCallback(() => {
+            if (isAuthenticated) refetchPortfolio();
+        }, [isAuthenticated, refetchPortfolio])
+    );
     const { data: wallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
     const firstPosition = portfolio?.positions?.[0];
     const firstStockId = firstPosition?.stock?.id ?? null;
@@ -429,7 +438,9 @@ export default function HomeScreen() {
                                                         key={position.stock.id}
                                                         style={styles.stockItem}
                                                         onPress={() => {
-                                                            handleStockPress(position.stock);
+                                                            mediumImpact();
+                                                            setActivePosition(position);
+                                                            setPositionDetailBottomSheetOpen(true);
                                                         }}
                                                         onPressIn={() => {}}
                                                         activeOpacity={0.7}

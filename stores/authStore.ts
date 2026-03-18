@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { signOut as cognitoSignOut } from '@/lib/cognito';
+import { clearHostedUISession } from '@/lib/cognito-hosted-ui';
 
 export type AuthUser = {
     id: string;
@@ -42,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
 
             signOut: () => {
                 cognitoSignOut();
+                clearHostedUISession();
                 set({ isAuthenticated: false, user: null, idToken: null });
             },
 

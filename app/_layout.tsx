@@ -2,6 +2,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from '@/hooks/useLocation';
 import { isStateBlocked } from '@/lib/state-restrictions';
 import { fetchCurrentUser } from '@/lib/auth-api';
+import {
+    decodeJwtPayload,
+    getHostedUIRefreshToken,
+    refreshHostedUIToken,
+    saveHostedUIRefreshToken,
+} from '@/lib/cognito-hosted-ui';
 import { hydrateCognitoStorage } from '@/lib/cognito-storage';
 import { getCurrentSession } from '@/lib/cognito';
 import { useAuthStore } from '@/stores/authStore';
@@ -10,13 +16,13 @@ import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { LogBox } from 'react-native';
+import { AppState, AppStateStatus, LogBox, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import StockBottomSheet from './bottomSheets/StockSheet/StockBottomSheet';
@@ -73,6 +79,17 @@ export default function RootLayout() {
         setLoginBottomSheetOpen,
     } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
+
+    // Enable React Query refetchOnWindowFocus in React Native (AppState instead of window)
+    useEffect(() => {
+        const onAppStateChange = (status: AppStateStatus) => {
+            if (Platform.OS !== 'web') {
+                focusManager.setFocused(status === 'active');
+            }
+        };
+        const sub = AppState.addEventListener('change', onAppStateChange);
+        return () => sub.remove();
+    }, []);
 
     // Reset all sheet-open state on app load so no sheet is stuck visible from persistence or a previous run
     const hasResetSheetsOnMount = useRef(false);
@@ -211,13 +228,42 @@ export default function RootLayout() {
         }
     }, [loginBottomSheetOpen]);
 
-    // Restore Cognito session on app load
+    // Restore Cognito session on app load (supports both Cognito SDK and Hosted UI)
+    // Wait for auth store to rehydrate from persistence before running restore
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            try {
-                await hydrateCognitoStorage();
-                const session = await getCurrentSession();
+        const runRestore = () => {
+            (async () => {
+                try {
+                    await hydrateCognitoStorage();
+                    let session = await getCurrentSession();
+
+                // If no Cognito SDK session, try Hosted UI refresh (Apple/Google users)
+                if (!session?.idToken) {
+                    const refreshToken = await getHostedUIRefreshToken();
+                    if (refreshToken && !cancelled) {
+                        try {
+                            const tokens = await refreshHostedUIToken(refreshToken);
+                            if (tokens.refresh_token) {
+                                await saveHostedUIRefreshToken(tokens.refresh_token);
+                            }
+                            const payload = decodeJwtPayload(tokens.id_token);
+                            session = {
+                                idToken: tokens.id_token,
+                                sub: (payload.sub as string) || '',
+                                email: (payload.email as string) || (payload['cognito:username'] as string),
+                            };
+                        } catch {
+                            useAuthStore.getState().signOut();
+                            return;
+                        }
+                    } else {
+                        // No valid session and no refresh token - clear any stale persisted auth
+                        useAuthStore.getState().signOut();
+                        return;
+                    }
+                }
+
                 if (cancelled || !session?.idToken) return;
                 const user = await fetchCurrentUser(session.idToken);
                 if (cancelled) return;
@@ -229,6 +275,16 @@ export default function RootLayout() {
                 // Cognito not configured or no session
             }
         })();
+        };
+        if (useAuthStore.persist.hasHydrated()) {
+            runRestore();
+        } else {
+            const unsub = useAuthStore.persist.onFinishHydration(runRestore);
+            return () => {
+                cancelled = true;
+                unsub();
+            };
+        }
         return () => { cancelled = true; };
     }, []);
 

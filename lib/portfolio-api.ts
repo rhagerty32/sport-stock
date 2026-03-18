@@ -41,6 +41,9 @@ export function usePortfolio() {
         queryKey: portfolioKeys.all,
         queryFn: fetchPortfolio,
         enabled: !!userId,
+        staleTime: 0,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true,
     });
 }
 

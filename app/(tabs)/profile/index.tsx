@@ -8,6 +8,7 @@ import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useLocation } from '@/hooks/useLocation';
+import { fetchStock, stocksKeys } from '@/lib/stocks-api';
 import { usePortfolio } from '@/lib/portfolio-api';
 import { useTransactions } from '@/lib/transactions-api';
 import { useWallet } from '@/lib/wallet-api';
@@ -20,6 +21,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const PROFILE_IMAGE_STORAGE_KEY = '@sportstock_profile_image_uri';
@@ -89,6 +91,45 @@ export default function ProfileScreen() {
     }, [transactions]);
 
     const recentTransactions = useMemo(() => userTransactions.slice(0, 5), [userTransactions]);
+
+    const positionStockIds = useMemo(
+        () => new Set((portfolio?.positions ?? []).map((p) => p.stock.id)),
+        [portfolio?.positions]
+    );
+
+    const missingStockIds = useMemo(
+        () =>
+            [...new Set(recentTransactions.map((t) => t.stockID))].filter((id) => !positionStockIds.has(id)),
+        [recentTransactions, positionStockIds]
+    );
+
+    const stockQueries = useQueries({
+        queries: missingStockIds.map((id) => ({
+            queryKey: stocksKeys.detail(id),
+            queryFn: () => fetchStock(id),
+        })),
+    });
+
+    const stockNameCache = useMemo(() => {
+        const map: Record<number, string> = {};
+        stockQueries.forEach((q, i) => {
+            const id = missingStockIds[i];
+            const stock = q.data;
+            if (id != null && stock)
+                map[id] = stock.name ?? stock.fullName ?? `Stock #${id}`;
+        });
+        return map;
+    }, [missingStockIds, stockQueries]);
+
+    const getStockName = useCallback(
+        (stockID: number) => {
+            const fromPosition = (portfolio?.positions ?? []).find((p) => p.stock.id === stockID)?.stock.name;
+            if (fromPosition) return fromPosition;
+            if (stockNameCache[stockID]) return stockNameCache[stockID];
+            return `Stock #${stockID}`;
+        },
+        [portfolio?.positions, stockNameCache]
+    );
 
     const allTimeWinnings = useMemo(() => {
         const buyQueues: Record<number, Array<{ quantity: number; price: number }>> = {};
@@ -378,9 +419,7 @@ export default function ProfileScreen() {
                                     actionLabel="View all"
                                     onAction={() => router.push('/(tabs)/profile/trade-history')}
                                 />
-                            ) : recentTransactions.map((transaction, index) => {
-                                const stock = (portfolio?.positions ?? []).find(p => p.stock.id === transaction.stockID)?.stock;
-                                return (
+                            ) : recentTransactions.map((transaction, index) => (
                                     <TouchableOpacity
                                         key={transaction.id}
                                         style={[
@@ -408,7 +447,7 @@ export default function ProfileScreen() {
                                             </View>
                                             <View style={styles.tradeHistoryInfo}>
                                                 <Text style={[styles.tradeHistoryStockName, { color: Color.baseText }]}>
-                                                    {stock?.name || 'Unknown'}
+                                                    {getStockName(transaction.stockID)}
                                                 </Text>
                                                 <Text style={[styles.tradeHistoryDate, { color: Color.subText }]}>
                                                     {transaction.createdAt.toLocaleDateString('en-US', {
@@ -428,8 +467,7 @@ export default function ProfileScreen() {
                                             </Text>
                                         </View>
                                     </TouchableOpacity>
-                                );
-                            })}
+                                ))}
                         </GlassCard>
                     </View>
                 )}

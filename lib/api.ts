@@ -60,7 +60,7 @@ export async function apiGet<T>(
     const url = buildUrl(path, params);
     const res = await fetch(url, { method: 'GET', headers });
     const text = await res.text();
-    console.log('apiGet', url);
+    // console.log('apiGet', url);
     if (!res.ok) {
         logApi('GET', url, undefined, res.status, text);
         throw new Error(parseApiErrorResponse(text) || `Request failed: ${res.status}`);
@@ -77,12 +77,16 @@ export async function apiGet<T>(
 export async function apiPost<T>(path: string, body?: unknown, options?: { auth?: boolean }): Promise<T> {
     const headers = options?.auth === false ? { 'Content-Type': 'application/json' } : getAuthHeaders();
     const url = `${API_BASE_URL}${path}`;
+    // Debug logging for POST requests
+    // eslint-disable-next-line no-console
+    console.log('apiPost', url, body);
     const res = await fetch(url, {
         method: 'POST',
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     const text = await res.text();
+    console.log(JSON.stringify(text, null, 2))
     if (!res.ok) {
         logApi('POST', url, body, res.status, text);
         throw new Error(parseApiErrorResponse(text) || `Request failed: ${res.status}`);
