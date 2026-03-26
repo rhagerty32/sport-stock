@@ -1,7 +1,7 @@
 import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '../utils';
 
 type WalletBalanceProps = {
@@ -16,10 +16,21 @@ export default function WalletBalance({
     variant = 'default',
 }: WalletBalanceProps) {
     const user = useAuthStore((s) => s.user);
-    const { data: wallet } = useWallet(user?.id ?? null);
+    const { data: wallet, isPending } = useWallet(user?.id ?? null);
     const Color = useColors();
 
+    if (!user?.id) {
+        return null;
+    }
+
     if (!wallet) {
+        if (isPending) {
+            return (
+                <View style={componentStyles.loadingWrap}>
+                    <ActivityIndicator size="small" color={Color.subText} />
+                </View>
+            );
+        }
         return null;
     }
 
@@ -87,6 +98,10 @@ export default function WalletBalance({
 }
 
 const componentStyles = StyleSheet.create({
+    loadingWrap: {
+        paddingVertical: 8,
+        alignItems: 'center',
+    },
     container: {
         gap: 4,
     },

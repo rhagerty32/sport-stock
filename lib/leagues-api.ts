@@ -30,10 +30,11 @@ export async function fetchLeague(leagueId: string | number, includeStocks = fal
     }
 }
 
-export function useLeagues() {
+export function useLeagues(enabled = true) {
     return useQuery({
         queryKey: leaguesKeys.list(),
         queryFn: fetchLeagues,
+        enabled,
     });
 }
 

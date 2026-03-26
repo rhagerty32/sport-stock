@@ -1,9 +1,9 @@
 import { API_ENDPOINTS } from '@/constants/api-config';
-import type { Portfolio, Position } from '@/types';
 import { apiGet } from '@/lib/api';
 import { normalizePortfolio, normalizePosition } from '@/lib/api-normalizers';
-import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
+import type { Portfolio, Position } from '@/types';
+import { useQuery } from '@tanstack/react-query';
 
 export const portfolioKeys = {
     /** Per-user cache — avoids showing the previous account's portfolio after sign-in. */
@@ -16,6 +16,7 @@ export const portfolioKeys = {
 
 export async function fetchPortfolio(): Promise<Portfolio> {
     const data = await apiGet<unknown>(API_ENDPOINTS.PORTFOLIO);
+    console.log('fetchPortfolio', JSON.stringify(data, null, 2));
     return normalizePortfolio(data);
 }
 
@@ -38,14 +39,16 @@ export async function fetchPositionByStockId(stockId: string | number): Promise<
     }
 }
 
+/** Shared with prefetch in root layout so cache behavior matches `usePortfolio`. */
+export const PORTFOLIO_STALE_MS = 45_000;
+
 export function usePortfolio() {
     const userId = useAuthStore((s) => s.user?.id);
     return useQuery({
         queryKey: portfolioKeys.root(userId),
         queryFn: fetchPortfolio,
         enabled: !!userId,
-        staleTime: 0,
-        refetchOnMount: 'always',
+        staleTime: PORTFOLIO_STALE_MS,
         refetchOnWindowFocus: true,
     });
 }

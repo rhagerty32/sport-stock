@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
 import { PriceHistory, TimePeriod } from '@/types';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -19,7 +20,11 @@ import { useColors } from './utils';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CHART_WIDTH = screenWidth;
+/** Plot height for price→Y mapping, line, and scrubber. */
 const CHART_HEIGHT = 200;
+/** Extra SVG height below the plot so the area fill can fade to fully transparent before the time-range row. */
+const CHART_FILL_BLEED = 56;
+const CHART_SVG_HEIGHT = CHART_HEIGHT + CHART_FILL_BLEED;
 const FLAT_LINE_Y = CHART_HEIGHT / 2;
 const PULSE_DOT_RADIUS = 5;
 const PULSE_DOT_RIGHT_MARGIN = 12;
@@ -187,7 +192,8 @@ function createInterpolatedPathFromPoints(points: PixelPoint[], smoothnessValue:
 function createInterpolatedAreaPathFromPoints(points: PixelPoint[], smoothnessValue: number): string {
     if (points.length < 2) return '';
 
-    let path = `M ${points[0].x} ${CHART_HEIGHT} L ${points[0].x} ${points[0].y}`;
+    const bottomY = CHART_SVG_HEIGHT;
+    let path = `M ${points[0].x} ${bottomY} L ${points[0].x} ${points[0].y}`;
 
     for (let i = 0; i < points.length - 1; i++) {
         const { cp1, cp2, p1 } = getBezierControlsForSegment(i, points, smoothnessValue);
@@ -195,13 +201,13 @@ function createInterpolatedAreaPathFromPoints(points: PixelPoint[], smoothnessVa
     }
 
     const lastX = points[points.length - 1].x;
-    path += ` L ${lastX} ${CHART_HEIGHT} Z`;
+    path += ` L ${lastX} ${bottomY} Z`;
 
     return path;
 }
 
 interface ChartProps {
-    stockId: number;
+    stockId: number | string;
     color?: string;
     backgroundColor?: string;
     /** When provided, chart uses this data instead of generating. Used for API-sourced data (e.g. portfolio summary). */
@@ -215,26 +221,9 @@ interface ChartProps {
     hideTimePeriodSelector?: boolean;
     /** Initial range for the period selector (default 1H). Use ALL when parent fetched full-range history. */
     defaultTimePeriod?: TimePeriod;
-}
-
-/** Filter API-sourced price history by selected time period (by date). */
-function filterPriceDataByPeriod(data: PriceHistory[], period: TimePeriod): PriceHistory[] {
-    if (data.length === 0) return [];
-    const now = Date.now();
-    const sorted = [...data].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    let cutoff: number;
-    switch (period) {
-        case '1H': cutoff = now - 60 * 60 * 1000; break;
-        case '1D': cutoff = now - 24 * 60 * 60 * 1000; break;
-        case '1W': cutoff = now - 7 * 24 * 60 * 60 * 1000; break;
-        case '1M': cutoff = now - 30 * 24 * 60 * 60 * 1000; break;
-        case '3M': cutoff = now - 90 * 24 * 60 * 60 * 1000; break;
-        case '1Y': cutoff = now - 365 * 24 * 60 * 60 * 1000; break;
-        case '5Y': cutoff = now - 5 * 365 * 24 * 60 * 60 * 1000; break;
-        case 'ALL': return sorted;
-        default: return sorted;
-    }
-    return sorted.filter((p) => new Date(p.timestamp).getTime() >= cutoff);
+    /** When both are set, period is controlled by the parent (e.g. portfolio summary stats). */
+    timePeriod?: TimePeriod;
+    onTimePeriodChange?: (period: TimePeriod) => void;
 }
 
 const Chart: React.FC<ChartProps> = ({
@@ -245,15 +234,25 @@ const Chart: React.FC<ChartProps> = ({
     isInitialLoadPending = false,
     hideTimePeriodSelector = false,
     defaultTimePeriod,
+    timePeriod: controlledTimePeriod,
+    onTimePeriodChange,
 }) => {
     const Color = useColors();
-    const [timePeriod, setTimePeriod] = useState<TimePeriod>(() => defaultTimePeriod ?? '1H');
+    const [internalTimePeriod, setInternalTimePeriod] = useState<TimePeriod>(() => defaultTimePeriod ?? '1H');
+    const isPeriodControlled =
+        controlledTimePeriod !== undefined && onTimePeriodChange !== undefined;
+    const timePeriod = isPeriodControlled ? controlledTimePeriod! : internalTimePeriod;
+
+    const setTimePeriod = (p: TimePeriod) => {
+        if (isPeriodControlled) onTimePeriodChange!(p);
+        else setInternalTimePeriod(p);
+    };
 
     // Derive synchronously so the first paint matches props (avoids one frame of flat line before useEffect sync).
     const priceData = useMemo((): PriceHistory[] => {
         if (externalPriceData != null) {
             if (externalPriceData.length === 0) return [];
-            return filterPriceDataByPeriod(externalPriceData, timePeriod);
+            return priceHistoryWithSteadyFallback(externalPriceData, timePeriod);
         }
         return [];
     }, [externalPriceData, timePeriod]);
@@ -582,18 +581,27 @@ const Chart: React.FC<ChartProps> = ({
                         onCancelled={handleGestureEnd}
                     >
                         <Animated.View style={styles.chart}>
-                            <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+                            <Svg width={CHART_WIDTH} height={CHART_SVG_HEIGHT}>
                                 <Defs>
-                                    <LinearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <Stop offset="0%" stopColor={color} stopOpacity="0.3" />
-                                        <Stop offset="100%" stopColor={color} stopOpacity="0.05" />
+                                    <LinearGradient
+                                        id="gradient"
+                                        x1={0}
+                                        y1={0}
+                                        x2={0}
+                                        y2={CHART_SVG_HEIGHT}
+                                        gradientUnits="userSpaceOnUse"
+                                    >
+                                        <Stop offset="0%" stopColor={color} stopOpacity={0.32} />
+                                        <Stop offset="42%" stopColor={color} stopOpacity={0.14} />
+                                        <Stop offset="72%" stopColor={color} stopOpacity={0.04} />
+                                        <Stop offset="100%" stopColor={color} stopOpacity={0} />
                                     </LinearGradient>
                                     <ClipPath id="chartClip">
                                         <Rect
                                             x="0"
                                             y="0"
                                             width={CHART_WIDTH}
-                                            height={CHART_HEIGHT}
+                                            height={CHART_SVG_HEIGHT}
                                         />
                                     </ClipPath>
                                 </Defs>
@@ -613,6 +621,19 @@ const Chart: React.FC<ChartProps> = ({
                                     </>
                                 ) : (
                                     <>
+                                        {/* Period open: faint baseline at first sample price (same Y scale as the line) */}
+                                        {linePixelPoints.length >= 2 && (
+                                            <Line
+                                                x1={0}
+                                                y1={linePixelPoints[0].y}
+                                                x2={PULSE_DOT_CENTER_X}
+                                                y2={linePixelPoints[0].y}
+                                                stroke={isDark ? '#ffffff' : '#000000'}
+                                                strokeOpacity={0.14}
+                                                strokeWidth={1}
+                                                strokeDasharray="5 5"
+                                            />
+                                        )}
                                         {/* Area under the line */}
                                         <Path
                                             d={createInterpolatedAreaPathFromPoints(linePixelPoints, smoothnessState)}
@@ -639,7 +660,7 @@ const Chart: React.FC<ChartProps> = ({
                                             x1={crosshairX.value}
                                             y1={0}
                                             x2={crosshairX.value}
-                                            y2={CHART_HEIGHT}
+                                            y2={CHART_SVG_HEIGHT}
                                             stroke={color}
                                             strokeWidth={1}
                                             strokeOpacity={0.6}
@@ -805,19 +826,19 @@ const styles = StyleSheet.create({
     },
     chartContainer: {
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 10,
         width: '100%',
     },
     chart: {
         width: CHART_WIDTH,
-        height: CHART_HEIGHT,
+        height: CHART_SVG_HEIGHT,
         position: 'relative',
     },
     chartMask: {
         position: 'absolute',
         top: 0,
         right: 0,
-        height: CHART_HEIGHT,
+        height: CHART_SVG_HEIGHT,
     },
     pulseDot: {
         position: 'absolute',

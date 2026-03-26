@@ -3,7 +3,7 @@ import { apiGet } from '@/lib/api';
 import { normalizePriceHistoryPoint, normalizeStock } from '@/lib/api-normalizers';
 import type { PriceHistory, Stock } from '@/types';
 import type { QueryClient } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 export type MoverItem = { stock: Stock; change: number; changePercentage: number };
 
@@ -134,9 +134,6 @@ export async function fetchPriceHistory(
     normalized.sort(
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
-    if (__DEV__) {
-        console.log('[price-history]', String(stockId), period ?? null, limit ?? null, 'points:', normalized.length);
-    }
     return normalized;
 }
 
@@ -160,37 +157,41 @@ export function useStocks(params?: {
     });
 }
 
-export function useTopMovers(limit = 5) {
+export function useTopMovers(limit = 5, enabled = true) {
     return useQuery({
         queryKey: stocksKeys.topMovers(limit),
         queryFn: () => fetchTopMovers(limit),
+        enabled,
     });
 }
 
-export function useHighestVolume(limit = 9) {
+export function useHighestVolume(limit = 9, enabled = true) {
     return useQuery({
         queryKey: stocksKeys.highestVolume(limit),
         queryFn: () => fetchHighestVolume(limit),
+        enabled,
     });
 }
 
-export function useOnTheRise(limit = 9) {
+export function useOnTheRise(limit = 9, enabled = true) {
     return useQuery({
         queryKey: stocksKeys.onTheRise(limit),
         queryFn: () => fetchOnTheRise(limit),
+        enabled,
     });
 }
 
-export function useUpsetAlert(limit = 9) {
+export function useUpsetAlert(limit = 9, enabled = true) {
     return useQuery({
         queryKey: stocksKeys.upsetAlert(limit),
         queryFn: () => fetchUpsetAlert(limit),
+        enabled,
     });
 }
 
 /** Keep history in cache after the sheet closes so reopen is instant; avoid refetching every open. */
-const PRICE_HISTORY_STALE_MS = 5 * 60 * 1000;
-const PRICE_HISTORY_GC_MS = 60 * 60 * 1000;
+export const PRICE_HISTORY_STALE_MS = 5 * 60 * 1000;
+export const PRICE_HISTORY_GC_MS = 60 * 60 * 1000;
 
 /** Same params as StockBottomSheet chart — keep in sync with `usePriceHistory` there. */
 export const STOCK_SHEET_PRICE_HISTORY = { period: 'ALL' as const, limit: 500 };
@@ -217,5 +218,19 @@ export function usePriceHistory(
         enabled: stockId != null,
         staleTime: PRICE_HISTORY_STALE_MS,
         gcTime: PRICE_HISTORY_GC_MS,
+    });
+}
+
+/** One full-range history per stock id — used to build the home portfolio value chart. */
+export function useStockSheetPriceHistories(stockIds: readonly (string | number)[], enabled: boolean) {
+    const { period, limit } = STOCK_SHEET_PRICE_HISTORY;
+    return useQueries({
+        queries: stockIds.map((id) => ({
+            queryKey: stocksKeys.priceHistory(id, period, limit),
+            queryFn: () => fetchPriceHistory(id, period, limit),
+            enabled: enabled && stockIds.length > 0,
+            staleTime: PRICE_HISTORY_STALE_MS,
+            gcTime: PRICE_HISTORY_GC_MS,
+        })),
     });
 }

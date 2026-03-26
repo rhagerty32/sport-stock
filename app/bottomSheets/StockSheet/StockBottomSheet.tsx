@@ -8,9 +8,10 @@ import { STOCK_SHEET_PRICE_HISTORY, usePriceHistory, useStock } from '@/lib/stoc
 import { useTransactions } from '@/lib/transactions-api';
 import { usePortfolio } from '@/lib/portfolio-api';
 import { useStockStore } from '@/stores/stockStore';
-import type { League, PriceHistory, Stock, Transaction } from '@/types';
+import { appendLivePricePoint, priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
+import type { League, PriceHistory, Stock, TimePeriod, Transaction } from '@/types';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import BuySellBottomSheet from '../BuySellBottomSheet';
@@ -122,9 +123,33 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const hasStock = !!effectiveStock;
 
     const currentPrice = effectiveStock?.price ?? 0;
-    const previousPrice = stockPriceHistory.length > 1 ? stockPriceHistory[stockPriceHistory.length - 2].price : currentPrice;
-    const priceChange = currentPrice - previousPrice;
-    const priceChangePercentage = previousPrice ? (priceChange / previousPrice) * 100 : 0;
+    const [sheetChartPeriod, setSheetChartPeriod] = useState<TimePeriod>('ALL');
+
+    const chartPriceData = useMemo(
+        () => appendLivePricePoint(stockPriceHistory, currentPrice),
+        [stockPriceHistory, currentPrice]
+    );
+
+    const sheetChartDisplaySeries = useMemo(() => {
+        if (!chartPriceData.length) return null;
+        return priceHistoryWithSteadyFallback(chartPriceData, sheetChartPeriod);
+    }, [chartPriceData, sheetChartPeriod]);
+
+    const priceChange =
+        sheetChartDisplaySeries && sheetChartDisplaySeries.length >= 2
+            ? sheetChartDisplaySeries[sheetChartDisplaySeries.length - 1].price -
+              sheetChartDisplaySeries[0].price
+            : 0;
+    const priceChangePercentage =
+        sheetChartDisplaySeries &&
+        sheetChartDisplaySeries.length >= 2 &&
+        sheetChartDisplaySeries[0].price > 0
+            ? (priceChange / sheetChartDisplaySeries[0].price) * 100
+            : 0;
+
+    useEffect(() => {
+        setSheetChartPeriod('ALL');
+    }, [activeStockId]);
 
     // Get team colors
     const primaryColor = effectiveStock?.color || Color.blue;
@@ -206,9 +231,11 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                                 stockId={effectiveStock!.id}
                                 color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor}
                                 backgroundColor={isDark ? '#1A1D21' : '#FFFFFF'}
-                                priceData={priceHistoryQuery.data ?? EMPTY_PRICE_HISTORY}
+                                priceData={chartPriceData}
                                 isInitialLoadPending={priceHistoryInitialPending}
                                 defaultTimePeriod="ALL"
+                                timePeriod={sheetChartPeriod}
+                                onTimePeriodChange={setSheetChartPeriod}
                             />
                             {stockPriceHistory.length === 0 && !priceHistoryInitialPending && (
                                 <Text style={[styles.chartNote, { color: Color.subText }]}>

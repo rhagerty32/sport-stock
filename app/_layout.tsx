@@ -16,7 +16,9 @@ import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { PORTFOLIO_STALE_MS, fetchPortfolio, portfolioKeys } from '@/lib/portfolio-api';
 import { prefetchStockSheetPriceHistory } from '@/lib/stocks-api';
+import { fetchWallet, walletKeys } from '@/lib/wallet-api';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
@@ -80,6 +82,21 @@ export default function RootLayout() {
         setLoginBottomSheetOpen,
     } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
+    const authUserId = useAuthStore((s) => s.user?.id);
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+    useEffect(() => {
+        if (!isAuthenticated || !authUserId) return;
+        void queryClient.prefetchQuery({
+            queryKey: portfolioKeys.root(authUserId),
+            queryFn: fetchPortfolio,
+            staleTime: PORTFOLIO_STALE_MS,
+        });
+        void queryClient.prefetchQuery({
+            queryKey: walletKeys.detail(authUserId),
+            queryFn: () => fetchWallet(authUserId),
+        });
+    }, [isAuthenticated, authUserId]);
 
     // Enable React Query refetchOnWindowFocus in React Native (AppState instead of window)
     useEffect(() => {

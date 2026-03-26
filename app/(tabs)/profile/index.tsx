@@ -38,7 +38,19 @@ export default function ProfileScreen() {
     const signOut = useAuthStore((s) => s.signOut);
     const { setProfileBottomSheetOpen, setLightDarkBottomSheetOpen, setPurchaseFanCoinsBottomSheetOpen, setWalletSystemBottomSheetOpen, setActiveTransaction, setTransactionDetailBottomSheetOpen, setActivePosition, setPositionDetailBottomSheetOpen, setLoginBottomSheetOpen } = useStockStore();
     const { data: wallet } = useWallet(isAuthenticated && authUser?.id ? authUser.id : null);
-    const { data: portfolio } = usePortfolio();
+    const {
+        data: portfolio,
+        isPending: portfolioPending,
+        isFetching: portfolioFetching,
+        isError: portfolioQueryError,
+        refetch: refetchPortfolio,
+    } = usePortfolio();
+
+    const showPortfolioSkeleton =
+        isAuthenticated && portfolio == null && (portfolioPending || portfolioFetching);
+    const portfolioLoadError =
+        isAuthenticated && portfolio == null && portfolioQueryError && !portfolioPending && !portfolioFetching;
+    const skeletonBg = isDark ? '#2C2C32' : '#E5E7EB';
     const { data: transactionsData } = useTransactions(
         isAuthenticated && authUser?.id ? { limit: 100 } : undefined
     );
@@ -270,7 +282,7 @@ export default function ProfileScreen() {
                             <Text style={[styles.sectionTitle, { color: Color.baseText }]}>
                                 My Stash
                             </Text>
-                            {(portfolio?.positions?.length ?? 0) > 6 && (
+                            {!showPortfolioSkeleton && (portfolio?.positions?.length ?? 0) > 6 && (
                                 <TouchableOpacity
                                     onPress={() => {
                                         lightImpact();
@@ -284,7 +296,32 @@ export default function ProfileScreen() {
                         </View>
                         <GlassCard style={styles.holdingsCard} padding={0}>
                             <View style={styles.holdingsContent}>
-                                {(portfolio?.positions?.length ?? 0) === 0 ? (
+                                {portfolioLoadError ? (
+                                    <View style={styles.stashLoadError}>
+                                        <Text style={[styles.metricsErrorText, { color: Color.subText }]}>
+                                            {"Couldn't load stash"}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                lightImpact();
+                                                refetchPortfolio();
+                                            }}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <Text style={[styles.metricsRetryText, { color: Color.green }]}>Tap to retry</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : showPortfolioSkeleton ? (
+                                    <View style={styles.stashSkeleton}>
+                                        {[0, 1, 2].map((i) => (
+                                            <View key={i} style={styles.stashSkeletonRow}>
+                                                <View style={[styles.stashSkeletonBar, { backgroundColor: skeletonBg, width: 32 }]} />
+                                                <View style={[styles.stashSkeletonBar, { backgroundColor: skeletonBg, flex: 1, marginHorizontal: 12 }]} />
+                                                <View style={[styles.stashSkeletonBar, { backgroundColor: skeletonBg, width: 56 }]} />
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : (portfolio?.positions?.length ?? 0) === 0 ? (
                                     <EmptyState
                                         icon="wallet-outline"
                                         title="No positions yet"
@@ -332,6 +369,22 @@ export default function ProfileScreen() {
                 {/* Account Metrics - only when logged in */}
                 {isAuthenticated && (
                 <View style={styles.metricsContainer}>
+                    {portfolioLoadError ? (
+                        <View style={styles.metricsError}>
+                            <Text style={[styles.metricsErrorText, { color: Color.subText }]}>
+                                {"Couldn't load portfolio metrics"}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    lightImpact();
+                                    refetchPortfolio();
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <Text style={[styles.metricsRetryText, { color: Color.green }]}>Tap to retry</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
                     <View style={styles.metricsGrid}>
                         <GlassCard style={styles.metricCard}>
                             <View style={styles.metricContent}>
@@ -343,14 +396,18 @@ export default function ProfileScreen() {
                                 >
                                     Portfolio Value
                                 </Text>
-                                <Text
-                                    adjustsFontSizeToFit={true}
-                                    minimumFontScale={0.6}
-                                    numberOfLines={1}
-                                    style={[styles.metricValue, { color: Color.baseText }]}
-                                >
-                                    {formatCurrency(portfolio?.totalGainLoss ?? 0)}
-                                </Text>
+                                {showPortfolioSkeleton ? (
+                                    <View style={[styles.metricSkeletonBar, { backgroundColor: skeletonBg }]} />
+                                ) : portfolio != null ? (
+                                    <Text
+                                        adjustsFontSizeToFit={true}
+                                        minimumFontScale={0.6}
+                                        numberOfLines={1}
+                                        style={[styles.metricValue, { color: Color.baseText }]}
+                                    >
+                                        {formatCurrency(portfolio.totalGainLoss)}
+                                    </Text>
+                                ) : null}
                             </View>
                         </GlassCard>
                         <GlassCard style={styles.metricCard}>
@@ -361,17 +418,21 @@ export default function ProfileScreen() {
                                 >
                                     Up %
                                 </Text>
-                                <Text
-                                    adjustsFontSizeToFit={true}
-                                    minimumFontScale={0.6}
-                                    numberOfLines={1}
-                                    style={[
-                                        styles.metricValue,
-                                        { color: (portfolio?.totalGainLossPercentage ?? 0) >= 0 ? Color.green : Color.red }
-                                    ]}
-                                >
-                                    {formatPercentage(portfolio?.totalGainLossPercentage ?? 0)}
-                                </Text>
+                                {showPortfolioSkeleton ? (
+                                    <View style={[styles.metricSkeletonBar, { backgroundColor: skeletonBg, width: '55%' }]} />
+                                ) : portfolio != null ? (
+                                    <Text
+                                        adjustsFontSizeToFit={true}
+                                        minimumFontScale={0.6}
+                                        numberOfLines={1}
+                                        style={[
+                                            styles.metricValue,
+                                            { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
+                                        ]}
+                                    >
+                                        {formatPercentage(portfolio.totalGainLossPercentage)}
+                                    </Text>
+                                ) : null}
                             </View>
                         </GlassCard>
                         <GlassCard style={styles.metricCard}>
@@ -384,17 +445,22 @@ export default function ProfileScreen() {
                                 >
                                     All-Time Winnings
                                 </Text>
-                                <Text
-                                    adjustsFontSizeToFit={true}
-                                    minimumFontScale={0.6}
-                                    numberOfLines={1}
-                                    style={[styles.metricValue, { color: Color.baseText }]}
-                                >
-                                    {formatCurrency(allTimeWinnings)}
-                                </Text>
+                                {showPortfolioSkeleton ? (
+                                    <View style={[styles.metricSkeletonBar, { backgroundColor: skeletonBg }]} />
+                                ) : portfolio != null ? (
+                                    <Text
+                                        adjustsFontSizeToFit={true}
+                                        minimumFontScale={0.6}
+                                        numberOfLines={1}
+                                        style={[styles.metricValue, { color: Color.baseText }]}
+                                    >
+                                        {formatCurrency(allTimeWinnings)}
+                                    </Text>
+                                ) : null}
                             </View>
                         </GlassCard>
                     </View>
+                    )}
                 </View>
                 )}
 
@@ -809,6 +875,43 @@ const styles = StyleSheet.create({
     stashRowGainLoss: {
         fontSize: 15,
         fontWeight: '600',
+    },
+    metricsError: {
+        alignItems: 'center',
+        paddingVertical: 16,
+    },
+    metricsErrorText: {
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    metricsRetryText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    metricSkeletonBar: {
+        width: '72%',
+        height: 20,
+        borderRadius: 6,
+        marginTop: 4,
+    },
+    stashLoadError: {
+        alignItems: 'center',
+        paddingVertical: 24,
+        paddingHorizontal: 16,
+    },
+    stashSkeleton: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        gap: 14,
+    },
+    stashSkeletonRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    stashSkeletonBar: {
+        height: 14,
+        borderRadius: 6,
     },
     metricsContainer: {
         paddingHorizontal: 20,

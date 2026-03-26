@@ -1,5 +1,6 @@
 import { AppHeader } from '@/components/AppHeader';
 import Chart from '@/components/chart';
+import { ChartLoadingSkeleton } from '@/components/ChartLoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { PortfolioPreviewMarquee, type PortfolioPreviewCard } from '@/components/PortfolioPreviewMarquee';
 import { ThemedView } from '@/components/themed-view';
@@ -10,28 +11,40 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useFollowedStocksNotOwned } from '@/lib/follows-api';
 import { useLeagues } from '@/lib/leagues-api';
+import { consolidatePortfolioForChart, mergePortfolioPriceHistory } from '@/lib/portfolio-price-history';
+import { priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
 import { usePortfolio } from '@/lib/portfolio-api';
 import {
     fetchStocks,
     useHighestVolume,
     useOnTheRise,
-    usePriceHistory,
+    useStockSheetPriceHistories,
     useTopMovers,
     useUpsetAlert,
 } from '@/lib/stocks-api';
 import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
-import type { League, Stock } from '@/types';
+import type { League, Stock, TimePeriod } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { InteractionManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 
 type SortType = 'percentage' | 'value' | null;
+
+const PORTFOLIO_CHART_PERIOD_LABEL: Record<TimePeriod, string> = {
+    '1H': 'Past hour',
+    '1D': 'Past day',
+    '1W': 'Past week',
+    '1M': 'Past month',
+    '3M': 'Past 3 months',
+    '1Y': 'Past year',
+    '5Y': 'Past 5 years',
+    ALL: 'All time',
+};
 
 const leagueImages: Record<string, any> = {
     'NFL': require('@/assets/images/leagues/proFootball.png'),
@@ -50,6 +63,7 @@ export default function HomeScreen() {
     const [onTheRisePage, setOnTheRisePage] = useState(0);
     const [upsetAlertPage, setUpsetAlertPage] = useState(0);
     const [sortType, setSortType] = useState<SortType>(null);
+    const [portfolioChartPeriod, setPortfolioChartPeriod] = useState<TimePeriod>('1M');
     const [showSortDropdown, setShowSortDropdown] = useState(false);
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const user = useAuthStore((s) => s.user);
@@ -63,28 +77,111 @@ export default function HomeScreen() {
     } = useStockStore();
     const sortDropdownRef = useRef<View>(null);
 
-    const { data: portfolio, refetch: refetchPortfolio } = usePortfolio();
+    const {
+        data: portfolio,
+        isPending: portfolioPending,
+        isFetching: portfolioFetching,
+        isError: portfolioQueryError,
+        refetch: refetchPortfolio,
+    } = usePortfolio();
 
-    useFocusEffect(
-        useCallback(() => {
-            if (isAuthenticated) refetchPortfolio();
-        }, [isAuthenticated, refetchPortfolio])
-    );
+    const [discoveryEnabled, setDiscoveryEnabled] = useState(!isAuthenticated);
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setDiscoveryEnabled(true);
+            return;
+        }
+        setDiscoveryEnabled(false);
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const task = InteractionManager.runAfterInteractions(() => {
+            timeoutId = setTimeout(() => setDiscoveryEnabled(true), 150);
+        });
+        return () => {
+            task.cancel();
+            if (timeoutId != null) clearTimeout(timeoutId);
+        };
+    }, [isAuthenticated]);
+
+    const discoveryQueryEnabled = !isAuthenticated || discoveryEnabled;
+
     const { data: wallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
-    const firstPosition = portfolio?.positions?.[0];
-    const firstStockId = firstPosition?.stock?.id ?? null;
-    const { data: chartData = null, isLoading: chartLoading } = usePriceHistory(
-        isAuthenticated && firstStockId != null ? firstStockId : null,
-        '1M',
-        90
+
+    const positions = portfolio?.positions ?? [];
+    const sortedPositions = useMemo(() => {
+        const list = [...positions];
+        if (sortType === 'percentage') return list.sort((a, b) => b.gainLossPercentage - a.gainLossPercentage);
+        if (sortType === 'value') return list.sort((a, b) => b.currentValue - a.currentValue);
+        return list;
+    }, [positions, sortType]);
+
+    const portfolioChartMergeInput = useMemo(() => consolidatePortfolioForChart(positions), [positions]);
+    const portfolioCompositionKey = useMemo(
+        () =>
+            [...portfolioChartMergeInput.entriesById.entries()]
+                .map(([id, n]) => `${String(id)}:${n}`)
+                .sort()
+                .join(','),
+        [portfolioChartMergeInput]
     );
 
-    const topMoversQuery = useTopMovers(5);
-    const highestVolumeQuery = useHighestVolume(9);
-    const onTheRiseQuery = useOnTheRise(9);
-    const upsetAlertQuery = useUpsetAlert(9);
-    const leaguesQuery = useLeagues();
-    const { data: followedStocksFromApi = [] } = useFollowedStocksNotOwned(isAuthenticated);
+    const positionHistoryQueries = useStockSheetPriceHistories(
+        portfolioChartMergeInput.stockIds,
+        isAuthenticated && positions.length > 0
+    );
+
+    const portfolioHistoryFetchSignature = useMemo(
+        () => positionHistoryQueries.map((q) => `${q.dataUpdatedAt}:${q.status}`).join('|'),
+        [positionHistoryQueries]
+    );
+
+    const chartLoading =
+        isAuthenticated &&
+        positions.length > 0 &&
+        (positionHistoryQueries.length === 0 ||
+            positionHistoryQueries.some((q) => q.isPending) ||
+            positionHistoryQueries.some((q) => q.isFetching && q.data === undefined));
+
+    const chartData = useMemo(() => {
+        if (positions.length === 0) return null;
+        const histories = positionHistoryQueries.map((q) => q.data);
+        if (histories.some((h) => h == null || h.length === 0)) return null;
+        return mergePortfolioPriceHistory(portfolioChartMergeInput, histories);
+    }, [positions.length, portfolioChartMergeInput, portfolioHistoryFetchSignature]);
+
+    useEffect(() => {
+        setPortfolioChartPeriod('1M');
+    }, [portfolioCompositionKey]);
+
+    const portfolioDisplaySeries = useMemo(() => {
+        if (!chartData?.length) return [];
+        return priceHistoryWithSteadyFallback(chartData, portfolioChartPeriod);
+    }, [chartData, portfolioChartPeriod]);
+
+    const portfolioPeriodStats = useMemo(() => {
+        if (portfolioDisplaySeries.length < 2) return null;
+        const start = portfolioDisplaySeries[0].price;
+        const end = portfolioDisplaySeries[portfolioDisplaySeries.length - 1].price;
+        const dollar = end - start;
+        const percent = start > 0 ? ((end - start) / start) * 100 : 0;
+        return { dollar, percent };
+    }, [portfolioDisplaySeries]);
+
+    /** Same window as the chart line: red when portfolio value ends below period start, green otherwise. */
+    const portfolioChartLineColor = useMemo(() => {
+        if (portfolioDisplaySeries.length < 2) return Color.green;
+        const start = portfolioDisplaySeries[0].price;
+        const end = portfolioDisplaySeries[portfolioDisplaySeries.length - 1].price;
+        return end >= start ? Color.green : Color.red;
+    }, [portfolioDisplaySeries, Color.green, Color.red]);
+
+    const topMoversQuery = useTopMovers(5, discoveryQueryEnabled);
+    const highestVolumeQuery = useHighestVolume(9, discoveryQueryEnabled);
+    const onTheRiseQuery = useOnTheRise(9, discoveryQueryEnabled);
+    const upsetAlertQuery = useUpsetAlert(9, discoveryQueryEnabled);
+    const leaguesQuery = useLeagues(discoveryQueryEnabled);
+    const { data: followedStocksFromApi = [] } = useFollowedStocksNotOwned(
+        isAuthenticated && discoveryQueryEnabled
+    );
 
     const topMovers = topMoversQuery.data ?? { gainers: [], losers: [] };
     const highestVolumeStocks = highestVolumeQuery.data ?? [];
@@ -92,11 +189,19 @@ export default function HomeScreen() {
     const upsetAlertStocks = upsetAlertQuery.data ?? [];
     const leaguesList: League[] = leaguesQuery.data ?? [];
     const sectionsLoading =
+        (isAuthenticated && !discoveryEnabled) ||
         topMoversQuery.isLoading ||
         highestVolumeQuery.isLoading ||
         onTheRiseQuery.isLoading ||
         upsetAlertQuery.isLoading ||
         leaguesQuery.isLoading;
+
+    const showPortfolioSkeleton =
+        isAuthenticated && portfolio == null && (portfolioPending || portfolioFetching);
+    const portfolioLoadError =
+        isAuthenticated && portfolio == null && portfolioQueryError && !portfolioPending && !portfolioFetching;
+
+    const skeletonBg = isDark ? '#2C2C32' : '#E5E7EB';
 
     // Animation values for sort dropdown
     const sortDropdownOpacity = useSharedValue(0);
@@ -178,14 +283,6 @@ export default function HomeScreen() {
         },
         [lightImpact, setActiveStockId, setActiveStock]
     );
-
-    const positions = portfolio?.positions ?? [];
-    const sortedPositions = useMemo(() => {
-        const list = [...positions];
-        if (sortType === 'percentage') return list.sort((a, b) => b.gainLossPercentage - a.gainLossPercentage);
-        if (sortType === 'value') return list.sort((a, b) => b.currentValue - a.currentValue);
-        return list;
-    }, [positions, sortType]);
 
     const pageCount = Math.ceil(sortedPositions.length / 3);
 
@@ -325,35 +422,113 @@ export default function HomeScreen() {
                                     Total Value
                                 </Text>
 
-                                <Text style={[styles.portfolioValue, { color: Color.baseText }]}>
-                                    {formatCurrency(portfolio?.totalValue ?? 0)}
-                                </Text>
+                                {portfolioLoadError ? (
+                                    <>
+                                        <Text style={[styles.portfolioErrorText, { color: Color.subText }]}>
+                                            {"Couldn't load portfolio"}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                lightImpact();
+                                                refetchPortfolio();
+                                            }}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <Text style={[styles.portfolioRetryText, { color: Color.green }]}>Tap to retry</Text>
+                                        </TouchableOpacity>
+                                    </>
+                                ) : showPortfolioSkeleton ? (
+                                    <>
+                                        <View style={[styles.skeletonBar, { width: 200, height: 40, backgroundColor: skeletonBg }]} />
+                                        <View style={[styles.portfolioStats, { marginTop: 8 }]}>
+                                            <View style={[styles.skeletonBar, { width: 88, height: 18, backgroundColor: skeletonBg }]} />
+                                            <View style={[styles.skeletonBar, { width: 72, height: 18, backgroundColor: skeletonBg }]} />
+                                            <View style={[styles.skeletonBar, { width: 48, height: 14, backgroundColor: skeletonBg, marginLeft: 8 }]} />
+                                        </View>
+                                    </>
+                                ) : portfolio != null ? (
+                                    <>
+                                        <Text style={[styles.portfolioValue, { color: Color.baseText }]}>
+                                            {formatCurrency(portfolio.totalValue)}
+                                        </Text>
 
-                                <View style={styles.portfolioStats}>
-                                    <Text
-                                        style={[
-                                            styles.portfolioGainLoss,
-                                            { color: (portfolio?.totalGainLoss ?? 0) >= 0 ? Color.green : Color.red }
-                                        ]}
-                                    >
-                                        {formatCurrency(portfolio?.totalGainLoss ?? 0)}
-                                    </Text>
-                                    <Text
-                                        style={[
-                                            styles.portfolioGainLoss,
-                                            { color: (portfolio?.totalGainLoss ?? 0) >= 0 ? Color.green : Color.red }
-                                        ]}
-                                    >
-                                        ({formatPercentage(portfolio?.totalGainLossPercentage ?? 0)})
-                                    </Text>
-                                    <Text style={[styles.portfolioToday, { color: Color.subText }]}>
-                                        Today
-                                    </Text>
-                                </View>
+                                        <View style={styles.portfolioStats}>
+                                            {positions.length > 0 && chartLoading ? (
+                                                <>
+                                                    <View style={[styles.skeletonBar, { width: 88, height: 18, backgroundColor: skeletonBg }]} />
+                                                    <View style={[styles.skeletonBar, { width: 72, height: 18, backgroundColor: skeletonBg }]} />
+                                                    <Text style={[styles.portfolioToday, { color: Color.subText }]}>
+                                                        {PORTFOLIO_CHART_PERIOD_LABEL[portfolioChartPeriod]} · Portfolio
+                                                    </Text>
+                                                </>
+                                            ) : positions.length > 0 && chartData && chartData.length > 0 ? (
+                                                <>
+                                                    <Text
+                                                        style={[
+                                                            styles.portfolioGainLoss,
+                                                            {
+                                                                color:
+                                                                    (portfolioPeriodStats?.dollar ?? 0) >= 0
+                                                                        ? Color.green
+                                                                        : Color.red,
+                                                            },
+                                                        ]}
+                                                    >
+                                                        {formatCurrency(portfolioPeriodStats?.dollar ?? 0)}
+                                                    </Text>
+                                                    <Text
+                                                        style={[
+                                                            styles.portfolioGainLoss,
+                                                            {
+                                                                color:
+                                                                    (portfolioPeriodStats?.percent ?? 0) >= 0
+                                                                        ? Color.green
+                                                                        : Color.red,
+                                                            },
+                                                        ]}
+                                                    >
+                                                        ({formatPercentage(portfolioPeriodStats?.percent ?? 0)})
+                                                    </Text>
+                                                    <Text style={[styles.portfolioToday, { color: Color.subText }]}>
+                                                        {PORTFOLIO_CHART_PERIOD_LABEL[portfolioChartPeriod]} · Portfolio
+                                                    </Text>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Text
+                                                        style={[
+                                                            styles.portfolioGainLoss,
+                                                            { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red },
+                                                        ]}
+                                                    >
+                                                        {formatCurrency(portfolio.totalGainLoss)}
+                                                    </Text>
+                                                    <Text
+                                                        style={[
+                                                            styles.portfolioGainLoss,
+                                                            { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red },
+                                                        ]}
+                                                    >
+                                                        ({formatPercentage(portfolio.totalGainLossPercentage)})
+                                                    </Text>
+                                                    <Text style={[styles.portfolioToday, { color: Color.subText }]}>
+                                                        Total return
+                                                    </Text>
+                                                </>
+                                            )}
+                                        </View>
+                                    </>
+                                ) : null}
 
-                                {chartLoading ? (
+                                {showPortfolioSkeleton ? (
                                     <View style={styles.chartPlaceholder}>
-                                        <ActivityIndicator size="large" color={Color.green} />
+                                        <ChartLoadingSkeleton isDark={isDark} />
+                                    </View>
+                                ) : portfolioLoadError ? (
+                                    <View style={styles.chartPlaceholder} />
+                                ) : chartLoading ? (
+                                    <View style={styles.chartPlaceholder}>
+                                        <ChartLoadingSkeleton isDark={isDark} />
                                     </View>
                                 ) : positions.length === 0 || !chartData || chartData.length === 0 ? (
                                     <EmptyState
@@ -366,11 +541,12 @@ export default function HomeScreen() {
                                     />
                                 ) : (
                                     <Chart
-                                        stockId={sortedPositions[0]?.stock.id ?? 1}
-                                        color={Color.green}
+                                        stockId="portfolio"
+                                        color={portfolioChartLineColor}
                                         priceData={chartData}
-                                        hideTimePeriodSelector
                                         defaultTimePeriod="1M"
+                                        timePeriod={portfolioChartPeriod}
+                                        onTimePeriodChange={setPortfolioChartPeriod}
                                     />
                                 )}
                             </View>
@@ -383,15 +559,70 @@ export default function HomeScreen() {
                     {isAuthenticated ? (
                         <GlassCard style={styles.investmentsCard} padding={0}>
                             <View style={styles.investmentsContent}>
-                                <>
                                     <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                         My Portfolio
                                     </Text>
 
+                                    {portfolioLoadError ? (
+                                        <View style={styles.portfolioInlineError}>
+                                            <Text style={[styles.portfolioErrorText, { color: Color.subText }]}>
+                                                {"Couldn't load portfolio"}
+                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    lightImpact();
+                                                    refetchPortfolio();
+                                                }}
+                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                            >
+                                                <Text style={[styles.portfolioRetryText, { color: Color.green }]}>Tap to retry</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : showPortfolioSkeleton ? (
+                                        <>
+                                            <View style={styles.investmentOverview}>
+                                                <View style={styles.investmentLeft}>
+                                                    <View style={[styles.skeletonBar, { width: 100, height: 22, backgroundColor: skeletonBg }]} />
+                                                    <View style={[styles.skeletonBar, { width: 52, height: 14, backgroundColor: skeletonBg, marginTop: 6 }]} />
+                                                </View>
+                                                <View style={styles.investmentRight}>
+                                                    <View style={[styles.skeletonBar, { width: 88, height: 22, backgroundColor: skeletonBg }]} />
+                                                    <View style={[styles.skeletonBar, { width: 36, height: 14, backgroundColor: skeletonBg, marginTop: 6 }]} />
+                                                </View>
+                                            </View>
+                                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+                                            <View style={styles.summaryDetails}>
+                                                <View style={[styles.skeletonBar, { width: 96, height: 14, backgroundColor: skeletonBg }]} />
+                                                <View style={[styles.skeletonBar, { width: 120, height: 18, backgroundColor: skeletonBg }]} />
+                                            </View>
+                                            <View style={styles.summaryDetails}>
+                                                <View style={[styles.skeletonBar, { width: 88, height: 14, backgroundColor: skeletonBg }]} />
+                                                <View style={[styles.skeletonBar, { width: 56, height: 18, backgroundColor: skeletonBg }]} />
+                                            </View>
+                                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+                                            <View style={styles.stocksOwnedHeader}>
+                                                <View style={styles.stocksOwnedLeft}>
+                                                    <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
+                                                        My Teams
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <View style={styles.skeletonTeamsBlock}>
+                                                {[0, 1, 2].map((i) => (
+                                                    <View key={i} style={styles.skeletonTeamRow}>
+                                                        <View style={[styles.skeletonBar, { width: 36, height: 14, backgroundColor: skeletonBg }]} />
+                                                        <View style={[styles.skeletonBar, { flex: 1, height: 14, backgroundColor: skeletonBg, marginHorizontal: 12 }]} />
+                                                        <View style={[styles.skeletonBar, { width: 64, height: 14, backgroundColor: skeletonBg }]} />
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </>
+                                    ) : portfolio != null ? (
+                                        <>
                                     <View style={styles.investmentOverview}>
                                         <View style={styles.investmentLeft}>
                                             <Text style={[styles.investmentAmount, { color: Color.baseText }]}>
-                                                {formatCurrency(portfolio?.totalInvested ?? 0)}
+                                                {formatCurrency(portfolio.totalInvested)}
                                             </Text>
                                             <Text style={[styles.investmentLabel, { color: Color.subText }]}>
                                                 Put In
@@ -400,9 +631,9 @@ export default function HomeScreen() {
                                         <View style={styles.investmentRight}>
                                             <Text style={[
                                                 styles.investmentAmount,
-                                                { color: (portfolio?.totalGainLoss ?? 0) >= 0 ? Color.green : Color.red }
+                                                { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
                                             ]}>
-                                                {formatCurrency(portfolio?.totalGainLoss ?? 0)}
+                                                {formatCurrency(portfolio.totalGainLoss)}
                                             </Text>
                                             <Text style={[styles.investmentLabel, { color: Color.subText }]}>
                                                 W/L
@@ -417,7 +648,7 @@ export default function HomeScreen() {
                                             Total Value $
                                         </Text>
                                         <Text style={[styles.summaryValue, { color: Color.baseText }]}>
-                                            {formatCurrency(portfolio?.totalValue ?? 0)}
+                                            {formatCurrency(portfolio.totalValue)}
                                         </Text>
                                     </View>
                                     <View style={styles.summaryDetails}>
@@ -426,9 +657,9 @@ export default function HomeScreen() {
                                         </Text>
                                         <Text style={[
                                             styles.summaryValue,
-                                            { color: (portfolio?.totalGainLossPercentage ?? 0) >= 0 ? Color.green : Color.red }
+                                            { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
                                         ]}>
-                                            {formatPercentage(portfolio?.totalGainLossPercentage ?? 0)}
+                                            {formatPercentage(portfolio.totalGainLossPercentage)}
                                         </Text>
                                     </View>
 
@@ -543,6 +774,7 @@ export default function HomeScreen() {
                                         </>
                                     )}
                                 </>
+                                    ) : null}
 
                             </View>
                         </GlassCard>
@@ -962,8 +1194,9 @@ const styles = StyleSheet.create({
     },
     chartPlaceholder: {
         minHeight: 200,
+        width: '100%',
+        alignSelf: 'stretch',
         justifyContent: 'center',
-        alignItems: 'center',
     },
     chartEmptyState: {
         minHeight: 160,
@@ -996,6 +1229,32 @@ const styles = StyleSheet.create({
     portfolioToday: {
         fontSize: 14,
         marginLeft: 8,
+    },
+    portfolioErrorText: {
+        fontSize: 15,
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    portfolioRetryText: {
+        fontSize: 15,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    portfolioInlineError: {
+        paddingVertical: 24,
+        alignItems: 'center',
+    },
+    skeletonBar: {
+        borderRadius: 6,
+    },
+    skeletonTeamsBlock: {
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        gap: 14,
+    },
+    skeletonTeamRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     timePeriodContainer: {
         flexDirection: 'row',
