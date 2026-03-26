@@ -21,20 +21,16 @@ export async function search(
 ): Promise<SearchResult> {
     const params: Record<string, string | undefined> = { q, type };
     if (leagueID != null && leagueID !== '') params.leagueID = leagueID;
-    try {
-        const data = await apiGet<{ stocks?: unknown[]; leagues?: unknown[]; total?: number }>(
-            API_ENDPOINTS.SEARCH,
-            params,
-            { auth: false }
-        );
-        return {
-            stocks: (Array.isArray(data?.stocks) ? data.stocks : []).map((s: unknown) => normalizeStock(s)),
-            leagues: (Array.isArray(data?.leagues) ? data.leagues : []).map((l: unknown) => normalizeLeague(l)),
-            total: data?.total ?? 0,
-        };
-    } catch {
-        return EMPTY_SEARCH;
-    }
+    const data = await apiGet<{ stocks?: unknown[]; leagues?: unknown[]; total?: number }>(
+        API_ENDPOINTS.SEARCH,
+        params,
+        { auth: false }
+    );
+    return {
+        stocks: (Array.isArray(data?.stocks) ? data.stocks : []).map((s: unknown) => normalizeStock(s)),
+        leagues: (Array.isArray(data?.leagues) ? data.leagues : []).map((l: unknown) => normalizeLeague(l)),
+        total: data?.total ?? 0,
+    };
 }
 
 export function useSearch(q: string, type: 'stock' | 'league' | 'all' = 'all', leagueID?: string | null) {
@@ -69,5 +65,6 @@ export function useSearchResults(
                 total: result.total,
             };
         },
+        placeholderData: (previousData) => previousData ?? EMPTY_SEARCH,
     });
 }

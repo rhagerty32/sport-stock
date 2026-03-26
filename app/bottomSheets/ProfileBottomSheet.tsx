@@ -1,22 +1,47 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { fetchCurrentUser, updateUserProfile } from '@/lib/auth-api';
+import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type ProfileBottomSheetProps = {
-    profileBottomSheetRef: React.RefObject<BottomSheetModal>;
+    profileBottomSheetRef: React.RefObject<BottomSheetModal | null>;
 };
+
+function applyUserToForm(
+    setFirstName: (v: string) => void,
+    setLastName: (v: string) => void,
+    setEmail: (v: string) => void,
+    setPhone: (v: string) => void,
+    user: { firstName?: string; lastName?: string; email?: string; phoneNumber?: string } | null
+) {
+    setFirstName(user?.firstName ?? '');
+    setLastName(user?.lastName ?? '');
+    setEmail(user?.email ?? '');
+    setPhone(user?.phoneNumber ?? '');
+}
 
 export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBottomSheetProps) {
     const Color = useColors();
     const { setProfileBottomSheetOpen } = useStockStore();
-    const [firstName, setFirstName] = useState('John');
-    const [lastName, setLastName] = useState('Doe');
-    const [email, setEmail] = useState('john.doe@example.com');
-    const [phone, setPhone] = useState('(555) 123-4567');
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const setUser = useAuthStore((s) => s.setUser);
+    const getToken = useAuthStore((s) => s.getToken);
+
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(false);
+    const loadSeq = useRef(0);
+    /** onChange fires repeatedly while open (dynamic sizing, keyboard, etc.); only hydrate once per open. */
+    const hydratedThisOpen = useRef(false);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -31,22 +56,83 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
         []
     );
     const { isDark } = useTheme();
-    const { lightImpact } = useHaptics();
+    const { lightImpact, mediumImpact } = useHaptics();
 
-    const handleSave = () => {
-        lightImpact();
-        closeModal();
-    };
+    const hydrateFormFromServer = useCallback(async () => {
+        setSaveError(null);
+        const seq = ++loadSeq.current;
+        const token = getToken();
+        const local = useAuthStore.getState().user;
+        applyUserToForm(setFirstName, setLastName, setEmail, setPhone, local);
+        if (!token) {
+            return;
+        }
+        setLoadingProfile(true);
+        try {
+            const fresh = await fetchCurrentUser(token);
+            if (seq !== loadSeq.current) return;
+            setUser(fresh);
+            applyUserToForm(setFirstName, setLastName, setEmail, setPhone, fresh);
+        } catch {
+            if (seq !== loadSeq.current) return;
+            applyUserToForm(setFirstName, setLastName, setEmail, setPhone, local);
+        } finally {
+            if (seq === loadSeq.current) setLoadingProfile(false);
+        }
+    }, [getToken, setUser]);
+
+    const handleSheetChange = useCallback(
+        (index: number) => {
+            if (index < 0) {
+                hydratedThisOpen.current = false;
+                return;
+            }
+            if (hydratedThisOpen.current) {
+                return;
+            }
+            hydratedThisOpen.current = true;
+            void hydrateFormFromServer();
+        },
+        [hydrateFormFromServer]
+    );
 
     const closeModal = () => {
+        hydratedThisOpen.current = false;
         setProfileBottomSheetOpen(false);
+    };
+
+    const handleSave = async () => {
+        setSaveError(null);
+        const token = getToken();
+        if (!isAuthenticated || !token) {
+            setSaveError('Sign in to update your profile.');
+            return;
+        }
+        setSaving(true);
+        try {
+            await updateUserProfile({
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                phoneNumber: phone.trim(),
+            });
+            const fresh = await fetchCurrentUser(token);
+            setUser(fresh);
+            applyUserToForm(setFirstName, setLastName, setEmail, setPhone, fresh);
+            mediumImpact();
+            closeModal();
+        } catch (e) {
+            setSaveError(e instanceof Error ? e.message : 'Could not save changes');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
         <BottomSheetModal
             ref={profileBottomSheetRef}
             onDismiss={closeModal}
-            stackBehavior='push'
+            onChange={handleSheetChange}
+            stackBehavior="push"
             enableDynamicSizing={true}
             enablePanDownToClose={true}
             backdropComponent={renderBackdrop}
@@ -56,23 +142,23 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
             backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
         >
             <BottomSheetView style={styles.scrollView}>
-                {/* Header */}
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: Color.baseText }]}>
-                        Profile
-                    </Text>
-                    <Text style={[styles.subtitle, { color: Color.subText }]}>
-                        Update your info
-                    </Text>
+                    <Text style={[styles.title, { color: Color.baseText }]}>Profile</Text>
+                    <Text style={[styles.subtitle, { color: Color.subText }]}>Update your info</Text>
                 </View>
 
-                {/* Form Fields */}
-                <View style={styles.formContainer}>
-                    {/* First Name */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: Color.baseText }]}>
-                            First Name
+                {loadingProfile ? (
+                    <View style={styles.loadingRow}>
+                        <ActivityIndicator color={Color.green} />
+                        <Text style={[styles.loadingText, { color: Color.subText, marginLeft: 10 }]}>
+                            Loading profile…
                         </Text>
+                    </View>
+                ) : null}
+
+                <View style={styles.formContainer}>
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: Color.baseText }]}>First name</Text>
                         <BottomSheetTextInput
                             style={[
                                 styles.input,
@@ -80,20 +166,18 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
-                                }
+                                },
                             ]}
-                            placeholder="Enter first name"
+                            placeholder="First name"
                             placeholderTextColor={Color.subText}
                             value={firstName}
                             onChangeText={setFirstName}
+                            editable={!saving}
                         />
                     </View>
 
-                    {/* Last Name */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: Color.baseText }]}>
-                            Last Name
-                        </Text>
+                        <Text style={[styles.label, { color: Color.baseText }]}>Last name</Text>
                         <BottomSheetTextInput
                             style={[
                                 styles.input,
@@ -101,43 +185,42 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
-                                }
+                                },
                             ]}
-                            placeholder="Enter last name"
+                            placeholder="Last name"
                             placeholderTextColor={Color.subText}
                             value={lastName}
                             onChangeText={setLastName}
+                            editable={!saving}
                         />
                     </View>
 
-                    {/* Email */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: Color.baseText }]}>
-                            Email
-                        </Text>
+                        <Text style={[styles.label, { color: Color.baseText }]}>Email</Text>
                         <BottomSheetTextInput
                             style={[
                                 styles.input,
                                 {
-                                    backgroundColor: isDark ? '#242428' : '#F3F4F6',
-                                    color: Color.baseText,
-                                    borderColor: isDark ? '#4B5563' : '#D1D5DB',
-                                }
+                                    backgroundColor: isDark ? '#1E1E22' : '#ECEFF3',
+                                    color: Color.subText,
+                                    borderColor: isDark ? '#3D3D44' : '#D1D5DB',
+                                },
                             ]}
-                            placeholder="Enter email address"
+                            placeholder="Not on file"
                             placeholderTextColor={Color.subText}
                             value={email}
-                            onChangeText={setEmail}
                             keyboardType="email-address"
                             autoCapitalize="none"
+                            editable={false}
+                            selectTextOnFocus={false}
                         />
+                        <Text style={[styles.fieldHint, { color: Color.subText }]}>
+                            Email is tied to how you signed in and can{"'"}t be changed here.
+                        </Text>
                     </View>
 
-                    {/* Phone */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: Color.baseText }]}>
-                            Phone Number
-                        </Text>
+                        <Text style={[styles.label, { color: Color.baseText }]}>Phone number</Text>
                         <BottomSheetTextInput
                             style={[
                                 styles.input,
@@ -145,28 +228,44 @@ export default function ProfileBottomSheet({ profileBottomSheetRef }: ProfileBot
                                     backgroundColor: isDark ? '#242428' : '#F3F4F6',
                                     color: Color.baseText,
                                     borderColor: isDark ? '#4B5563' : '#D1D5DB',
-                                }
+                                },
                             ]}
-                            placeholder="Enter phone number"
+                            placeholder="Phone number"
                             placeholderTextColor={Color.subText}
                             value={phone}
                             onChangeText={setPhone}
                             keyboardType="phone-pad"
+                            editable={!saving}
                         />
                     </View>
                 </View>
 
-                {/* Save Button */}
+                {saveError ? (
+                    <Text style={[styles.errorText, { color: Color.red }]}>{saveError}</Text>
+                ) : null}
+
                 <View style={styles.saveButtonContainer}>
                     <TouchableOpacity
-                        style={[styles.saveButton, { backgroundColor: Color.green }]}
-                        onPress={handleSave}
+                        style={[
+                            styles.saveButton,
+                            { backgroundColor: Color.green },
+                            (saving || !isAuthenticated) && styles.saveButtonDisabled,
+                        ]}
+                        onPress={() => {
+                            lightImpact();
+                            void handleSave();
+                        }}
+                        disabled={saving || !isAuthenticated}
+                        activeOpacity={0.85}
                     >
-                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                        {saving ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <Text style={styles.saveButtonText}>Save changes</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
 
-                {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
             </BottomSheetView>
         </BottomSheetModal>
@@ -193,8 +292,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
+    loadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    loadingText: {
+        fontSize: 14,
+    },
     formContainer: {
-        marginBottom: 30,
+        marginBottom: 16,
     },
     inputGroup: {
         marginBottom: 20,
@@ -211,6 +319,16 @@ const styles = StyleSheet.create({
         fontSize: 16,
         borderWidth: 1,
     },
+    fieldHint: {
+        fontSize: 13,
+        marginTop: 6,
+        lineHeight: 18,
+    },
+    errorText: {
+        fontSize: 14,
+        marginBottom: 12,
+        textAlign: 'center',
+    },
     saveButtonContainer: {
         marginBottom: 20,
     },
@@ -220,6 +338,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    saveButtonDisabled: {
+        opacity: 0.6,
+    },
     saveButtonText: {
         color: '#FFFFFF',
         fontSize: 18,
@@ -227,20 +348,5 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 30,
-    },
-    switchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    switchLabelContainer: {
-        flex: 1,
-        marginRight: 12,
-    },
-    switchDescription: {
-        fontSize: 13,
-        fontWeight: '400',
-        marginTop: 4,
-        lineHeight: 18,
     },
 });

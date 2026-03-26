@@ -1,7 +1,8 @@
 import { API_ENDPOINTS } from '@/constants/api-config';
-import type { PriceHistory, Stock } from '@/types';
 import { apiGet } from '@/lib/api';
 import { normalizePriceHistoryPoint, normalizeStock } from '@/lib/api-normalizers';
+import type { PriceHistory, Stock } from '@/types';
+import type { QueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 
 export type MoverItem = { stock: Stock; change: number; changePercentage: number };
@@ -98,24 +99,45 @@ export async function fetchUpsetAlert(limit = 9): Promise<MoverItem[]> {
     }));
 }
 
+type PriceHistoryApiResponse = {
+    history?: unknown[];
+    stockId?: string;
+};
+
+function historyPointsFromResponse(data: unknown): unknown[] {
+    if (data == null) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') {
+        const o = data as Record<string, unknown>;
+        const h = o.history;
+        if (Array.isArray(h)) return h;
+    }
+    return [];
+}
+
 export async function fetchPriceHistory(
     stockId: string | number,
     period?: string,
-    limit = 100
+    limit?: number
 ): Promise<PriceHistory[]> {
-    const params: Record<string, string | number | undefined> = { limit };
-    if (period != null) params.period = period;
-    try {
-        const data = await apiGet<{ history?: unknown[] }>(
-            API_ENDPOINTS.STOCK_PRICE_HISTORY(String(stockId)),
-            params,
-            { auth: false }
-        );
-        const list = Array.isArray(data?.history) ? data.history : [];
-        return list.map((p: unknown) => normalizePriceHistoryPoint(p));
-    } catch {
-        return [];
+    const params: Record<string, string | number | undefined> = {};
+    if (period != null && period !== '') params.period = period;
+    if (limit != null) params.limit = limit;
+    const data = await apiGet<PriceHistoryApiResponse>(
+        API_ENDPOINTS.STOCK_PRICE_HISTORY(String(stockId)),
+        params,
+        { auth: false }
+    );
+    const list = historyPointsFromResponse(data);
+    // Map API → app PriceHistory: ISO strings → Date, stockId → stockID, numeric guards (API is already camelCase).
+    const normalized = list.map((p: unknown) => normalizePriceHistoryPoint(p));
+    normalized.sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    if (__DEV__) {
+        console.log('[price-history]', String(stockId), period ?? null, limit ?? null, 'points:', normalized.length);
     }
+    return normalized;
 }
 
 export function useStock(stockId: string | number | null) {
@@ -166,14 +188,34 @@ export function useUpsetAlert(limit = 9) {
     });
 }
 
+/** Keep history in cache after the sheet closes so reopen is instant; avoid refetching every open. */
+const PRICE_HISTORY_STALE_MS = 5 * 60 * 1000;
+const PRICE_HISTORY_GC_MS = 60 * 60 * 1000;
+
+/** Same params as StockBottomSheet chart — keep in sync with `usePriceHistory` there. */
+export const STOCK_SHEET_PRICE_HISTORY = { period: 'ALL' as const, limit: 500 };
+
+/** Warm cache as soon as a stock is selected (before the sheet finishes opening). */
+export function prefetchStockSheetPriceHistory(queryClient: QueryClient, stockId: string | number) {
+    const { period, limit } = STOCK_SHEET_PRICE_HISTORY;
+    return queryClient.prefetchQuery({
+        queryKey: stocksKeys.priceHistory(stockId, period, limit),
+        queryFn: () => fetchPriceHistory(stockId, period, limit),
+        staleTime: PRICE_HISTORY_STALE_MS,
+        gcTime: PRICE_HISTORY_GC_MS,
+    });
+}
+
 export function usePriceHistory(
     stockId: string | number | null,
     period?: string,
-    limit = 100
+    limit?: number
 ) {
     return useQuery({
         queryKey: stockId != null ? stocksKeys.priceHistory(stockId, period, limit) : ['stocks', 'priceHistory', 'disabled'],
         queryFn: () => fetchPriceHistory(stockId!, period, limit),
         enabled: stockId != null,
+        staleTime: PRICE_HISTORY_STALE_MS,
+        gcTime: PRICE_HISTORY_GC_MS,
     });
 }

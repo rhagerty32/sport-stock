@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PriceHistory, TimePeriod } from '@/types';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
@@ -23,6 +23,182 @@ const CHART_HEIGHT = 200;
 const FLAT_LINE_Y = CHART_HEIGHT / 2;
 const PULSE_DOT_RADIUS = 5;
 const PULSE_DOT_RIGHT_MARGIN = 12;
+/** Line ends here; pulse dot is centered so it sits on the stroke. */
+const PULSE_DOT_CENTER_X = CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS;
+const PULSE_DOT_LEFT = PULSE_DOT_CENTER_X - PULSE_DOT_RADIUS;
+
+const MIN_PRICE_SPREAD = 1e-9;
+
+/** Y scale shared by path, scrubber, and end dot (handles flat price = horizontal line). */
+function priceToYMapper(data: PriceHistory[]): (price: number) => number {
+    const minPrice = Math.min(...data.map((d) => d.price));
+    const maxPrice = Math.max(...data.map((d) => d.price));
+    const spread = maxPrice - minPrice;
+    if (spread < MIN_PRICE_SPREAD) {
+        return () => FLAT_LINE_Y;
+    }
+    const padding = spread * 0.1;
+    const denom = spread + padding * 2;
+    return (price: number) =>
+        CHART_HEIGHT - ((price - minPrice + padding) / denom) * CHART_HEIGHT;
+}
+
+/** X from 0 .. PULSE_DOT_CENTER_X so the last sample aligns with the pulse dot. */
+function pixelPointsForData(data: PriceHistory[]): { x: number; y: number }[] {
+    const n = data.length;
+    if (n < 2) return [];
+    const priceToY = priceToYMapper(data);
+    const stepX = PULSE_DOT_CENTER_X / (n - 1);
+    return data.map((point, index) => ({
+        x: index * stepX,
+        y: priceToY(point.price),
+    }));
+}
+
+type PixelPoint = { x: number; y: number };
+
+/** Control points for one SVG cubic segment — must stay in sync with path drawing. */
+function getBezierControlsForSegment(
+    i: number,
+    points: PixelPoint[],
+    smoothnessValue: number
+): { p0: PixelPoint; cp1: PixelPoint; cp2: PixelPoint; p1: PixelPoint } {
+    const tension = 0.5;
+    const current = points[i];
+    const next = points[i + 1];
+    let cp1x: number;
+    let cp1y: number;
+    let cp2x: number;
+    let cp2y: number;
+
+    if (i === 0) {
+        const dx = (next.x - current.x) * tension;
+        const dy = (next.y - current.y) * tension;
+        cp1x = current.x + dx * 0.3 * smoothnessValue;
+        cp1y = current.y + dy * 0.3 * smoothnessValue;
+        cp2x = next.x - dx * (0.7 * smoothnessValue);
+        cp2y = next.y - dy * (0.7 * smoothnessValue);
+    } else if (i === points.length - 2) {
+        const prev = points[i - 1];
+        const dx = (next.x - prev.x) * tension;
+        const dy = (next.y - prev.y) * tension;
+        cp1x = current.x + dx * 0.3 * smoothnessValue;
+        cp1y = current.y + dy * 0.3 * smoothnessValue;
+        cp2x = next.x - dx * 0.3 * smoothnessValue;
+        cp2y = next.y - dy * 0.3 * smoothnessValue;
+    } else {
+        const prev = points[i - 1];
+        const nextNext = points[i + 2];
+        const dx1 = (next.x - prev.x) * tension;
+        const dy1 = (next.y - prev.y) * tension;
+        const dx2 = (nextNext.x - current.x) * tension;
+        const dy2 = (nextNext.y - current.y) * tension;
+
+        cp1x = current.x + dx1 * 0.3 * smoothnessValue;
+        cp1y = current.y + dy1 * 0.3 * smoothnessValue;
+        cp2x = next.x - dx2 * 0.3 * smoothnessValue;
+        cp2y = next.y - dy2 * 0.3 * smoothnessValue;
+    }
+
+    return {
+        p0: current,
+        cp1: { x: cp1x, y: cp1y },
+        cp2: { x: cp2x, y: cp2y },
+        p1: next,
+    };
+}
+
+function cubicBezierPoint(
+    t: number,
+    p0: PixelPoint,
+    c1: PixelPoint,
+    c2: PixelPoint,
+    p1: PixelPoint
+): PixelPoint {
+    const mt = 1 - t;
+    const mt2 = mt * mt;
+    const mt3 = mt2 * mt;
+    const t2 = t * t;
+    const t3 = t2 * t;
+    return {
+        x: mt3 * p0.x + 3 * mt2 * t * c1.x + 3 * mt * t2 * c2.x + t3 * p1.x,
+        y: mt3 * p0.y + 3 * mt2 * t * c1.y + 3 * mt * t2 * c2.y + t3 * p1.y,
+    };
+}
+
+/**
+ * Y on the drawn line at plot X (same curve + smoothness as the Path).
+ * Finds t on the cubic segment so Bx(t) ≈ plotX; avoids snapping dot Y to discrete samples.
+ */
+function yOnChartLineAtX(plotX: number, points: PixelPoint[], smoothnessValue: number): number {
+    const n = points.length;
+    if (n < 2) return FLAT_LINE_Y;
+    const xClamped = Math.min(Math.max(plotX, points[0].x), points[n - 1].x);
+
+    let seg = 0;
+    for (let i = 0; i < n - 1; i++) {
+        if (xClamped <= points[i + 1].x) {
+            seg = i;
+            break;
+        }
+    }
+    seg = Math.max(0, Math.min(seg, n - 2));
+
+    const { p0, cp1, cp2, p1 } = getBezierControlsForSegment(seg, points, smoothnessValue);
+    const bx = (t: number) => cubicBezierPoint(t, p0, cp1, cp2, p1).x;
+    const by = (t: number) => cubicBezierPoint(t, p0, cp1, cp2, p1).y;
+    const x0 = bx(0);
+    const x1 = bx(1);
+    const minX = Math.min(x0, x1);
+    const maxX = Math.max(x0, x1);
+    if (xClamped <= minX) return by(x0 <= x1 ? 0 : 1);
+    if (xClamped >= maxX) return by(x0 <= x1 ? 1 : 0);
+
+    const increasing = x1 >= x0;
+    let lo = 0;
+    let hi = 1;
+    for (let iter = 0; iter < 40; iter++) {
+        const mid = (lo + hi) / 2;
+        const xm = bx(mid);
+        if (increasing) {
+            if (xm < xClamped) lo = mid;
+            else hi = mid;
+        } else {
+            if (xm > xClamped) lo = mid;
+            else hi = mid;
+        }
+    }
+    return by((lo + hi) / 2);
+}
+
+function createInterpolatedPathFromPoints(points: PixelPoint[], smoothnessValue: number): string {
+    if (points.length < 2) return '';
+
+    let path = `M ${points[0].x} ${points[0].y}`;
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const { cp1, cp2, p1 } = getBezierControlsForSegment(i, points, smoothnessValue);
+        path += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p1.x} ${p1.y}`;
+    }
+
+    return path;
+}
+
+function createInterpolatedAreaPathFromPoints(points: PixelPoint[], smoothnessValue: number): string {
+    if (points.length < 2) return '';
+
+    let path = `M ${points[0].x} ${CHART_HEIGHT} L ${points[0].x} ${points[0].y}`;
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const { cp1, cp2, p1 } = getBezierControlsForSegment(i, points, smoothnessValue);
+        path += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p1.x} ${p1.y}`;
+    }
+
+    const lastX = points[points.length - 1].x;
+    path += ` L ${lastX} ${CHART_HEIGHT} Z`;
+
+    return path;
+}
 
 interface ChartProps {
     stockId: number;
@@ -30,8 +206,15 @@ interface ChartProps {
     backgroundColor?: string;
     /** When provided, chart uses this data instead of generating. Used for API-sourced data (e.g. portfolio summary). */
     priceData?: PriceHistory[] | null;
+    /**
+     * While the first fetch is in flight and `priceData` is still empty, skip the flat placeholder line and dots
+     * so the chart does not draw then swap when points arrive.
+     */
+    isInitialLoadPending?: boolean;
     /** Hide the time period selector when using external priceData (e.g. single period from API). */
     hideTimePeriodSelector?: boolean;
+    /** Initial range for the period selector (default 1H). Use ALL when parent fetched full-range history. */
+    defaultTimePeriod?: TimePeriod;
 }
 
 /** Filter API-sourced price history by selected time period (by date). */
@@ -59,11 +242,24 @@ const Chart: React.FC<ChartProps> = ({
     color = useColors()?.green,
     backgroundColor = null,
     priceData: externalPriceData = null,
+    isInitialLoadPending = false,
     hideTimePeriodSelector = false,
+    defaultTimePeriod,
 }) => {
     const Color = useColors();
-    const [priceData, setPriceData] = useState<PriceHistory[]>([]);
-    const [timePeriod, setTimePeriod] = useState<TimePeriod>('1H');
+    const [timePeriod, setTimePeriod] = useState<TimePeriod>(() => defaultTimePeriod ?? '1H');
+
+    // Derive synchronously so the first paint matches props (avoids one frame of flat line before useEffect sync).
+    const priceData = useMemo((): PriceHistory[] => {
+        if (externalPriceData != null) {
+            if (externalPriceData.length === 0) return [];
+            return filterPriceDataByPeriod(externalPriceData, timePeriod);
+        }
+        return [];
+    }, [externalPriceData, timePeriod]);
+
+    const linePixelPoints = useMemo(() => pixelPointsForData(priceData), [priceData]);
+
     const { isDark } = useTheme();
     const animationProgress = useSharedValue(0);
     const pingScale = useSharedValue(1);
@@ -192,31 +388,25 @@ const Chart: React.FC<ChartProps> = ({
         };
     }, [isScrubbing]); // Only watch isScrubbing for reliability
 
-    // Helper function to get price at x position
+    // Price / time along X: linear interp between samples (dot Y comes from the drawn curve, not this).
     const getPriceAtX = (x: number) => {
         if (priceData.length < 2) return null;
 
-        const stepX = CHART_WIDTH / (priceData.length - 1);
-        const dataIndex = Math.round(x / stepX);
-        const clampedIndex = Math.max(0, Math.min(dataIndex, priceData.length - 1));
-
+        const stepX = PULSE_DOT_CENTER_X / (priceData.length - 1);
+        const plotX = Math.min(Math.max(0, x), PULSE_DOT_CENTER_X);
+        const floatIndex = plotX / stepX;
+        const i0 = Math.min(Math.floor(floatIndex), priceData.length - 1);
+        const i1 = Math.min(i0 + 1, priceData.length - 1);
+        const frac = floatIndex - i0;
+        const p0 = priceData[i0];
+        const p1 = priceData[i1];
+        const t0 = p0.timestamp.getTime();
+        const t1 = p1.timestamp.getTime();
         return {
-            price: priceData[clampedIndex].price,
-            date: priceData[clampedIndex].timestamp,
-            index: clampedIndex
+            price: p0.price + (p1.price - p0.price) * frac,
+            date: new Date(t0 + (t1 - t0) * frac),
+            index: i0,
         };
-    };
-
-    // Helper function to get y position for a given price
-    const getYForPrice = (price: number) => {
-        if (priceData.length < 2) return 0;
-
-        const minPrice = Math.min(...priceData.map(d => d.price));
-        const maxPrice = Math.max(...priceData.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1;
-
-        return CHART_HEIGHT - ((price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
     };
 
     // Handle gesture events
@@ -311,31 +501,24 @@ const Chart: React.FC<ChartProps> = ({
     };
 
     useEffect(() => {
-        let data: PriceHistory[];
-
-        if (externalPriceData != null) {
-            // Use API-sourced data; filter by selected time period. Empty array shows empty chart.
-            data =
-                externalPriceData.length > 0
-                    ? filterPriceDataByPeriod(externalPriceData, timePeriod)
-                    : [];
+        // Reveal wipe only when there is a real series; avoids restarting when empty→empty while waiting on API.
+        if (priceData.length >= 2) {
+            animationProgress.value = 0;
+            animationProgress.value = withTiming(1, { duration: 2500 });
         } else {
-            // No priceData provided: show empty chart. Callers must pass real API data.
-            data = [];
+            animationProgress.value = 1;
         }
 
-        setPriceData(data);
-
-        // Start animation
-        animationProgress.value = 0;
-        animationProgress.value = withTiming(1, { duration: 2500 });
-
-        // Reset to smooth lines when data changes
         smoothness.value = 1;
         setSmoothnessState(1);
-    }, [timePeriod, stockId, externalPriceData]);
+    }, [timePeriod, stockId, priceData]);
 
     const hasNoPriceHistory = priceData.length < 2;
+    const awaitingFirstApiPoints =
+        Boolean(isInitialLoadPending) &&
+        (externalPriceData == null || externalPriceData.length === 0);
+    const showFlatPlaceholder = hasNoPriceHistory && !awaitingFirstApiPoints;
+    const showEndDots = !awaitingFirstApiPoints && (showFlatPlaceholder || !hasNoPriceHistory);
 
     // Ping: one dot expands and fades out, then resets (solid dot stays put)
     useEffect(() => {
@@ -361,151 +544,6 @@ const Chart: React.FC<ChartProps> = ({
         };
     }, []);
 
-
-    // Create interpolated path that smoothly transitions between smooth and sharp
-    const createInterpolatedPath = (data: PriceHistory[], smoothnessValue: number) => {
-        if (data.length < 2) return '';
-
-        const stepX = CHART_WIDTH / (data.length - 1);
-        const minPrice = Math.min(...data.map(d => d.price));
-        const maxPrice = Math.max(...data.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1;
-
-        // Calculate points
-        const points = data.map((point, index) => {
-            const x = index * stepX;
-            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
-            return { x, y };
-        });
-
-        if (points.length < 2) return '';
-
-        let path = `M ${points[0].x} ${points[0].y}`;
-
-        // When smoothness is 0, use straight lines
-        // When smoothness is 1, use full bezier curves
-        // Interpolate control points between these states
-        const tension = 0.5;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            const current = points[i];
-            const next = points[i + 1];
-
-            let cp1x, cp1y, cp2x, cp2y;
-
-            if (i === 0) {
-                // First segment
-                const dx = (next.x - current.x) * tension;
-                const dy = (next.y - current.y) * tension;
-                // Interpolate control points: at smoothness=0, control points are on the line (straight)
-                // at smoothness=1, control points are at calculated positions (curved)
-                cp1x = current.x + dx * 0.3 * smoothnessValue;
-                cp1y = current.y + dy * 0.3 * smoothnessValue;
-                cp2x = next.x - dx * (0.7 * smoothnessValue);
-                cp2y = next.y - dy * (0.7 * smoothnessValue);
-            } else if (i === points.length - 2) {
-                // Last segment
-                const prev = points[i - 1];
-                const dx = (next.x - prev.x) * tension;
-                const dy = (next.y - prev.y) * tension;
-                cp1x = current.x + dx * 0.3 * smoothnessValue;
-                cp1y = current.y + dy * 0.3 * smoothnessValue;
-                cp2x = next.x - dx * 0.3 * smoothnessValue;
-                cp2y = next.y - dy * 0.3 * smoothnessValue;
-            } else {
-                // Middle segments
-                const prev = points[i - 1];
-                const nextNext = points[i + 2];
-                const dx1 = (next.x - prev.x) * tension;
-                const dy1 = (next.y - prev.y) * tension;
-                const dx2 = (nextNext.x - current.x) * tension;
-                const dy2 = (nextNext.y - current.y) * tension;
-
-                cp1x = current.x + dx1 * 0.3 * smoothnessValue;
-                cp1y = current.y + dy1 * 0.3 * smoothnessValue;
-                cp2x = next.x - dx2 * 0.3 * smoothnessValue;
-                cp2y = next.y - dy2 * 0.3 * smoothnessValue;
-            }
-
-            // Always use bezier curves, but interpolate control points to approach the line when smoothness is 0
-            // This ensures smooth transitions without snapping
-            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
-        }
-
-        return path;
-    };
-
-    // Create interpolated area path that smoothly transitions between smooth and sharp
-    const createInterpolatedAreaPath = (data: PriceHistory[], smoothnessValue: number) => {
-        if (data.length < 2) return '';
-
-        const stepX = CHART_WIDTH / (data.length - 1);
-        const minPrice = Math.min(...data.map(d => d.price));
-        const maxPrice = Math.max(...data.map(d => d.price));
-        const priceRange = maxPrice - minPrice;
-        const padding = priceRange * 0.1;
-
-        // Calculate points
-        const points = data.map((point, index) => {
-            const x = index * stepX;
-            const y = CHART_HEIGHT - ((point.price - minPrice + padding) / (priceRange + padding * 2)) * CHART_HEIGHT;
-            return { x, y };
-        });
-
-        if (points.length < 2) return '';
-
-        let path = `M ${points[0].x} ${CHART_HEIGHT} L ${points[0].x} ${points[0].y}`;
-
-        const tension = 0.5;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            const current = points[i];
-            const next = points[i + 1];
-
-            let cp1x, cp1y, cp2x, cp2y;
-
-            if (i === 0) {
-                const dx = (next.x - current.x) * tension;
-                const dy = (next.y - current.y) * tension;
-                cp1x = current.x + dx * 0.3 * smoothnessValue;
-                cp1y = current.y + dy * 0.3 * smoothnessValue;
-                cp2x = next.x - dx * (0.7 * smoothnessValue);
-                cp2y = next.y - dy * (0.7 * smoothnessValue);
-            } else if (i === points.length - 2) {
-                const prev = points[i - 1];
-                const dx = (next.x - prev.x) * tension;
-                const dy = (next.y - prev.y) * tension;
-                cp1x = current.x + dx * 0.3 * smoothnessValue;
-                cp1y = current.y + dy * 0.3 * smoothnessValue;
-                cp2x = next.x - dx * 0.3 * smoothnessValue;
-                cp2y = next.y - dy * 0.3 * smoothnessValue;
-            } else {
-                const prev = points[i - 1];
-                const nextNext = points[i + 2];
-                const dx1 = (next.x - prev.x) * tension;
-                const dy1 = (next.y - prev.y) * tension;
-                const dx2 = (nextNext.x - current.x) * tension;
-                const dy2 = (nextNext.y - current.y) * tension;
-
-                cp1x = current.x + dx1 * 0.3 * smoothnessValue;
-                cp1y = current.y + dy1 * 0.3 * smoothnessValue;
-                cp2x = next.x - dx2 * 0.3 * smoothnessValue;
-                cp2y = next.y - dy2 * 0.3 * smoothnessValue;
-            }
-
-            // Always use bezier curves, but interpolate control points to approach the line when smoothness is 0
-            // This ensures smooth transitions without snapping
-            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
-        }
-
-        // Close the path
-        const lastX = (data.length - 1) * stepX;
-        path += ` L ${lastX} ${CHART_HEIGHT} Z`;
-
-        return path;
-    };
-
     const animatedClipStyle = useAnimatedStyle(() => {
         const progress = animationProgress.value;
         return {
@@ -525,11 +563,12 @@ const Chart: React.FC<ChartProps> = ({
         transform: [{ scale: pingScale.value }],
     }));
 
-    // Dot at end of line: center when no history, last price y when we have data
-    const pulseDotY =
-        priceData.length < 2
-            ? FLAT_LINE_Y - PULSE_DOT_RADIUS
-            : getYForPrice(priceData[priceData.length - 1].price) - PULSE_DOT_RADIUS;
+    const endPixel =
+        linePixelPoints.length > 0 ? linePixelPoints[linePixelPoints.length - 1] : null;
+    const pulseDotLeft = PULSE_DOT_LEFT;
+    const pulseDotY = endPixel
+        ? endPixel.y - PULSE_DOT_RADIUS
+        : FLAT_LINE_Y - PULSE_DOT_RADIUS;
 
     return (
         <View style={{ width: '100%' }}>
@@ -559,13 +598,13 @@ const Chart: React.FC<ChartProps> = ({
                                     </ClipPath>
                                 </Defs>
 
-                                {hasNoPriceHistory ? (
+                                {showFlatPlaceholder ? (
                                     <>
                                         {/* Flat line when no price history (Robinhood-style) */}
                                         <Line
                                             x1={0}
                                             y1={FLAT_LINE_Y}
-                                            x2={CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS * 2}
+                                            x2={PULSE_DOT_CENTER_X}
                                             y2={FLAT_LINE_Y}
                                             stroke={color}
                                             strokeWidth="2"
@@ -576,13 +615,13 @@ const Chart: React.FC<ChartProps> = ({
                                     <>
                                         {/* Area under the line */}
                                         <Path
-                                            d={createInterpolatedAreaPath(priceData, smoothnessState)}
+                                            d={createInterpolatedAreaPathFromPoints(linePixelPoints, smoothnessState)}
                                             fill="url(#gradient)"
                                         />
 
                                         {/* Line */}
                                         <Path
-                                            d={createInterpolatedPath(priceData, smoothnessState)}
+                                            d={createInterpolatedPathFromPoints(linePixelPoints, smoothnessState)}
                                             stroke={color}
                                             strokeWidth="2"
                                             fill="none"
@@ -609,7 +648,11 @@ const Chart: React.FC<ChartProps> = ({
                                         {currentPrice && (
                                             <Circle
                                                 cx={crosshairX.value}
-                                                cy={getYForPrice(currentPrice)}
+                                                cy={yOnChartLineAtX(
+                                                    crosshairX.value,
+                                                    linePixelPoints,
+                                                    smoothnessState
+                                                )}
                                                 r={4}
                                                 fill={color}
                                                 stroke={backgroundColor || '#FFFFFF'}
@@ -620,34 +663,38 @@ const Chart: React.FC<ChartProps> = ({
                                 )}
                             </Svg>
 
-                            {/* End dot: ping ring (expands + fades) then solid dot on top */}
-                            <Animated.View
-                                style={[
-                                    styles.pulseDot,
-                                    {
-                                        left: CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS * 2,
-                                        top: pulseDotY,
-                                        width: PULSE_DOT_RADIUS * 2,
-                                        height: PULSE_DOT_RADIUS * 2,
-                                        borderRadius: PULSE_DOT_RADIUS,
-                                        backgroundColor: color,
-                                    },
-                                    pingDotStyle,
-                                ]}
-                            />
-                            <View
-                                style={[
-                                    styles.pulseDot,
-                                    {
-                                        left: CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS * 2,
-                                        top: pulseDotY,
-                                        width: PULSE_DOT_RADIUS * 2,
-                                        height: PULSE_DOT_RADIUS * 2,
-                                        borderRadius: PULSE_DOT_RADIUS,
-                                        backgroundColor: color,
-                                    },
-                                ]}
-                            />
+                            {/* End dot: ping ring (expands + fades) then solid dot on top — hidden until first data or confirmed empty */}
+                            {showEndDots && (
+                                <>
+                                    <Animated.View
+                                        style={[
+                                            styles.pulseDot,
+                                            {
+                                                left: pulseDotLeft,
+                                                top: pulseDotY,
+                                                width: PULSE_DOT_RADIUS * 2,
+                                                height: PULSE_DOT_RADIUS * 2,
+                                                borderRadius: PULSE_DOT_RADIUS,
+                                                backgroundColor: color,
+                                            },
+                                            pingDotStyle,
+                                        ]}
+                                    />
+                                    <View
+                                        style={[
+                                            styles.pulseDot,
+                                            {
+                                                left: pulseDotLeft,
+                                                top: pulseDotY,
+                                                width: PULSE_DOT_RADIUS * 2,
+                                                height: PULSE_DOT_RADIUS * 2,
+                                                borderRadius: PULSE_DOT_RADIUS,
+                                                backgroundColor: color,
+                                            },
+                                        ]}
+                                    />
+                                </>
+                            )}
 
                             {/* Price tooltip */}
                             {isScrubbing && currentPrice && (

@@ -1,7 +1,8 @@
 /**
  * Cognito Hosted UI OAuth2 (PKCE) for Sign in with Apple and Google.
  * Requires Cognito User Pool domain and Apple/Google configured as identity providers.
- * Set EXPO_PUBLIC_COGNITO_OAUTH_DOMAIN (e.g. https://your-domain.auth.us-east-1.amazonaws.com).
+ * Set EXPO_PUBLIC_COGNITO_OAUTH_DOMAIN to your Hosted UI domain, e.g.
+ * https://your-prefix.auth.us-east-2.amazoncognito.com (amazoncognito.com, not amazonaws.com).
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,15 +29,43 @@ export async function clearHostedUISession(): Promise<void> {
     await AsyncStorage.removeItem(HOSTED_UI_REFRESH_TOKEN_KEY);
 }
 
+const LOG_PREFIX = '[Cognito:HostedUI]';
+
 const ClientId = process.env.EXPO_PUBLIC_COGNITO_CLIENT_ID || '';
 const OAuthDomain = process.env.EXPO_PUBLIC_COGNITO_OAUTH_DOMAIN || '';
 
+/**
+ * OAuth scopes sent to /oauth2/authorize. Must be a subset of "Allowed OAuth scopes"
+ * on the Cognito app client or Cognito returns invalid_scope.
+ * Default is `openid` only; add email/profile via env when those scopes are enabled in AWS.
+ */
+function getOAuthScope(): string {
+    const raw = process.env.EXPO_PUBLIC_COGNITO_OAUTH_SCOPES?.trim();
+    if (raw) return raw.replace(/\s+/g, ' ');
+    return 'openid';
+}
+
+function oauthHostForLog(domain: string): string {
+    try {
+        const normalized = domain.startsWith('http') ? domain : `https://${domain}`;
+        return new URL(normalized).hostname;
+    } catch {
+        return '(invalid EXPO_PUBLIC_COGNITO_OAUTH_DOMAIN)';
+    }
+}
+
 export type CognitoHostedUIProvider = 'Google' | 'SignInWithApple';
 
+/** Must match Cognito app client "Callback URL(s)" exactly (character-for-character). */
+const NATIVE_OAUTH_REDIRECT_URI = 'sportstock://callback';
+
 function getRedirectUri(): string {
+    // Bare / standalone: force stable URI. Linking.createURL can embed Metro host (IP:port) or
+    // differ in slash count, which breaks Cognito matching and prevents the auth session from closing.
     return AuthSession.makeRedirectUri({
         scheme: 'sportstock',
         path: 'callback',
+        native: NATIVE_OAUTH_REDIRECT_URI,
     });
 }
 
@@ -93,10 +122,11 @@ function buildAuthorizeUrl(
     redirectUri: string,
     codeChallenge: string
 ): string {
+    const scope = getOAuthScope();
     const params = new URLSearchParams({
         client_id: ClientId,
         response_type: 'code',
-        scope: 'openid email profile',
+        scope,
         redirect_uri: redirectUri,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
@@ -122,22 +152,35 @@ async function exchangeCodeForTokens(
         redirect_uri: redirectUri,
         code_verifier: codeVerifier,
     });
+    console.log(LOG_PREFIX, 'token exchange POST', tokenUrl);
     const res = await fetch(tokenUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
     });
+    const responseText = await res.text();
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Token exchange failed: ${res.status}`);
+        console.warn(LOG_PREFIX, 'token exchange failed', { status: res.status, body: responseText });
+        throw new Error(responseText || `Token exchange failed: ${res.status}`);
     }
-    const data = (await res.json()) as {
+    let data: {
         id_token?: string;
         access_token?: string;
         refresh_token?: string;
         error?: string;
+        error_description?: string;
     };
-    if (data.error) throw new Error(data.error);
+    try {
+        data = JSON.parse(responseText) as typeof data;
+    } catch {
+        console.warn(LOG_PREFIX, 'token exchange: non-JSON body', responseText.slice(0, 200));
+        throw new Error(responseText || 'Invalid token response');
+    }
+    if (data.error) {
+        const msg = data.error_description || data.error;
+        console.warn(LOG_PREFIX, 'token response error', data);
+        throw new Error(msg);
+    }
     if (!data.id_token) throw new Error('No id_token in response');
     return {
         id_token: data.id_token,
@@ -159,21 +202,34 @@ export async function refreshHostedUIToken(
         client_id: ClientId,
         refresh_token: refreshToken,
     });
+    console.log(LOG_PREFIX, 'refresh token POST', tokenUrl);
     const res = await fetch(tokenUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
     });
+    const refreshText = await res.text();
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Token refresh failed: ${res.status}`);
+        console.warn(LOG_PREFIX, 'token refresh failed', { status: res.status, body: refreshText });
+        throw new Error(refreshText || `Token refresh failed: ${res.status}`);
     }
-    const data = (await res.json()) as {
+    let data: {
         id_token?: string;
         refresh_token?: string;
         error?: string;
+        error_description?: string;
     };
-    if (data.error) throw new Error(data.error);
+    try {
+        data = JSON.parse(refreshText) as typeof data;
+    } catch {
+        console.warn(LOG_PREFIX, 'refresh: non-JSON body', refreshText.slice(0, 200));
+        throw new Error(refreshText || 'Invalid refresh response');
+    }
+    if (data.error) {
+        const msg = data.error_description || data.error;
+        console.warn(LOG_PREFIX, 'refresh response error', data);
+        throw new Error(msg);
+    }
     if (!data.id_token) throw new Error('No id_token in refresh response');
     return {
         id_token: data.id_token,
@@ -195,37 +251,84 @@ export async function signInWithCognitoHostedUI(
     }
 
     const redirectUri = getRedirectUri();
+    const scope = getOAuthScope();
+    console.log(LOG_PREFIX, 'starting sign-in', {
+        provider,
+        redirectUri,
+        scope,
+        oauthHost: oauthHostForLog(OAuthDomain),
+        clientIdPrefix: `${ClientId.slice(0, 6)}…`,
+    });
+
     const { codeVerifier, codeChallenge } = await generatePKCE();
     const authUrl = buildAuthorizeUrl(provider, redirectUri, codeChallenge);
+    console.log(LOG_PREFIX, 'opening authorize URL', authUrl);
 
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri, {
         preferEphemeralSession: true,
     });
 
+    console.log(LOG_PREFIX, 'auth session result', { type: result.type, hasUrl: 'url' in result && !!result.url });
+
     if (result.type !== 'success' || !result.url) {
         if (result.type === 'cancel' || result.type === 'dismiss') {
+            console.log(LOG_PREFIX, 'user cancelled or dismissed');
             throw new Error('Sign-in was cancelled');
         }
+        console.warn(LOG_PREFIX, 'unexpected session result', result);
         throw new Error('Sign-in failed');
     }
 
     const url = new URL(result.url);
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
+    let errorDescription = url.searchParams.get('error_description');
+    if (errorDescription) {
+        try {
+            errorDescription = decodeURIComponent(errorDescription.replace(/\+/g, ' '));
+        } catch {
+            /* keep raw */
+        }
+    }
     if (error) {
-        const desc = url.searchParams.get('error_description') || error;
+        console.warn(LOG_PREFIX, 'redirect error params', {
+            error,
+            error_description: errorDescription,
+            fullRedirect: result.url.split('?')[0],
+        });
+        const desc = errorDescription || error;
+        if (error === 'invalid_scope') {
+            console.warn(
+                LOG_PREFIX,
+                'invalid_scope: enable the same scopes on your Cognito app client (App integration → App client → Hosted UI), or set EXPO_PUBLIC_COGNITO_OAUTH_SCOPES to a subset (e.g. openid).'
+            );
+        }
         throw new Error(desc);
     }
-    if (!code) throw new Error('No authorization code in redirect');
+    if (!code) {
+        console.warn(LOG_PREFIX, 'redirect missing code', result.url.slice(0, 120));
+        throw new Error('No authorization code in redirect');
+    }
 
+    console.log(LOG_PREFIX, 'exchanging code for tokens');
     const tokens = await exchangeCodeForTokens(code, redirectUri, codeVerifier);
     const payload = decodeJwtPayload(tokens.id_token);
     const sub = (payload.sub as string) || '';
-    const email = (payload.email as string) || (payload['cognito:username'] as string) || undefined;
+    const jwtEmail = typeof payload.email === 'string' ? payload.email.trim() : '';
+    // Do not use cognito:username as email — for Apple/Google it is an opaque id (e.g. signinwithapple_…).
+    const email = jwtEmail.includes('@') ? jwtEmail : undefined;
     const givenName = payload.given_name as string | undefined;
     const familyName = payload.family_name as string | undefined;
     const nameClaim = payload.name as string | undefined;
     const name = nameClaim || [givenName, familyName].filter(Boolean).join(' ') || undefined;
+
+    console.log(LOG_PREFIX, 'sign-in success', {
+        sub: sub ? `${sub.slice(0, 8)}…` : '(empty)',
+        hasEmail: !!email,
+        hasOpaqueUsername: !!(payload['cognito:username'] && !email),
+        hasName: !!name,
+        hasRefreshToken: !!tokens.refresh_token,
+    });
 
     return {
         idToken: tokens.id_token,

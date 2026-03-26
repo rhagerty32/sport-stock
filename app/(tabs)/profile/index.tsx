@@ -12,6 +12,7 @@ import { fetchStock, stocksKeys } from '@/lib/stocks-api';
 import { usePortfolio } from '@/lib/portfolio-api';
 import { useTransactions } from '@/lib/transactions-api';
 import { useWallet } from '@/lib/wallet-api';
+import { getProfileHeaderDisplay } from '@/lib/user-display';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useStockStore } from '@/stores/stockStore';
@@ -169,6 +170,8 @@ export default function ProfileScreen() {
         return `${sign}${percentage.toFixed(2)}%`;
     };
 
+    const profileHeader = useMemo(() => getProfileHeaderDisplay(authUser), [authUser]);
+
     const accountActions = [
         { title: 'Buy Gold Coins', icon: 'add-circle-outline', color: Color.green, action: () => setPurchaseFanCoinsBottomSheetOpen(true) },
         { title: 'How It Works', icon: 'information-circle-outline', color: Color.green, action: () => setWalletSystemBottomSheetOpen(true) },
@@ -215,22 +218,22 @@ export default function ProfileScreen() {
                                         style={styles.profilePhotoImage}
                                     />
                                 ) : (
-                                    <Text style={styles.profileInitials}>
-                                        {(authUser?.firstName && authUser?.lastName)
-                                            ? `${authUser.firstName[0]}${authUser.lastName[0]}`
-                                            : (authUser?.email?.[0] ?? 'U')}
-                                    </Text>
+                                    <Text style={styles.profileInitials}>{profileHeader.avatarInitials}</Text>
                                 )}
                             </TouchableOpacity>
                             <View style={styles.profileInfo}>
                                 <Text style={[styles.profileName, { color: Color.baseText }]}>
-                                    {authUser?.firstName && authUser?.lastName
-                                        ? `${authUser.firstName} ${authUser.lastName}`
-                                        : (authUser?.email ?? 'User')}
+                                    {profileHeader.title}
                                 </Text>
-                                <Text style={[styles.profileEmail, { color: Color.subText }]}>
-                                    {authUser?.email ?? ''}
-                                </Text>
+                                {profileHeader.subtitle ? (
+                                    <Text
+                                        style={[styles.profileEmail, { color: Color.subText }]}
+                                        numberOfLines={2}
+                                        selectable
+                                    >
+                                        {profileHeader.subtitle}
+                                    </Text>
+                                ) : null}
                             </View>
                         </View>
                     ) : (

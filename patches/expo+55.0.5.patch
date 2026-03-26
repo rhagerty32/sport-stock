@@ -1,0 +1,118 @@
+diff --git a/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.h b/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.h
+index 2daec5d..124078e 100644
+--- a/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.h
++++ b/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.h
+@@ -8,6 +8,7 @@
+ NS_ASSUME_NONNULL_BEGIN
+ 
+ @class EXReactDelegate;
++@class RCTDevMenuConfiguration;
+ 
+ NS_SWIFT_NAME(ExpoReactRootViewFactory)
+ @interface EXReactRootViewFactory : RCTRootViewFactory
+diff --git a/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.mm b/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.mm
+index 6fecc8d..77aa7b3 100644
+--- a/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.mm
++++ b/node_modules/expo/ios/AppDelegates/EXReactRootViewFactory.mm
+@@ -4,6 +4,7 @@
+ #import <Expo/RCTAppDelegateUmbrella.h>
+ #import <Expo/Swift.h>
+ #import <React/RCTDevMenu.h>
++#import <objc/message.h>
+ 
+ // When `use_frameworks!` is used, the generated Swift header is inside ExpoModulesCore module.
+ // Otherwise, it's available only locally with double-quoted imports.
+@@ -19,6 +20,43 @@
+ 
+ @end
+ 
++static UIView *EXCallRootViewFactorySuper(
++  EXReactRootViewFactory *selfFactory,
++  NSString *moduleName,
++  NSDictionary *initialProperties,
++  NSDictionary *launchOptions,
++  RCTDevMenuConfiguration *devMenuConfiguration
++) {
++  struct objc_super superInfo = {
++    .receiver = selfFactory,
++    .super_class = [RCTRootViewFactory class],
++  };
++
++  SEL selectorWithDevMenu = NSSelectorFromString(@"viewWithModuleName:initialProperties:launchOptions:devMenuConfiguration:");
++  if ([RCTRootViewFactory instancesRespondToSelector:selectorWithDevMenu]) {
++    typedef UIView *(*SuperMsgSendWithDevMenu)(
++      struct objc_super *,
++      SEL,
++      NSString *,
++      NSDictionary *,
++      NSDictionary *,
++      RCTDevMenuConfiguration *
++    );
++    return ((SuperMsgSendWithDevMenu)objc_msgSendSuper)(
++      &superInfo,
++      selectorWithDevMenu,
++      moduleName,
++      initialProperties,
++      launchOptions,
++      devMenuConfiguration
++    );
++  }
++
++  SEL selector = @selector(viewWithModuleName:initialProperties:launchOptions:);
++  typedef UIView *(*SuperMsgSend)(struct objc_super *, SEL, NSString *, NSDictionary *, NSDictionary *);
++  return ((SuperMsgSend)objc_msgSendSuper)(&superInfo, selector, moduleName, initialProperties, launchOptions);
++}
++
+ @implementation EXReactRootViewFactory
+ 
+ - (instancetype)initWithReactDelegate:(nullable EXReactDelegate *)reactDelegate
+@@ -40,7 +78,7 @@
+   if (self.reactDelegate != nil) {
+     return [self.reactDelegate createReactRootViewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions];
+   }
+-  return [super viewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions devMenuConfiguration:devMenuConfiguration];
++  return EXCallRootViewFactorySuper(self, moduleName, initialProperties, launchOptions, devMenuConfiguration);
+ }
+ 
+ - (UIView *)superViewWithModuleName:(NSString *)moduleName
+@@ -51,8 +89,7 @@
+   if (devMenuConfiguration == nil) {
+     devMenuConfiguration = [RCTDevMenuConfiguration defaultConfiguration];
+   }
+-
+-  return [super viewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions devMenuConfiguration:devMenuConfiguration];
++  return EXCallRootViewFactorySuper(self, moduleName, initialProperties, launchOptions, devMenuConfiguration);
+ }
+ #else
+ - (UIView *)viewWithModuleName:(NSString *)moduleName
+diff --git a/node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift b/node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift
+index 925e0f9..5ae6b4f 100644
+--- a/node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift
++++ b/node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift
+@@ -110,7 +110,6 @@ public class ExpoReactNativeFactory: ExpoReactNativeFactoryObjC, ExpoReactNative
+ 
+     let rootView: UIView
+     if let factory = self.rootViewFactory as? ExpoReactRootViewFactory {
+-      // RCTDevMenuConfiguration is only available in react-native 0.83+
+ #if os(iOS) || os(tvOS)
+       // When calling `recreateRootViewWithBundleURL:` from `EXReactRootViewFactory`,
+       // we don't want to loop the ReactDelegate again. Otherwise, it will be an infinite loop.
+@@ -118,7 +117,7 @@ public class ExpoReactNativeFactory: ExpoReactNativeFactoryObjC, ExpoReactNative
+         withModuleName: moduleName ?? defaultModuleName,
+         initialProperties: initialProps,
+         launchOptions: launchOptions ?? [:],
+-        devMenuConfiguration: self.devMenuConfiguration
++        devMenuConfiguration: nil
+       )
+ #else
+       rootView = factory.superView(
+@@ -132,8 +131,7 @@ public class ExpoReactNativeFactory: ExpoReactNativeFactoryObjC, ExpoReactNative
+       rootView = rootViewFactory.view(
+         withModuleName: moduleName ?? defaultModuleName,
+         initialProperties: initialProps,
+-        launchOptions: launchOptions,
+-        devMenuConfiguration: self.devMenuConfiguration
++        launchOptions: launchOptions
+       )
+ #else
+       rootView = rootViewFactory.view(

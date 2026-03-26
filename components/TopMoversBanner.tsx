@@ -165,7 +165,27 @@ export function TopMoversBanner({ onStockPress, gainers = [], losers = [], loadi
     }, [loading, allMovers.length]);
 
     if (loading) {
-        return null;
+        return (
+            <View style={styles.container} pointerEvents="none">
+                <View style={styles.scrollContainer}>
+                    <View style={[styles.scrollContent, { flexDirection: 'row' }]}>
+                        {Array.from({ length: 3 }).map((_, index) => (
+                            <View key={`skeleton-${index}`} style={styles.cardWrapper}>
+                                <View style={styles.moverCard}>
+                                    <GlassCard style={styles.card} padding={12} standard={true}>
+                                        <View style={styles.skeletonRow}>
+                                            <View style={[styles.skeletonPill, { backgroundColor: Color.border }]} />
+                                            <View style={[styles.skeletonLine, { backgroundColor: Color.border }]} />
+                                            <View style={[styles.skeletonLineShort, { backgroundColor: Color.border }]} />
+                                        </View>
+                                    </GlassCard>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            </View>
+        );
     }
     if (allMovers.length === 0) {
         return null;
@@ -255,5 +275,28 @@ const styles = StyleSheet.create({
     change: {
         fontSize: 14,
         fontWeight: '600',
+    },
+    skeletonRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    skeletonPill: {
+        width: 40,
+        height: 20,
+        borderRadius: 10,
+        opacity: 0.45,
+    },
+    skeletonLine: {
+        width: 42,
+        height: 14,
+        borderRadius: 7,
+        opacity: 0.45,
+    },
+    skeletonLineShort: {
+        width: 32,
+        height: 14,
+        borderRadius: 7,
+        opacity: 0.45,
     },
 });

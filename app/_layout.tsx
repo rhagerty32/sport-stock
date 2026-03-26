@@ -16,6 +16,7 @@ import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { prefetchStockSheetPriceHistory } from '@/lib/stocks-api';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
@@ -155,6 +156,7 @@ export default function RootLayout() {
 
     useEffect(() => {
         if (activeStockId) {
+            void prefetchStockSheetPriceHistory(queryClient, activeStockId);
             const timer = setTimeout(() => {
                 stockBottomSheetRef.current?.present();
             }, 100);
@@ -248,10 +250,11 @@ export default function RootLayout() {
                                 await saveHostedUIRefreshToken(tokens.refresh_token);
                             }
                             const payload = decodeJwtPayload(tokens.id_token);
+                            const jwtEmail = typeof payload.email === 'string' ? payload.email.trim() : '';
                             session = {
                                 idToken: tokens.id_token,
                                 sub: (payload.sub as string) || '',
-                                email: (payload.email as string) || (payload['cognito:username'] as string),
+                                email: jwtEmail.includes('@') ? jwtEmail : undefined,
                             };
                         } catch {
                             useAuthStore.getState().signOut();

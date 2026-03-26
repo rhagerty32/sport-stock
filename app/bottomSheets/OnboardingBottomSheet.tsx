@@ -1075,7 +1075,13 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
     const priceHistoryQueries = useQueries({
         queries: topMoversSlice.map(({ stock }) => ({
             queryKey: stocksKeys.priceHistory(stock.id, '1W', 7),
-            queryFn: () => fetchPriceHistory(stock.id, '1W', 7),
+            queryFn: async () => {
+                try {
+                    return await fetchPriceHistory(stock.id, '1W', 7);
+                } catch {
+                    return [];
+                }
+            },
         })),
     });
 

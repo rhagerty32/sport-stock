@@ -97,14 +97,21 @@ export function normalizeWallet(api: any): Wallet {
     };
 }
 
-// PriceHistoryPoint from API: stockId, timestamp, price, change, changePercentage
+// PriceHistoryPoint from API: stockId, timestamp, price, change, changePercentage (camelCase)
 export function normalizePriceHistoryPoint(api: any): PriceHistory {
+    const rawId = api?.stockId ?? api?.stockID;
+    let stockID: number | string = 0;
+    if (typeof rawId === 'string' && rawId !== '') {
+        stockID = rawId;
+    } else if (typeof rawId === 'number' && !Number.isNaN(rawId)) {
+        stockID = rawId;
+    }
     return {
-        stockID: api.stockId ?? api.stockID ?? 0,
-        timestamp: parseDate(api.timestamp),
-        price: typeof api.price === 'number' ? api.price : 0,
-        change: typeof api.change === 'number' ? api.change : 0,
-        changePercentage: typeof api.changePercentage === 'number' ? api.changePercentage : 0,
+        stockID,
+        timestamp: parseDate(api?.timestamp),
+        price: typeof api?.price === 'number' ? api.price : 0,
+        change: typeof api?.change === 'number' ? api.change : 0,
+        changePercentage: typeof api?.changePercentage === 'number' ? api.changePercentage : 0,
     };
 }
 

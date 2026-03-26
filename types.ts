@@ -108,7 +108,8 @@ export type Position = {
 };
 
 export type PriceHistory = {
-    stockID: number;
+    /** API may send numeric id or string slug (e.g. ncaab_alabama). */
+    stockID: number | string;
     timestamp: Date;
     price: number;
     change: number;

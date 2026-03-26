@@ -4,7 +4,7 @@ import { brightenColor, isDarkColor, useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useLeague } from '@/lib/leagues-api';
 import { getSportKey } from '@/lib/odds-api';
-import { usePriceHistory, useStock } from '@/lib/stocks-api';
+import { STOCK_SHEET_PRICE_HISTORY, usePriceHistory, useStock } from '@/lib/stocks-api';
 import { useTransactions } from '@/lib/transactions-api';
 import { usePortfolio } from '@/lib/portfolio-api';
 import { useStockStore } from '@/stores/stockStore';
@@ -20,6 +20,8 @@ import { PredictionMarkets } from './PredictionMarkets';
 import { TradeHistory } from './TradeHistory';
 import { formatCurrency, formatPercentage } from './utils';
 import { YourPosition } from './YourPosition';
+
+const EMPTY_PRICE_HISTORY: PriceHistory[] = [];
 
 type StockBottomSheetProps = {
     stockBottomSheetRef: React.RefObject<BottomSheetModal>;
@@ -37,7 +39,15 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const { data: league } = useLeague(
         fetchedStock?.leagueID ?? null
     );
-    const { data: stockPriceHistory = [] } = usePriceHistory(activeStockId, undefined, 100);
+    const priceHistoryQuery = usePriceHistory(
+        activeStockId,
+        STOCK_SHEET_PRICE_HISTORY.period,
+        STOCK_SHEET_PRICE_HISTORY.limit
+    );
+    const stockPriceHistory = priceHistoryQuery.data ?? EMPTY_PRICE_HISTORY;
+    const priceHistoryInitialPending =
+        priceHistoryQuery.isPending ||
+        (priceHistoryQuery.isFetching && priceHistoryQuery.data === undefined);
     const { data: txData } = useTransactions(
         activeStockId ? { stockID: activeStockId, limit: 50 } : undefined
     );
@@ -121,9 +131,32 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const isDarkBackground = isDarkColor(primaryColor);
     const brightenedPrimaryColor = brightenColor(primaryColor);
 
+    const onSheetChange = useCallback((index: number) => {
+        if (index < 0 || !activeStockId || !__DEV__) return;
+        // Bottom sheet onChange runs as soon as the sheet opens — often before the price-history request finishes.
+        // Empty `data` here is normal; use the effect below for a post-load snapshot (or rely on prefetch in _layout).
+        console.log('[StockBottomSheet] sheet visible', {
+            stockId: activeStockId,
+            priceHistoryPending: priceHistoryQuery.isPending,
+            pointCountSoFar: stockPriceHistory.length,
+        });
+    }, [activeStockId, stockPriceHistory.length, priceHistoryQuery.isPending]);
+
+    useEffect(() => {
+        if (!__DEV__ || !activeStockId) return;
+        if (priceHistoryQuery.dataUpdatedAt === 0) return;
+        const n = Array.isArray(priceHistoryQuery.data) ? priceHistoryQuery.data.length : 0;
+        console.log('[StockBottomSheet] price history loaded', {
+            stockId: activeStockId,
+            pointCount: n,
+            dataUpdatedAt: priceHistoryQuery.dataUpdatedAt,
+        });
+    }, [activeStockId, priceHistoryQuery.data, priceHistoryQuery.dataUpdatedAt]);
+
     return (
         <BottomSheetModal
             ref={presentWhenReady}
+            onChange={onSheetChange}
             onDismiss={() => setActiveStockId(null)}
             enableDynamicSizing={true}
             enablePanDownToClose={true}
@@ -173,9 +206,11 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                                 stockId={effectiveStock!.id}
                                 color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor}
                                 backgroundColor={isDark ? '#1A1D21' : '#FFFFFF'}
-                                priceData={stockPriceHistory}
+                                priceData={priceHistoryQuery.data ?? EMPTY_PRICE_HISTORY}
+                                isInitialLoadPending={priceHistoryInitialPending}
+                                defaultTimePeriod="ALL"
                             />
-                            {stockPriceHistory.length === 0 && (
+                            {stockPriceHistory.length === 0 && !priceHistoryInitialPending && (
                                 <Text style={[styles.chartNote, { color: Color.subText }]}>
                                     No price history available yet for this stock.
                                 </Text>

@@ -1,7 +1,7 @@
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
-import { fetchCurrentUser, registerUser } from '@/lib/auth-api';
+import { buildHostedUIRegisterBody, fetchCurrentUser, registerUser } from '@/lib/auth-api';
 import {
     confirmPassword,
     confirmSignUp,
@@ -146,30 +146,34 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
         setSocialLoading(provider === 'SignInWithApple' ? 'apple' : 'google');
         try {
             const session = await signInWithCognitoHostedUI(provider);
+
+            let user;
             try {
-                await fetchCurrentUser(session.idToken);
+                user = await fetchCurrentUser(session.idToken);
             } catch {
                 try {
-                    await registerUser(session.idToken, {
-                        user_id: session.sub,
-                        name: session.name || session.email || 'User',
-                        phone_number: 'N/A',
-                        email: session.email || '',
-                    });
+                    await registerUser(session.idToken, buildHostedUIRegisterBody(session));
                 } catch {
-                    // User may already exist in backend; continue to sign in
+                    // e.g. user already registered — load profile instead
                 }
+                user = await fetchCurrentUser(session.idToken);
             }
+
+            if (!user?.id) {
+                throw new Error(
+                    'Your sign-in worked, but we could not load your SportStock account. Try again or sign up with email.'
+                );
+            }
+
             if (session.refreshToken) {
                 await saveHostedUIRefreshToken(session.refreshToken);
             }
             authSignIn({
-                user: { id: session.sub, email: session.email },
+                user,
                 idToken: session.idToken,
             });
             lightImpact();
             closeModal();
-            fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
         } catch (err: any) {
             setError(err?.message || 'Sign-in failed');
         } finally {

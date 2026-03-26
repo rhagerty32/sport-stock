@@ -9,6 +9,7 @@ export type AuthUser = {
     email?: string;
     firstName?: string;
     lastName?: string;
+    phoneNumber?: string;
 };
 
 type AuthState = {
@@ -17,6 +18,8 @@ type AuthState = {
     idToken: string | null;
     signIn: (payload: { user: AuthUser; idToken: string }) => void;
     setUser: (user: AuthUser) => void;
+    /** Update JWT after refresh without re-fetching profile. */
+    updateIdToken: (idToken: string) => void;
     signOut: () => void;
     requireAuth: (onSuccess?: () => void) => boolean;
     getToken: () => string | null;
@@ -39,6 +42,10 @@ export const useAuthStore = create<AuthState>()(
 
             setUser: (user) => {
                 set({ user });
+            },
+
+            updateIdToken: (idToken) => {
+                set({ idToken });
             },
 
             signOut: () => {

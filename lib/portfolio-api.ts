@@ -6,9 +6,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 
 export const portfolioKeys = {
-    all: ['portfolio'] as const,
-    positions: (params?: Record<string, unknown>) => [...portfolioKeys.all, 'positions', params] as const,
-    position: (stockId: string | number) => [...portfolioKeys.all, 'position', stockId] as const,
+    /** Per-user cache — avoids showing the previous account's portfolio after sign-in. */
+    root: (userId: string | undefined) => ['portfolio', userId ?? ''] as const,
+    positions: (userId: string | undefined, params?: Record<string, unknown>) =>
+        [...portfolioKeys.root(userId), 'positions', params] as const,
+    position: (userId: string | undefined, stockId: string | number) =>
+        [...portfolioKeys.root(userId), 'position', stockId] as const,
 };
 
 export async function fetchPortfolio(): Promise<Portfolio> {
@@ -38,7 +41,7 @@ export async function fetchPositionByStockId(stockId: string | number): Promise<
 export function usePortfolio() {
     const userId = useAuthStore((s) => s.user?.id);
     return useQuery({
-        queryKey: portfolioKeys.all,
+        queryKey: portfolioKeys.root(userId),
         queryFn: fetchPortfolio,
         enabled: !!userId,
         staleTime: 0,
@@ -50,7 +53,7 @@ export function usePortfolio() {
 export function usePositions(params?: { sortBy?: string; limit?: number; offset?: number }) {
     const userId = useAuthStore((s) => s.user?.id);
     return useQuery({
-        queryKey: portfolioKeys.positions(params),
+        queryKey: portfolioKeys.positions(userId, params),
         queryFn: () => fetchPositions(params),
         enabled: !!userId,
     });
@@ -59,7 +62,8 @@ export function usePositions(params?: { sortBy?: string; limit?: number; offset?
 export function usePositionByStockId(stockId: string | number | null) {
     const userId = useAuthStore((s) => s.user?.id);
     return useQuery({
-        queryKey: stockId != null ? portfolioKeys.position(stockId) : ['portfolio', 'position', 'disabled'],
+        queryKey:
+            stockId != null ? portfolioKeys.position(userId, stockId) : ['portfolio', 'position', 'disabled'],
         queryFn: () => fetchPositionByStockId(stockId!),
         enabled: !!userId && stockId != null,
     });

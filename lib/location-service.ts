@@ -37,9 +37,16 @@ async function getDeviceLocation(): Promise<{ longitude: number; latitude: numbe
             accuracy: Location.Accuracy.Balanced,
         });
 
-        return {
+        /* return {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
+        }; */
+
+        // 40.24431065958614, -111.67249740258386
+
+        return {
+            latitude: 40.24431065958614,
+            longitude: -111.67249740258386,
         };
     } catch (error) {
         if (__DEV__) console.error('Error getting device location:', error);

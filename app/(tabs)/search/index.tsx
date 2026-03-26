@@ -8,7 +8,8 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { useLeagues } from '@/lib/leagues-api';
 import { useSearchResults } from '@/lib/search-api';
 import { useStockStore } from '@/stores/stockStore';
-import type { League, Stock } from '@/types';
+import type { Stock } from '@/types';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -27,13 +28,22 @@ export default function SearchScreen() {
         return league ? String(league.id) : undefined;
     }, [selectedLeague, leaguesList]);
 
-    const { data: searchResults, isLoading: loading } = useSearchResults(
+    const {
+        data: searchResults,
+        isLoading: loading,
+        isFetching,
+        isError,
+        refetch,
+    } = useSearchResults(
         searchQuery,
         leagueIdForFilter,
         60
     );
     const stocks = searchResults?.stocks ?? [];
     const total = searchResults?.total ?? 0;
+    const showLoading = loading || (isFetching && !searchResults);
+    const hasQuery = searchQuery.trim() !== '';
+    const hasStocks = stocks.length > 0;
 
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -70,8 +80,15 @@ export default function SearchScreen() {
         );
     };
 
-    const showEmpty = !loading && searchQuery.trim() !== '' && total === 0;
+    const showErrorState = isError && !showLoading && !isFetching && !hasStocks;
+    const showEmpty = !showLoading && !showErrorState && hasQuery && total === 0;
     const leagueNames = useMemo(() => ['All', ...leaguesList.map((l) => l.name)], [leaguesList]);
+
+    useFocusEffect(
+        useCallback(() => {
+            refetch();
+        }, [refetch])
+    );
 
     return (
         <ThemedView style={styles.container}>
@@ -128,18 +145,28 @@ export default function SearchScreen() {
 
                 <View style={styles.resultsContainer}>
                     <Text style={[styles.resultsText, { color: Color.subText }]}>
-                        {loading
-                            ? (searchQuery.trim() ? 'Searching…' : 'Loading teams…')
-                            : searchQuery.trim()
+                        {showLoading
+                            ? (hasQuery ? 'Searching…' : 'Loading teams…')
+                            : showErrorState
+                                ? 'Could not load teams. Pull to refresh.'
+                            : hasQuery
                                 ? `${total} teams found`
                                 : `${total} teams`}
                     </Text>
                 </View>
 
-                {loading ? (
+                {showLoading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={Color.green} />
                     </View>
+                ) : showErrorState ? (
+                    <EmptyState
+                        icon="alert-circle-outline"
+                        title="Could not load teams"
+                        subtitle="Tap to try again."
+                        actionLabel="Retry"
+                        onAction={refetch}
+                    />
                 ) : showEmpty ? (
                     <EmptyState
                         icon="search-outline"

@@ -1,33 +1,35 @@
 import { AppHeader } from '@/components/AppHeader';
 import Chart from '@/components/chart';
 import { EmptyState } from '@/components/EmptyState';
+import { PortfolioPreviewMarquee, type PortfolioPreviewCard } from '@/components/PortfolioPreviewMarquee';
 import { ThemedView } from '@/components/themed-view';
 import { TopMoversBanner } from '@/components/TopMoversBanner';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useFollowedStocksNotOwned } from '@/lib/follows-api';
+import { useLeagues } from '@/lib/leagues-api';
+import { usePortfolio } from '@/lib/portfolio-api';
 import {
+    fetchStocks,
     useHighestVolume,
     useOnTheRise,
     usePriceHistory,
     useTopMovers,
     useUpsetAlert,
 } from '@/lib/stocks-api';
-import { useFollowedStocksNotOwned } from '@/lib/follows-api';
-import { useLeagues } from '@/lib/leagues-api';
-import { usePortfolio } from '@/lib/portfolio-api';
 import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
-import type { League, PriceHistory, Stock } from '@/types';
+import type { League, Stock } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useSharedValue, withSpring } from 'react-native-reanimated';
 
 type SortType = 'percentage' | 'value' | null;
 
@@ -57,7 +59,6 @@ export default function HomeScreen() {
         setActivePosition,
         setPositionDetailBottomSheetOpen,
         setPurchaseFanCoinsBottomSheetOpen,
-        setLoginBottomSheetOpen,
         followedStockIds,
     } = useStockStore();
     const sortDropdownRef = useRef<View>(null);
@@ -155,6 +156,29 @@ export default function HomeScreen() {
         }
     };
 
+    const handlePortfolioMarqueePress = useCallback(
+        async (card: PortfolioPreviewCard) => {
+            lightImpact();
+            if (card.stockId != null) {
+                setActiveStockId(card.stockId);
+                return;
+            }
+            try {
+                const { stocks } = await fetchStocks({ search: card.ticker, limit: 24 });
+                const match = stocks.find(
+                    (s) => s.ticker.toUpperCase() === card.ticker.toUpperCase()
+                );
+                if (match) {
+                    setActiveStock(match);
+                    setActiveStockId(match.id);
+                }
+            } catch {
+                /* ignore */
+            }
+        },
+        [lightImpact, setActiveStockId, setActiveStock]
+    );
+
     const positions = portfolio?.positions ?? [];
     const sortedPositions = useMemo(() => {
         const list = [...positions];
@@ -212,6 +236,31 @@ export default function HomeScreen() {
             return league ? { id: league.id, name: league.name, image: leagueImages[league.name] ?? null } : null;
         }).filter((b): b is { id: number; name: string; image: any } => b != null && b.image != null);
     }, [leaguesList]);
+
+    const stocksByTicker = useMemo(() => {
+        const m = new Map<string, Stock>();
+        for (const s of allStocksFromSections) {
+            m.set(s.ticker.toUpperCase(), s);
+        }
+        return m;
+    }, [allStocksFromSections]);
+
+    const loggedOutPortfolioCards = useMemo<PortfolioPreviewCard[]>(() => {
+        const defs: Omit<PortfolioPreviewCard, 'stockId'>[] = [
+            { id: 'kc', ticker: 'KC', changePercent: -67.69, backgroundColor: '#D70000' },
+            { id: 'phi', ticker: 'PHI', changePercent: 69.67, backgroundColor: '#205A0A' },
+            { id: 'bama', ticker: 'BAMA', changePercent: -23.40, backgroundColor: '#3D020A' },
+            { id: 'jac', ticker: 'JAC', changePercent: -42.07, backgroundColor: '#2F8FCD' },
+            { id: 'mia', ticker: 'MIA', changePercent: 32.18, backgroundColor: '#067A73' },
+        ];
+        return defs.map((d) => {
+            const stock = stocksByTicker.get(d.ticker.toUpperCase());
+            return {
+                ...d,
+                ...(stock ? { stockId: stock.id } : {}),
+            };
+        });
+    }, [stocksByTicker]);
 
     const handleSortSelect = (type: SortType) => {
         setSortType(type);
@@ -321,6 +370,7 @@ export default function HomeScreen() {
                                         color={Color.green}
                                         priceData={chartData}
                                         hideTimePeriodSelector
+                                        defaultTimePeriod="1M"
                                     />
                                 )}
                             </View>
@@ -330,9 +380,9 @@ export default function HomeScreen() {
 
                 {/* My Portfolio: full content when logged in, CTA when logged out */}
                 <View style={styles.section}>
-                    <GlassCard style={styles.investmentsCard} padding={0}>
-                        <View style={styles.investmentsContent}>
-                            {isAuthenticated ? (
+                    {isAuthenticated ? (
+                        <GlassCard style={styles.investmentsCard} padding={0}>
+                            <View style={styles.investmentsContent}>
                                 <>
                                     <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
                                         My Portfolio
@@ -417,104 +467,103 @@ export default function HomeScreen() {
                                             onAction={() => router.push('/(tabs)/search')}
                                         />
                                     ) : (
-                                    <>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        pagingEnabled
-                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                        snapToAlignment="center"
-                                        decelerationRate="fast"
-                                        onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
-                                        style={styles.stockScrollView}
-                                        contentContainerStyle={styles.stockScrollContent}
-                                        scrollEventThrottle={16}
-                                        nestedScrollEnabled={true}
-                                    >
-                                        {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
-                                            <View key={pageIndex} style={styles.stockPage}>
-                                                {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
-                                                    <TouchableOpacity
-                                                        key={position.stock.id}
-                                                        style={styles.stockItem}
-                                                        onPress={() => {
-                                                            mediumImpact();
-                                                            setActivePosition(position);
-                                                            setPositionDetailBottomSheetOpen(true);
-                                                        }}
-                                                        onPressIn={() => {}}
-                                                        activeOpacity={0.7}
-                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                        delayPressIn={0}
-                                                    >
-                                                        <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
-                                                            <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                                {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                            </Text>
-                                                        </View>
-                                                        <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                            {position.stock.name}
-                                                        </Text>
-                                                        <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                            {sortType === 'percentage' ? (
-                                                                <View style={styles.stockValueContent}>
-                                                                    <Ionicons
-                                                                        name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
-                                                                        size={14}
-                                                                        color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
-                                                                    />
-                                                                    <Text style={[
-                                                                        styles.stockValueText,
-                                                                        { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
-                                                                    ]}>
-                                                                        {formatPercentage(position.gainLossPercentage)}
+                                        <>
+                                            <ScrollView
+                                                horizontal
+                                                showsHorizontalScrollIndicator={false}
+                                                pagingEnabled
+                                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                                snapToAlignment="center"
+                                                decelerationRate="fast"
+                                                onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
+                                                style={styles.stockScrollView}
+                                                contentContainerStyle={styles.stockScrollContent}
+                                                scrollEventThrottle={16}
+                                                nestedScrollEnabled={true}
+                                            >
+                                                {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
+                                                    <View key={pageIndex} style={styles.stockPage}>
+                                                        {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
+                                                            <TouchableOpacity
+                                                                key={position.stock.id}
+                                                                style={styles.stockItem}
+                                                                onPress={() => {
+                                                                    mediumImpact();
+                                                                    setActivePosition(position);
+                                                                    setPositionDetailBottomSheetOpen(true);
+                                                                }}
+                                                                onPressIn={() => { }}
+                                                                activeOpacity={0.7}
+                                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                                delayPressIn={0}
+                                                            >
+                                                                <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
+                                                                    <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                        {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                                                                     </Text>
                                                                 </View>
-                                                            ) : (
-                                                                <Text style={[
-                                                                    styles.stockValueText,
-                                                                    { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
-                                                                ]}>
-                                                                    {formatCurrency(position.currentValue)}
+                                                                <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                                    {position.stock.name}
                                                                 </Text>
-                                                            )}
-                                                        </View>
-                                                    </TouchableOpacity>
+                                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                                    {sortType === 'percentage' ? (
+                                                                        <View style={styles.stockValueContent}>
+                                                                            <Ionicons
+                                                                                name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
+                                                                                size={14}
+                                                                                color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
+                                                                            />
+                                                                            <Text style={[
+                                                                                styles.stockValueText,
+                                                                                { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
+                                                                            ]}>
+                                                                                {formatPercentage(position.gainLossPercentage)}
+                                                                            </Text>
+                                                                        </View>
+                                                                    ) : (
+                                                                        <Text style={[
+                                                                            styles.stockValueText,
+                                                                            { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
+                                                                        ]}>
+                                                                            {formatCurrency(position.currentValue)}
+                                                                        </Text>
+                                                                    )}
+                                                                </View>
+                                                            </TouchableOpacity>
+                                                        ))}
+                                                    </View>
+                                                ))}
+                                            </ScrollView>
+
+                                            <View style={styles.paginationDots}>
+                                                {Array.from({ length: pageCount }, (_, index) => (
+                                                    <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
                                                 ))}
                                             </View>
-                                        ))}
-                                    </ScrollView>
-
-                                    <View style={styles.paginationDots}>
-                                        {Array.from({ length: pageCount }, (_, index) => (
-                                            <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                        ))}
-                                    </View>
-                                    </>
+                                        </>
                                     )}
                                 </>
-                            ) : (
-                                <>
-                                    <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                        My Portfolio
-                                    </Text>
-                                    <Text style={[styles.portfolioCtaText, { color: Color.subText }]}>
-                                        Sign in to view your portfolio and track your teams.
-                                    </Text>
-                                    <TouchableOpacity
-                                        style={[styles.loginCtaButton, { backgroundColor: Color.green }]}
-                                        onPress={() => {
-                                            lightImpact();
-                                            setLoginBottomSheetOpen(true);
-                                        }}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={styles.loginCtaButtonText}>Log in</Text>
-                                    </TouchableOpacity>
-                                </>
-                            )}
-                        </View>
-                    </GlassCard>
+
+                            </View>
+                        </GlassCard>
+                    ) : (
+                        <>
+                            <PortfolioPreviewMarquee
+                                cards={loggedOutPortfolioCards}
+                                onCardPress={handlePortfolioMarqueePress}
+                            />
+                            <TouchableOpacity
+                                style={styles.buySportStocksButton}
+                                onPress={() => {
+                                    lightImpact();
+                                    router.push('/(tabs)/search');
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.buySportStocksButtonText}>Buy SportStocks</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
 
                 {/* Followed Stocks Section - when authenticated and has followed stocks or show empty */}
@@ -534,76 +583,76 @@ export default function HomeScreen() {
                                         onAction={() => router.push('/(tabs)/search')}
                                     />
                                 ) : (
-                                <>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    pagingEnabled
-                                    snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                    snapToAlignment="center"
-                                    decelerationRate="fast"
-                                    style={styles.stockScrollView}
-                                    contentContainerStyle={styles.stockScrollContent}
-                                    scrollEventThrottle={16}
-                                    nestedScrollEnabled={true}
-                                >
-                                    {Array.from({ length: Math.ceil(followedStocksSection.length / 3) }, (_, pageIndex) => (
-                                        <View key={pageIndex} style={styles.stockPage}>
-                                            {followedStocksSection.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
-                                                const priceChange = getPriceChange(stock.id);
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={stock.id}
-                                                        style={styles.stockItem}
-                                                        onPress={() => {
-                                                            handleStockPress(stock);
-                                                        }}
-                                                        onPressIn={() => {
-                                                            // Ensure touch is captured
-                                                        }}
-                                                        activeOpacity={0.7}
-                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                        delayPressIn={0}
-                                                    >
-                                                        <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
-                                                            <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                                {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                            </Text>
-                                                        </View>
-                                                        <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                            {stock.name}
-                                                        </Text>
-                                                        <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                            <View style={styles.stockValueContent}>
-                                                                <Ionicons
-                                                                    name={priceChange.percentage >= 0 ? 'trending-up' : 'trending-down'}
-                                                                    size={14}
-                                                                    color={priceChange.percentage >= 0 ? Color.green : Color.red}
-                                                                />
-                                                                <Text style={[
-                                                                    styles.stockValueText,
-                                                                    { color: priceChange.percentage >= 0 ? Color.green : Color.red }
-                                                                ]}>
-                                                                    {formatPercentage(priceChange.percentage)}
+                                    <>
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            pagingEnabled
+                                            snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                            snapToAlignment="center"
+                                            decelerationRate="fast"
+                                            style={styles.stockScrollView}
+                                            contentContainerStyle={styles.stockScrollContent}
+                                            scrollEventThrottle={16}
+                                            nestedScrollEnabled={true}
+                                        >
+                                            {Array.from({ length: Math.ceil(followedStocksSection.length / 3) }, (_, pageIndex) => (
+                                                <View key={pageIndex} style={styles.stockPage}>
+                                                    {followedStocksSection.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
+                                                        const priceChange = getPriceChange(stock.id);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={stock.id}
+                                                                style={styles.stockItem}
+                                                                onPress={() => {
+                                                                    handleStockPress(stock);
+                                                                }}
+                                                                onPressIn={() => {
+                                                                    // Ensure touch is captured
+                                                                }}
+                                                                activeOpacity={0.7}
+                                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                                delayPressIn={0}
+                                                            >
+                                                                <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
+                                                                    <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                        {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                                    </Text>
+                                                                </View>
+                                                                <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                                    {stock.name}
                                                                 </Text>
-                                                            </View>
-                                                        </View>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    ))}
-                                </ScrollView>
+                                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                                    <View style={styles.stockValueContent}>
+                                                                        <Ionicons
+                                                                            name={priceChange.percentage >= 0 ? 'trending-up' : 'trending-down'}
+                                                                            size={14}
+                                                                            color={priceChange.percentage >= 0 ? Color.green : Color.red}
+                                                                        />
+                                                                        <Text style={[
+                                                                            styles.stockValueText,
+                                                                            { color: priceChange.percentage >= 0 ? Color.green : Color.red }
+                                                                        ]}>
+                                                                            {formatPercentage(priceChange.percentage)}
+                                                                        </Text>
+                                                                    </View>
+                                                                </View>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                </View>
+                                            ))}
+                                        </ScrollView>
 
-                                {/* Pagination Dots */}
-                                {Math.ceil(followedStocksSection.length / 3) > 1 && (
-                                    <View style={styles.paginationDots}>
-                                        {Array.from({ length: Math.ceil(followedStocksSection.length / 3) }, (_, index) => (
-                                            <View key={index} style={[styles.paginationDot, { backgroundColor: index === 0 ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                        ))}
-                                    </View>
-                                )}
-                                </>
+                                        {/* Pagination Dots */}
+                                        {Math.ceil(followedStocksSection.length / 3) > 1 && (
+                                            <View style={styles.paginationDots}>
+                                                {Array.from({ length: Math.ceil(followedStocksSection.length / 3) }, (_, index) => (
+                                                    <View key={index} style={[styles.paginationDot, { backgroundColor: index === 0 ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                                ))}
+                                            </View>
+                                        )}
+                                    </>
                                 )}
                             </View>
                         </GlassCard>
@@ -651,62 +700,62 @@ export default function HomeScreen() {
                                 />
                             ) : (
                                 <>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handleHighestVolumePageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {highestVolumeStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
-                                            return (
-                                                <TouchableOpacity
-                                                    key={stock.id}
-                                                    style={styles.stockItem}
-                                                    onPress={() => {
-                                                        handleStockPress(stock);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                >
-                                                    <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
-                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                            {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                        {stock.name}
-                                                    </Text>
-                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                        <Text style={[
-                                                            styles.stockValueText,
-                                                            { color: Color.baseText }
-                                                        ]}>
-                                                            {formatVolume(stock.volume)}
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                ))}
-                            </ScrollView>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        pagingEnabled
+                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                        snapToAlignment="center"
+                                        decelerationRate="fast"
+                                        onScroll={(event) => handleHighestVolumePageChange(event.nativeEvent.contentOffset.x)}
+                                        style={styles.stockScrollView}
+                                        contentContainerStyle={styles.stockScrollContent}
+                                        scrollEventThrottle={16}
+                                        nestedScrollEnabled={true}
+                                    >
+                                        {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, pageIndex) => (
+                                            <View key={pageIndex} style={styles.stockPage}>
+                                                {highestVolumeStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((stock) => {
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={stock.id}
+                                                            style={styles.stockItem}
+                                                            onPress={() => {
+                                                                handleStockPress(stock);
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                        >
+                                                            <View style={[styles.stockIcon, { backgroundColor: stock.color }]}>
+                                                                <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                    {stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                                </Text>
+                                                            </View>
+                                                            <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                                {stock.name}
+                                                            </Text>
+                                                            <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                                <Text style={[
+                                                                    styles.stockValueText,
+                                                                    { color: Color.baseText }
+                                                                ]}>
+                                                                    {formatVolume(stock.volume)}
+                                                                </Text>
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        ))}
+                                    </ScrollView>
 
-                            {Math.ceil(highestVolumeStocks.length / 3) > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, index) => (
-                                        <View key={index} style={[styles.paginationDot, { backgroundColor: highestVolumePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                    ))}
-                                </View>
-                            )}
+                                    {Math.ceil(highestVolumeStocks.length / 3) > 1 && (
+                                        <View style={styles.paginationDots}>
+                                            {Array.from({ length: Math.ceil(highestVolumeStocks.length / 3) }, (_, index) => (
+                                                <View key={index} style={[styles.paginationDot, { backgroundColor: highestVolumePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                            ))}
+                                        </View>
+                                    )}
                                 </>
                             )}
                         </View>
@@ -731,69 +780,69 @@ export default function HomeScreen() {
                                 />
                             ) : (
                                 <>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handleOnTheRisePageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {onTheRiseStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
-                                            return (
-                                                <TouchableOpacity
-                                                    key={item.stock.id}
-                                                    style={styles.stockItem}
-                                                    onPress={() => {
-                                                        handleStockPress(item.stock);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                >
-                                                    <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                            {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                        {item.stock.name}
-                                                    </Text>
-                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                        <View style={styles.stockValueContent}>
-                                                            <Ionicons
-                                                                name="trending-up"
-                                                                size={14}
-                                                                color={Color.green}
-                                                            />
-                                                            <Text style={[
-                                                                styles.stockValueText,
-                                                                { color: Color.green }
-                                                            ]}>
-                                                                {formatPercentage(item.changePercentage)}
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        pagingEnabled
+                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                        snapToAlignment="center"
+                                        decelerationRate="fast"
+                                        onScroll={(event) => handleOnTheRisePageChange(event.nativeEvent.contentOffset.x)}
+                                        style={styles.stockScrollView}
+                                        contentContainerStyle={styles.stockScrollContent}
+                                        scrollEventThrottle={16}
+                                        nestedScrollEnabled={true}
+                                    >
+                                        {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, pageIndex) => (
+                                            <View key={pageIndex} style={styles.stockPage}>
+                                                {onTheRiseStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={item.stock.id}
+                                                            style={styles.stockItem}
+                                                            onPress={() => {
+                                                                handleStockPress(item.stock);
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                        >
+                                                            <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
+                                                                <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                    {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                                </Text>
+                                                            </View>
+                                                            <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                                {item.stock.name}
                                                             </Text>
-                                                        </View>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                ))}
-                            </ScrollView>
+                                                            <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                                <View style={styles.stockValueContent}>
+                                                                    <Ionicons
+                                                                        name="trending-up"
+                                                                        size={14}
+                                                                        color={Color.green}
+                                                                    />
+                                                                    <Text style={[
+                                                                        styles.stockValueText,
+                                                                        { color: Color.green }
+                                                                    ]}>
+                                                                        {formatPercentage(item.changePercentage)}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        ))}
+                                    </ScrollView>
 
-                            {Math.ceil(onTheRiseStocks.length / 3) > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, index) => (
-                                        <View key={index} style={[styles.paginationDot, { backgroundColor: onTheRisePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                    ))}
-                                </View>
-                            )}
+                                    {Math.ceil(onTheRiseStocks.length / 3) > 1 && (
+                                        <View style={styles.paginationDots}>
+                                            {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, index) => (
+                                                <View key={index} style={[styles.paginationDot, { backgroundColor: onTheRisePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                            ))}
+                                        </View>
+                                    )}
                                 </>
                             )}
                         </View>
@@ -818,69 +867,69 @@ export default function HomeScreen() {
                                 />
                             ) : (
                                 <>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                pagingEnabled
-                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                snapToAlignment="center"
-                                decelerationRate="fast"
-                                onScroll={(event) => handleUpsetAlertPageChange(event.nativeEvent.contentOffset.x)}
-                                style={styles.stockScrollView}
-                                contentContainerStyle={styles.stockScrollContent}
-                                scrollEventThrottle={16}
-                                nestedScrollEnabled={true}
-                            >
-                                {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, pageIndex) => (
-                                    <View key={pageIndex} style={styles.stockPage}>
-                                        {upsetAlertStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
-                                            return (
-                                                <TouchableOpacity
-                                                    key={item.stock.id}
-                                                    style={styles.stockItem}
-                                                    onPress={() => {
-                                                        handleStockPress(item.stock);
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                >
-                                                    <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                            {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                        {item.stock.name}
-                                                    </Text>
-                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                        <View style={styles.stockValueContent}>
-                                                            <Ionicons
-                                                                name="trending-down"
-                                                                size={14}
-                                                                color="#FF1744"
-                                                            />
-                                                            <Text style={[
-                                                                styles.stockValueText,
-                                                                { color: Color.red }
-                                                            ]}>
-                                                                {formatPercentage(item.changePercentage)}
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        pagingEnabled
+                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                        snapToAlignment="center"
+                                        decelerationRate="fast"
+                                        onScroll={(event) => handleUpsetAlertPageChange(event.nativeEvent.contentOffset.x)}
+                                        style={styles.stockScrollView}
+                                        contentContainerStyle={styles.stockScrollContent}
+                                        scrollEventThrottle={16}
+                                        nestedScrollEnabled={true}
+                                    >
+                                        {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, pageIndex) => (
+                                            <View key={pageIndex} style={styles.stockPage}>
+                                                {upsetAlertStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={item.stock.id}
+                                                            style={styles.stockItem}
+                                                            onPress={() => {
+                                                                handleStockPress(item.stock);
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                        >
+                                                            <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
+                                                                <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                    {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                                </Text>
+                                                            </View>
+                                                            <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                                {item.stock.name}
                                                             </Text>
-                                                        </View>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                ))}
-                            </ScrollView>
+                                                            <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                                <View style={styles.stockValueContent}>
+                                                                    <Ionicons
+                                                                        name="trending-down"
+                                                                        size={14}
+                                                                        color="#FF1744"
+                                                                    />
+                                                                    <Text style={[
+                                                                        styles.stockValueText,
+                                                                        { color: Color.red }
+                                                                    ]}>
+                                                                        {formatPercentage(item.changePercentage)}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        ))}
+                                    </ScrollView>
 
-                            {Math.ceil(upsetAlertStocks.length / 3) > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, index) => (
-                                        <View key={index} style={[styles.paginationDot, { backgroundColor: upsetAlertPage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                    ))}
-                                </View>
-                            )}
+                                    {Math.ceil(upsetAlertStocks.length / 3) > 1 && (
+                                        <View style={styles.paginationDots}>
+                                            {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, index) => (
+                                                <View key={index} style={[styles.paginationDot, { backgroundColor: upsetAlertPage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                            ))}
+                                        </View>
+                                    )}
                                 </>
                             )}
                         </View>
@@ -1078,22 +1127,21 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingHorizontal: 20,
     },
-    portfolioCtaText: {
-        fontSize: 15,
-        marginBottom: 16,
-        paddingHorizontal: 20,
-        textAlign: 'center',
-    },
-    loginCtaButton: {
+    buySportStocksButton: {
         alignSelf: 'center',
+        marginTop: 20,
+        minWidth: 260,
         paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
+        paddingVertical: 14,
+        borderRadius: 999,
+        backgroundColor: '#000000',
+        marginHorizontal: 20,
     },
-    loginCtaButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
+    buySportStocksButtonText: {
+        fontSize: 20,
+        fontWeight: '700',
         color: '#FFFFFF',
+        textAlign: 'center',
     },
     investmentOverview: {
         flexDirection: 'row',
