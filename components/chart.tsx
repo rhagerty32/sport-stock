@@ -1,6 +1,11 @@
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
+import {
+    buildTimeAxisPriceSeries,
+    expandPriceHistoryStepHold,
+    getChartTimeAxisDomain,
+    priceHistoryWithSteadyFallback,
+} from '@/lib/price-history-period';
 import { PriceHistory, TimePeriod } from '@/types';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -30,7 +35,6 @@ const PULSE_DOT_RADIUS = 5;
 const PULSE_DOT_RIGHT_MARGIN = 12;
 /** Line ends here; pulse dot is centered so it sits on the stroke. */
 const PULSE_DOT_CENTER_X = CHART_WIDTH - PULSE_DOT_RIGHT_MARGIN - PULSE_DOT_RADIUS;
-const PULSE_DOT_LEFT = PULSE_DOT_CENTER_X - PULSE_DOT_RADIUS;
 
 const MIN_PRICE_SPREAD = 1e-9;
 
@@ -58,6 +62,64 @@ function pixelPointsForData(data: PriceHistory[]): { x: number; y: number }[] {
         x: index * stepX,
         y: priceToY(point.price),
     }));
+}
+
+/** X from actual time in [minT, maxT] so flat stretches (e.g. portfolio) match the calendar. */
+function pixelPointsForTimeScaledData(
+    data: PriceHistory[],
+    minT: number,
+    maxT: number
+): { x: number; y: number }[] {
+    const n = data.length;
+    if (n < 2) return [];
+    const priceToY = priceToYMapper(data);
+    const span = Math.max(maxT - minT, 1);
+    const sorted = [...data].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
+    return sorted.map((point) => {
+        const t = +new Date(point.timestamp);
+        const x = ((t - minT) / span) * PULSE_DOT_CENTER_X;
+        return { x, y: priceToY(point.price) };
+    });
+}
+
+/** Last sample at or before `t` (hold flat until next event). `nowClampMs` caps scrub time so the future part of the axis does not show fake dates. */
+function getPriceAtXTimeScaledStepHold(
+    x: number,
+    logicalSeries: PriceHistory[],
+    minT: number,
+    maxT: number,
+    nowClampMs: number
+): { price: number; date: Date; index: number } | null {
+    if (logicalSeries.length < 2) return null;
+    const span = Math.max(maxT - minT, 1);
+    const plotX = Math.min(Math.max(0, x), PULSE_DOT_CENTER_X);
+    const t = Math.min(minT + (plotX / PULSE_DOT_CENTER_X) * span, nowClampMs);
+    const sorted = [...logicalSeries].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
+    let best = sorted[0];
+    let idx = 0;
+    for (let i = 0; i < sorted.length; i++) {
+        if (+new Date(sorted[i].timestamp) <= t) {
+            best = sorted[i];
+            idx = i;
+        } else {
+            break;
+        }
+    }
+    return { price: best.price, date: new Date(t), index: idx };
+}
+
+function yOnChartLineStepHold(
+    plotX: number,
+    logicalSeries: PriceHistory[],
+    minT: number,
+    maxT: number,
+    yScaleData: PriceHistory[],
+    nowClampMs: number
+): number {
+    const hit = getPriceAtXTimeScaledStepHold(plotX, logicalSeries, minT, maxT, nowClampMs);
+    if (!hit) return FLAT_LINE_Y;
+    const priceToY = priceToYMapper(yScaleData);
+    return priceToY(hit.price);
 }
 
 type PixelPoint = { x: number; y: number };
@@ -206,6 +268,26 @@ function createInterpolatedAreaPathFromPoints(points: PixelPoint[], smoothnessVa
     return path;
 }
 
+function polylinePathD(points: PixelPoint[]): string {
+    if (points.length < 2) return '';
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+        d += ` L ${points[i].x} ${points[i].y}`;
+    }
+    return d;
+}
+
+function createPolylineAreaPath(points: PixelPoint[], bottomY: number): string {
+    if (points.length < 2) return '';
+    let d = `M ${points[0].x} ${bottomY} L ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+        d += ` L ${points[i].x} ${points[i].y}`;
+    }
+    const last = points[points.length - 1];
+    d += ` L ${last.x} ${bottomY} Z`;
+    return d;
+}
+
 interface ChartProps {
     stockId: number | string;
     color?: string;
@@ -224,6 +306,12 @@ interface ChartProps {
     /** When both are set, period is controlled by the parent (e.g. portfolio summary stats). */
     timePeriod?: TimePeriod;
     onTimePeriodChange?: (period: TimePeriod) => void;
+    /**
+     * Map x by timestamp so the line reflects real elapsed time (flat tail to “now”).
+     * Use with `livePrice` for portfolio so the right edge matches the header total.
+     */
+    timeScaledX?: boolean;
+    livePrice?: number | null;
 }
 
 const Chart: React.FC<ChartProps> = ({
@@ -236,6 +324,8 @@ const Chart: React.FC<ChartProps> = ({
     defaultTimePeriod,
     timePeriod: controlledTimePeriod,
     onTimePeriodChange,
+    timeScaledX = false,
+    livePrice = null,
 }) => {
     const Color = useColors();
     const [internalTimePeriod, setInternalTimePeriod] = useState<TimePeriod>(() => defaultTimePeriod ?? '1H');
@@ -248,16 +338,32 @@ const Chart: React.FC<ChartProps> = ({
         else setInternalTimePeriod(p);
     };
 
-    // Derive synchronously so the first paint matches props (avoids one frame of flat line before useEffect sync).
-    const priceData = useMemo((): PriceHistory[] => {
-        if (externalPriceData != null) {
-            if (externalPriceData.length === 0) return [];
-            return priceHistoryWithSteadyFallback(externalPriceData, timePeriod);
+    // One `now` for time-scaled series + domain so x mapping matches the synthetic end point.
+    const { priceData, timeAxisDomain } = useMemo(() => {
+        if (externalPriceData == null || externalPriceData.length === 0) {
+            return { priceData: [] as PriceHistory[], timeAxisDomain: null as { minT: number; maxT: number } | null };
         }
-        return [];
-    }, [externalPriceData, timePeriod]);
+        if (timeScaledX) {
+            const nowMs = Date.now();
+            const pd = buildTimeAxisPriceSeries(externalPriceData, timePeriod, livePrice, nowMs);
+            const dom = pd.length >= 2 ? getChartTimeAxisDomain(timePeriod, pd, nowMs) : null;
+            return { priceData: pd, timeAxisDomain: dom };
+        }
+        return {
+            priceData: priceHistoryWithSteadyFallback(externalPriceData, timePeriod),
+            timeAxisDomain: null,
+        };
+    }, [externalPriceData, timePeriod, timeScaledX, livePrice]);
 
-    const linePixelPoints = useMemo(() => pixelPointsForData(priceData), [priceData]);
+    const linePixelPoints = useMemo(() => {
+        if (priceData.length < 2) return [];
+        if (timeScaledX && timeAxisDomain) {
+            const expanded = expandPriceHistoryStepHold(priceData);
+            if (expanded.length < 2) return [];
+            return pixelPointsForTimeScaledData(expanded, timeAxisDomain.minT, timeAxisDomain.maxT);
+        }
+        return pixelPointsForData(priceData);
+    }, [priceData, timeScaledX, timeAxisDomain]);
 
     const { isDark } = useTheme();
     const animationProgress = useSharedValue(0);
@@ -390,6 +496,15 @@ const Chart: React.FC<ChartProps> = ({
     // Price / time along X: linear interp between samples (dot Y comes from the drawn curve, not this).
     const getPriceAtX = (x: number) => {
         if (priceData.length < 2) return null;
+        if (timeScaledX && timeAxisDomain) {
+            return getPriceAtXTimeScaledStepHold(
+                x,
+                priceData,
+                timeAxisDomain.minT,
+                timeAxisDomain.maxT,
+                Date.now()
+            );
+        }
 
         const stepX = PULSE_DOT_CENTER_X / (priceData.length - 1);
         const plotX = Math.min(Math.max(0, x), PULSE_DOT_CENTER_X);
@@ -564,7 +679,11 @@ const Chart: React.FC<ChartProps> = ({
 
     const endPixel =
         linePixelPoints.length > 0 ? linePixelPoints[linePixelPoints.length - 1] : null;
-    const pulseDotLeft = PULSE_DOT_LEFT;
+    const pathSmoothness = timeScaledX ? 0 : smoothnessState;
+    const useStepPolyline = timeScaledX && linePixelPoints.length >= 2;
+    const pulseDotCenterX =
+        timeScaledX && endPixel ? endPixel.x : PULSE_DOT_CENTER_X;
+    const pulseDotLeft = pulseDotCenterX - PULSE_DOT_RADIUS;
     const pulseDotY = endPixel
         ? endPixel.y - PULSE_DOT_RADIUS
         : FLAT_LINE_Y - PULSE_DOT_RADIUS;
@@ -636,18 +755,26 @@ const Chart: React.FC<ChartProps> = ({
                                         )}
                                         {/* Area under the line */}
                                         <Path
-                                            d={createInterpolatedAreaPathFromPoints(linePixelPoints, smoothnessState)}
+                                            d={
+                                                useStepPolyline
+                                                    ? createPolylineAreaPath(linePixelPoints, CHART_SVG_HEIGHT)
+                                                    : createInterpolatedAreaPathFromPoints(linePixelPoints, pathSmoothness)
+                                            }
                                             fill="url(#gradient)"
                                         />
 
                                         {/* Line */}
                                         <Path
-                                            d={createInterpolatedPathFromPoints(linePixelPoints, smoothnessState)}
+                                            d={
+                                                useStepPolyline
+                                                    ? polylinePathD(linePixelPoints)
+                                                    : createInterpolatedPathFromPoints(linePixelPoints, pathSmoothness)
+                                            }
                                             stroke={color}
                                             strokeWidth="2"
                                             fill="none"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
+                                            strokeLinecap={useStepPolyline ? 'butt' : 'round'}
+                                            strokeLinejoin={useStepPolyline ? 'miter' : 'round'}
                                         />
                                     </>
                                 )}
@@ -669,11 +796,22 @@ const Chart: React.FC<ChartProps> = ({
                                         {currentPrice && (
                                             <Circle
                                                 cx={crosshairX.value}
-                                                cy={yOnChartLineAtX(
-                                                    crosshairX.value,
-                                                    linePixelPoints,
-                                                    smoothnessState
-                                                )}
+                                                cy={
+                                                    useStepPolyline && timeAxisDomain
+                                                        ? yOnChartLineStepHold(
+                                                              crosshairX.value,
+                                                              priceData,
+                                                              timeAxisDomain.minT,
+                                                              timeAxisDomain.maxT,
+                                                              priceData,
+                                                              Date.now()
+                                                          )
+                                                        : yOnChartLineAtX(
+                                                              crosshairX.value,
+                                                              linePixelPoints,
+                                                              pathSmoothness
+                                                          )
+                                                }
                                                 r={4}
                                                 fill={color}
                                                 stroke={backgroundColor || '#FFFFFF'}

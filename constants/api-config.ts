@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
 
     // Portfolio
     PORTFOLIO: '/api/portfolio',
+    PORTFOLIO_HISTORY: '/api/portfolio/history',
     PORTFOLIO_POSITIONS: '/api/portfolio/positions',
     PORTFOLIO_POSITION: (stockId: string) => `/api/portfolio/positions/${stockId}`,
 

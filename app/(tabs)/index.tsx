@@ -11,17 +11,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useFollowedStocksNotOwned } from '@/lib/follows-api';
 import { useLeagues } from '@/lib/leagues-api';
-import { consolidatePortfolioForChart, mergePortfolioPriceHistory } from '@/lib/portfolio-price-history';
-import { priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
-import { usePortfolio } from '@/lib/portfolio-api';
+import { buildTimeAxisPriceSeries, portfolioChartPeriodMetrics } from '@/lib/price-history-period';
 import {
-    fetchStocks,
-    useHighestVolume,
-    useOnTheRise,
-    useStockSheetPriceHistories,
-    useTopMovers,
-    useUpsetAlert,
-} from '@/lib/stocks-api';
+    PORTFOLIO_CHART_HISTORY_PARAMS,
+    usePortfolio,
+    usePortfolioHistory,
+} from '@/lib/portfolio-api';
+import { fetchStocks, useHighestVolume, useOnTheRise, useTopMovers, useUpsetAlert } from '@/lib/stocks-api';
 import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
@@ -114,65 +110,58 @@ export default function HomeScreen() {
         return list;
     }, [positions, sortType]);
 
-    const portfolioChartMergeInput = useMemo(() => consolidatePortfolioForChart(positions), [positions]);
     const portfolioCompositionKey = useMemo(
         () =>
-            [...portfolioChartMergeInput.entriesById.entries()]
-                .map(([id, n]) => `${String(id)}:${n}`)
+            [...positions]
+                .map((p) => `${String(p.stock.id)}:${p.entries}`)
                 .sort()
                 .join(','),
-        [portfolioChartMergeInput]
+        [positions]
     );
 
-    const positionHistoryQueries = useStockSheetPriceHistories(
-        portfolioChartMergeInput.stockIds,
-        isAuthenticated && positions.length > 0
-    );
-
-    const portfolioHistoryFetchSignature = useMemo(
-        () => positionHistoryQueries.map((q) => `${q.dataUpdatedAt}:${q.status}`).join('|'),
-        [positionHistoryQueries]
+    const portfolioHistoryQuery = usePortfolioHistory(
+        isAuthenticated && positions.length > 0,
+        PORTFOLIO_CHART_HISTORY_PARAMS
     );
 
     const chartLoading =
         isAuthenticated &&
         positions.length > 0 &&
-        (positionHistoryQueries.length === 0 ||
-            positionHistoryQueries.some((q) => q.isPending) ||
-            positionHistoryQueries.some((q) => q.isFetching && q.data === undefined));
+        (portfolioHistoryQuery.isPending ||
+            (portfolioHistoryQuery.isFetching && portfolioHistoryQuery.data === undefined));
 
     const chartData = useMemo(() => {
         if (positions.length === 0) return null;
-        const histories = positionHistoryQueries.map((q) => q.data);
-        if (histories.some((h) => h == null || h.length === 0)) return null;
-        return mergePortfolioPriceHistory(portfolioChartMergeInput, histories);
-    }, [positions.length, portfolioChartMergeInput, portfolioHistoryFetchSignature]);
+        const d = portfolioHistoryQuery.data;
+        if (d == null || d.length === 0) return null;
+        return d;
+    }, [positions.length, portfolioHistoryQuery.data]);
 
     useEffect(() => {
         setPortfolioChartPeriod('1M');
     }, [portfolioCompositionKey]);
 
-    const portfolioDisplaySeries = useMemo(() => {
-        if (!chartData?.length) return [];
-        return priceHistoryWithSteadyFallback(chartData, portfolioChartPeriod);
-    }, [chartData, portfolioChartPeriod]);
-
-    const portfolioPeriodStats = useMemo(() => {
-        if (portfolioDisplaySeries.length < 2) return null;
-        const start = portfolioDisplaySeries[0].price;
-        const end = portfolioDisplaySeries[portfolioDisplaySeries.length - 1].price;
-        const dollar = end - start;
-        const percent = start > 0 ? ((end - start) / start) * 100 : 0;
-        return { dollar, percent };
-    }, [portfolioDisplaySeries]);
-
-    /** Same window as the chart line: red when portfolio value ends below period start, green otherwise. */
-    const portfolioChartLineColor = useMemo(() => {
-        if (portfolioDisplaySeries.length < 2) return Color.green;
-        const start = portfolioDisplaySeries[0].price;
-        const end = portfolioDisplaySeries[portfolioDisplaySeries.length - 1].price;
-        return end >= start ? Color.green : Color.red;
-    }, [portfolioDisplaySeries, Color.green, Color.red]);
+    /** Period $/% and line color from chart history (`portfolioChartPeriodMetrics`). */
+    const { portfolioPeriodStats, portfolioChartLineColor } = useMemo(() => {
+        if (!chartData?.length) {
+            return { portfolioPeriodStats: null, portfolioChartLineColor: Color.green };
+        }
+        const nowMs = Date.now();
+        const series = buildTimeAxisPriceSeries(
+            chartData,
+            portfolioChartPeriod,
+            portfolio?.totalValue ?? null,
+            nowMs
+        );
+        const stats = portfolioChartPeriodMetrics(series, portfolioChartPeriod, nowMs);
+        if (!stats) {
+            return { portfolioPeriodStats: null, portfolioChartLineColor: Color.green };
+        }
+        return {
+            portfolioPeriodStats: stats,
+            portfolioChartLineColor: stats.endPrice >= stats.startPrice ? Color.green : Color.red,
+        };
+    }, [chartData, portfolioChartPeriod, portfolio?.totalValue, Color.green, Color.red]);
 
     const topMoversQuery = useTopMovers(5, discoveryQueryEnabled);
     const highestVolumeQuery = useHighestVolume(9, discoveryQueryEnabled);
@@ -547,6 +536,8 @@ export default function HomeScreen() {
                                         defaultTimePeriod="1M"
                                         timePeriod={portfolioChartPeriod}
                                         onTimePeriodChange={setPortfolioChartPeriod}
+                                        timeScaledX
+                                        livePrice={portfolio?.totalValue ?? null}
                                     />
                                 )}
                             </View>

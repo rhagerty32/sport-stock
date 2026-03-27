@@ -97,6 +97,17 @@ export function normalizeWallet(api: any): Wallet {
     };
 }
 
+/** Portfolio history point: totalValue maps to chart `price`. */
+export function normalizePortfolioHistoryPoint(api: any): PriceHistory {
+    return {
+        stockID: 'portfolio',
+        timestamp: parseDate(api?.timestamp),
+        price: typeof api?.totalValue === 'number' ? api.totalValue : 0,
+        change: typeof api?.change === 'number' ? api.change : 0,
+        changePercentage: typeof api?.changePercentage === 'number' ? api.changePercentage : 0,
+    };
+}
+
 // PriceHistoryPoint from API: stockId, timestamp, price, change, changePercentage (camelCase)
 export function normalizePriceHistoryPoint(api: any): PriceHistory {
     const rawId = api?.stockId ?? api?.stockID;
