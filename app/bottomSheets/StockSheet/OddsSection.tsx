@@ -8,8 +8,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
-import { calculateWinProbability, getTeamAbbreviation, getTeamColor } from './utils';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { calculateWinProbability, getTeamAbbreviation } from './utils';
+
+function oddsTeamLabelMatchesApiName(oddsLookupName: string, apiFullName: string): boolean {
+    const a = oddsLookupName.toLowerCase().trim();
+    const b = apiFullName.toLowerCase().trim();
+    if (!a || !b) return false;
+    return b.includes(a) || a.includes(b);
+}
 
 export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: string, sportKey: string, stock: Stock }) => {
     const Color = useColors();
@@ -240,11 +247,24 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                         const homeAbbr = getTeamAbbreviation(gameOdds.event.home_team);
                                         const awayAbbr = getTeamAbbreviation(gameOdds.event.away_team);
 
-                                        // Check if current stock is home or away team
-                                        const isHomeTeam = stock?.fullName.toLowerCase().trim() === gameOdds.event.home_team.toLowerCase().trim();
-
-                                        const homeColor = isHomeTeam ? stock.secondaryColor : getTeamColor(gameOdds.event.home_team);
-                                        const awayColor = getTeamColor(gameOdds.event.away_team);
+                                        const ourTeamIsHome = oddsTeamLabelMatchesApiName(apiTeamName, gameOdds.event.home_team);
+                                        const ourTeamIsAway = oddsTeamLabelMatchesApiName(apiTeamName, gameOdds.event.away_team);
+                                        const oursColor = stock.secondaryColor || stock.color || (isDark ? '#4ADE80' : '#16A34A');
+                                        const oppColor = isDark ? '#FB923C' : '#EA580C';
+                                        const fallbackHome = isDark ? '#60A5FA' : '#2563EB';
+                                        const fallbackAway = isDark ? '#F97316' : '#EA580C';
+                                        let homeColor: string;
+                                        let awayColor: string;
+                                        if (ourTeamIsHome) {
+                                            homeColor = oursColor;
+                                            awayColor = oppColor;
+                                        } else if (ourTeamIsAway) {
+                                            homeColor = oppColor;
+                                            awayColor = oursColor;
+                                        } else {
+                                            homeColor = fallbackHome;
+                                            awayColor = fallbackAway;
+                                        }
 
                                         const chartSize = 300;
                                         const centerX = chartSize / 2;
@@ -283,63 +303,58 @@ export const OddsSection = ({ apiTeamName, sportKey, stock }: { apiTeamName: str
                                             return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
                                         };
 
+                                        const ringStroke = isDark ? '#0F1216' : '#FFFFFF';
+
                                         return (
                                             <View style={styles.matchupPredictorContent}>
-                                                <View style={{ flexDirection: 'row', gap: 16 }}>
-                                                    {/* Left side - Away team */}
+                                                <View style={styles.matchupPredictorPercentsRow}>
                                                     <View style={styles.matchupPredictorSide}>
-                                                        <Text style={[styles.matchupPredictorPercent, { color: Color.baseText }]}>
+                                                        <View style={[styles.matchupPredictorSwatch, { backgroundColor: awayColor }]} />
+                                                        <Text style={[styles.matchupPredictorPercent, { color: awayColor }]}>
                                                             {awayPercent.toFixed(1)}%
                                                         </Text>
+                                                        <Text style={[styles.matchupPredictorTeamLabel, { color: Color.subText }]} numberOfLines={2}>
+                                                            {gameOdds.event.away_team}
+                                                        </Text>
+                                                        <Text style={[styles.matchupPredictorAbbr, { color: Color.baseText }]}>{awayAbbr}</Text>
                                                     </View>
-
-                                                    {/* Right side - Home team */}
                                                     <View style={styles.matchupPredictorSide}>
-                                                        <Text style={[styles.matchupPredictorPercent, { color: Color.baseText }]}>
+                                                        <View style={[styles.matchupPredictorSwatch, { backgroundColor: homeColor }]} />
+                                                        <Text style={[styles.matchupPredictorPercent, { color: homeColor }]}>
                                                             {homePercent.toFixed(1)}%
                                                         </Text>
+                                                        <Text style={[styles.matchupPredictorTeamLabel, { color: Color.subText }]} numberOfLines={2}>
+                                                            {gameOdds.event.home_team}
+                                                        </Text>
+                                                        <Text style={[styles.matchupPredictorAbbr, { color: Color.baseText }]}>{homeAbbr}</Text>
                                                     </View>
                                                 </View>
 
-                                                {/* Center - Donut Chart */}
                                                 <View style={styles.matchupPredictorChart}>
                                                     <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
-                                                        <Defs>
-                                                            <Pattern id="stripesPattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
-                                                                <Rect width="4" height="8" fill={Color.baseText} opacity="0.4" />
-                                                            </Pattern>
-                                                        </Defs>
-
-                                                        {/* Home team segment */}
                                                         <Path
                                                             d={createArc(homeStartAngle, homeEndAngle, innerRadius, radius)}
                                                             fill={homeColor}
-                                                            stroke={Color.subText}
-                                                            strokeWidth="1"
+                                                            stroke={ringStroke}
+                                                            strokeWidth={3}
                                                         />
-
-                                                        {/* Away team segment */}
                                                         <Path
                                                             d={createArc(awayStartAngle, awayEndAngle, innerRadius, radius)}
                                                             fill={awayColor}
-                                                            stroke={Color.subText}
-                                                            strokeWidth="1"
+                                                            stroke={ringStroke}
+                                                            strokeWidth={3}
                                                         />
-
-                                                        {/* Center circle for logos */}
                                                         <Circle
                                                             cx={centerX}
                                                             cy={centerY}
                                                             r={innerRadius}
                                                             fill={isDark ? '#1A1D21' : '#FFFFFF'}
                                                         />
-
-                                                        {/* Tickers for the teams */}
-                                                        <View style={styles.matchupPredictorTickers}>
-                                                            <Ticker ticker={awayAbbr} color={awayColor} />
-                                                            <Ticker ticker={homeAbbr} color={homeColor} />
-                                                        </View>
                                                     </Svg>
+                                                    <View style={styles.matchupPredictorTickerOverlay} pointerEvents="none">
+                                                        <Ticker ticker={awayAbbr} color={awayColor} size="small" />
+                                                        <Ticker ticker={homeAbbr} color={homeColor} size="small" />
+                                                    </View>
                                                 </View>
                                             </View>
                                         );
@@ -535,28 +550,52 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    matchupPredictorPercentsRow: {
+        flexDirection: 'row',
+        width: '100%',
+        paddingHorizontal: 8,
+        marginBottom: 8,
+        gap: 12,
+    },
     matchupPredictorSide: {
         flex: 1,
         alignItems: 'center',
     },
+    matchupPredictorSwatch: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        marginBottom: 6,
+    },
     matchupPredictorPercent: {
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: 'bold',
-        marginBottom: 8,
+        marginBottom: 4,
+    },
+    matchupPredictorTeamLabel: {
+        fontSize: 11,
+        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 14,
+        marginBottom: 2,
+    },
+    matchupPredictorAbbr: {
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     matchupPredictorChart: {
-        width: 200,
-        height: 200,
+        width: 220,
+        height: 220,
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
     },
-    matchupPredictorTickers: {
-        position: 'absolute',
+    matchupPredictorTickerOverlay: {
+        ...StyleSheet.absoluteFillObject,
         flexDirection: 'row',
-        top: 135,
-        left: 92,
-        zIndex: 1000,
-        gap: 8,
-    }
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
 });

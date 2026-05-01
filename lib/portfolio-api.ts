@@ -1,8 +1,13 @@
 import { API_ENDPOINTS } from '@/constants/api-config';
 import { apiGet } from '@/lib/api';
-import { normalizePortfolio, normalizePortfolioHistoryPoint, normalizePosition } from '@/lib/api-normalizers';
+import {
+    normalizePortfolio,
+    normalizePortfolioHistoryPoint,
+    normalizePortfolioPeriodMetrics,
+    normalizePosition,
+} from '@/lib/api-normalizers';
 import { useAuthStore } from '@/stores/authStore';
-import type { Portfolio, Position, PriceHistory } from '@/types';
+import type { Portfolio, PortfolioPeriodMetrics, Position, PriceHistory, TimePeriod } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 
 export const portfolioKeys = {
@@ -14,6 +19,8 @@ export const portfolioKeys = {
         [...portfolioKeys.root(userId), 'position', stockId] as const,
     history: (userId: string | undefined, period?: string, limit?: number) =>
         [...portfolioKeys.root(userId), 'history', period, limit] as const,
+    metrics: (userId: string | undefined, period: TimePeriod) =>
+        [...portfolioKeys.root(userId), 'metrics', period] as const,
 };
 
 export async function fetchPortfolio(): Promise<Portfolio> {
@@ -46,6 +53,11 @@ export const PORTFOLIO_CHART_HISTORY_PARAMS = { period: 'ALL' as const, limit: 5
 
 const PORTFOLIO_HISTORY_STALE_MS = 5 * 60 * 1000;
 const PORTFOLIO_HISTORY_GC_MS = 60 * 60 * 1000;
+
+export async function fetchPortfolioMetrics(period: TimePeriod): Promise<PortfolioPeriodMetrics> {
+    const data = await apiGet<unknown>(API_ENDPOINTS.PORTFOLIO_METRICS, { period });
+    return normalizePortfolioPeriodMetrics(data);
+}
 
 export async function fetchPortfolioHistory(period?: string, limit?: number): Promise<PriceHistory[]> {
     const params: Record<string, string | number | undefined> = {};
@@ -104,5 +116,15 @@ export function usePortfolioHistory(
         enabled: !!userId && enabled,
         staleTime: PORTFOLIO_HISTORY_STALE_MS,
         gcTime: PORTFOLIO_HISTORY_GC_MS,
+    });
+}
+
+export function usePortfolioMetrics(enabled: boolean, period: TimePeriod) {
+    const userId = useAuthStore((s) => s.user?.id);
+    return useQuery({
+        queryKey: portfolioKeys.metrics(userId, period),
+        queryFn: () => fetchPortfolioMetrics(period),
+        enabled: !!userId && enabled,
+        staleTime: PORTFOLIO_STALE_MS,
     });
 }

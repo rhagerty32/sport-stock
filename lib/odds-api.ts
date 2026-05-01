@@ -1,7 +1,6 @@
+import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
+import { apiGet } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
-
-const API_KEY = process.env.EXPO_PUBLIC_ODDS_API_KEY;
-const BASE_URL = 'https://api.the-odds-api.com/v4/sports';
 
 // Type definitions for the-odds-api responses
 export type OddsOutcome = {
@@ -54,10 +53,19 @@ export type GameOdds = {
 export const SPORT_KEY_MAP: Record<string, string> = {
     'NFL': 'americanfootball_nfl',
     'Football': 'americanfootball_nfl',
+    'National Football League': 'americanfootball_nfl',
     'NBA': 'basketball_nba',
     'Basketball': 'basketball_nba',
+    'National Basketball Association': 'basketball_nba',
     'Baseball': 'baseball_mlb',
+    'MLB': 'baseball_mlb',
+    'Major League Baseball': 'baseball_mlb',
+    'NHL': 'icehockey_nhl',
+    'Hockey': 'icehockey_nhl',
+    'National Hockey League': 'icehockey_nhl',
     'NCAA Basketball': 'basketball_ncaab',
+    'NCAAB': 'basketball_ncaab',
+    'College Basketball': 'basketball_ncaab',
 };
 
 // Team name mapping: App team name → the-odds-api team name
@@ -81,6 +89,7 @@ export const TEAM_NAME_MAP: Record<string, string> = {
     'CHI Bulls': 'Chicago Bulls',
     'MIA Heat': 'Miami Heat',
     'NY Knicks': 'New York Knicks',
+    'OKC Thunder': 'Oklahoma City Thunder',
     'PHX Suns': 'Phoenix Suns',
     'DEN Nuggets': 'Denver Nuggets',
     'MIL Bucks': 'Milwaukee Bucks',
@@ -215,27 +224,86 @@ export function getSportKey(leagueName: string, sport?: string): string | null {
 }
 
 /**
- * Fetches upcoming game odds for a specific sport
+ * When API omits leagueId, infer Odds API sport_key from stock id slug (e.g. nba_oklahoma_city_thunder).
  */
-async function fetchSportOdds(sportKey: string): Promise<OddsEvent[]> {
-    if (!API_KEY) {
-        throw new Error('Odds API key is not configured');
-    }
+export function inferSportKeyFromStockId(stockId: string | number | null | undefined): string | null {
+    const s = String(stockId ?? '').toLowerCase();
+    if (!s) return null;
+    if (s.startsWith('nba_') || s.includes('_nba_')) return 'basketball_nba';
+    if (s.startsWith('nfl_') || s.includes('_nfl_')) return 'americanfootball_nfl';
+    if (s.startsWith('mlb_') || s.includes('_mlb_')) return 'baseball_mlb';
+    if (s.startsWith('nhl_') || s.includes('_nhl_')) return 'icehockey_nhl';
+    if (s.includes('ncaab') || s.includes('ncaa_b') || s.startsWith('cbb_')) return 'basketball_ncaab';
+    return null;
+}
 
-    const url = `${BASE_URL}/${sportKey}/odds?regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=draftkings&apiKey=${API_KEY}`;
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error(`Failed to fetch odds: ${response.statusText}`);
-    }
-
-    const data: OddsEvent[] = await response.json();
-    return data;
+function titleCaseSlugWords(slugTail: string): string {
+    const parts = slugTail.replace(/-/g, '_').split('_').filter(Boolean);
+    if (parts.length < 2) return '';
+    return parts
+        .map((w) => {
+            if (/^\d/.test(w)) return w;
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        })
+        .join(' ');
 }
 
 /**
- * Finds the next upcoming game for a specific team
+ * Derive Odds API–style team name from stock id slugs when API shortens display names (e.g. "Boston", "Oklahoma City").
+ * Supports `nba_*`, `nfl_*`, `mlb_*`, `nhl_*` prefixes (e.g. nba_boston_celtics → "Boston Celtics").
+ */
+export function inferCanonicalTeamNameFromStockId(stockId: string | number | null | undefined): string | null {
+    const s = String(stockId ?? '').toLowerCase();
+    if (!s) return null;
+
+    const prefixes = ['nba_', 'nfl_', 'mlb_', 'nhl_'] as const;
+    for (const p of prefixes) {
+        if (s.startsWith(p)) {
+            const name = titleCaseSlugWords(s.slice(p.length));
+            return name || null;
+        }
+    }
+    return null;
+}
+
+/**
+ * Fetches upcoming game odds for a specific sport
+ */
+const ODDS_QUERY_PARAMS = {
+    regions: 'us',
+    markets: 'h2h,spreads,totals',
+    oddsFormat: 'american',
+    bookmakers: 'draftkings',
+} as const;
+
+async function fetchSportOdds(sportKey: string): Promise<OddsEvent[]> {
+    const path = API_ENDPOINTS.ODDS_V4_SPORT_ODDS(sportKey);
+    const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(ODDS_QUERY_PARAMS).map(([k, v]) => [k, String(v)]))
+    ).toString();
+    if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[OddsProxy] GET', `${API_BASE_URL}${path}?${qs}`);
+    }
+    try {
+        const data = await apiGet<OddsEvent[]>(path, { ...ODDS_QUERY_PARAMS }, { auth: false });
+        if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.log('[OddsProxy] OK', { sportKey, eventCount: data.length });
+        }
+        return data;
+    } catch (e) {
+        if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.warn('[OddsProxy] FAIL', { sportKey, error: e });
+        }
+        throw e;
+    }
+}
+
+/**
+ * Finds the next upcoming game for a team, or if none, the most recently started game (live / same-day slate).
+ * The Odds API still returns odds for in-progress games; we previously only used commence_time > now, which hid live games.
  */
 function findNextGameForTeam(events: OddsEvent[], teamName: string): OddsEvent | null {
     const now = new Date();
@@ -253,12 +321,20 @@ function findNextGameForTeam(events: OddsEvent[], teamName: string): OddsEvent |
         return null;
     }
 
-    // Sort by commence_time and find the next upcoming game
     const upcomingGames = teamGames
         .filter(event => new Date(event.commence_time) > now)
         .sort((a, b) => new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime());
 
-    return upcomingGames.length > 0 ? upcomingGames[0] : null;
+    if (upcomingGames.length > 0) {
+        return upcomingGames[0];
+    }
+
+    // Live or already started: pick the team's game with the latest commence_time (still in the feed)
+    const started = teamGames
+        .filter(event => new Date(event.commence_time) <= now)
+        .sort((a, b) => new Date(b.commence_time).getTime() - new Date(a.commence_time).getTime());
+
+    return started.length > 0 ? started[0] : null;
 }
 
 /**
@@ -346,10 +422,48 @@ export async function getUpcomingGameOdds(sportKey: string, teamName: string): P
         const game = findNextGameForTeam(events, teamName);
 
         if (!game) {
+            if (__DEV__) {
+                const sample = events.slice(0, 5).map((e) => `${e.home_team} vs ${e.away_team}`);
+                // eslint-disable-next-line no-console
+                console.log('[OddsProxy] noMatchingGameForTeam', {
+                    teamName,
+                    sportKey,
+                    totalEvents: events.length,
+                    sampleMatchups: sample,
+                });
+            }
             return null;
         }
 
-        return extractGameOdds(game);
+        if (__DEV__) {
+            const started = new Date(game.commence_time) <= new Date();
+            if (started) {
+                // eslint-disable-next-line no-console
+                console.log('[OddsProxy] usingStartedOrLiveGame', {
+                    teamName,
+                    commence_time: game.commence_time,
+                    matchup: `${game.home_team} vs ${game.away_team}`,
+                });
+            } else {
+                // eslint-disable-next-line no-console
+                console.log('[OddsProxy] matchedUpcomingGame', {
+                    teamName,
+                    home: game.home_team,
+                    away: game.away_team,
+                    commence_time: game.commence_time,
+                });
+            }
+        }
+
+        const extracted = extractGameOdds(game);
+        if (!extracted && __DEV__) {
+            // eslint-disable-next-line no-console
+            console.log('[OddsProxy] extractGameOdds returned null (e.g. missing DraftKings)', {
+                teamName,
+                bookmakerKeys: game.bookmakers?.map((b) => b.key),
+            });
+        }
+        return extracted;
     } catch (error) {
         console.error('Error fetching game odds:', error);
         throw error;
@@ -368,7 +482,7 @@ export function useGameOdds(teamName: string | null, sportKey: string | null) {
             }
             return getUpcomingGameOdds(sportKey, teamName);
         },
-        enabled: !!teamName && !!sportKey && !!API_KEY,
+        enabled: !!teamName && !!sportKey,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     });

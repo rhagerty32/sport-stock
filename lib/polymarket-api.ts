@@ -1,7 +1,7 @@
+import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
+import { apiGet } from '@/lib/api';
 import { NormalizedGameMarket, PolymarketData, PolymarketEvent, PolymarketMarket, PolymarketQuery, PolymarketResponse } from "@/types";
 import { useQuery } from "@tanstack/react-query";
-
-const BASE_URL = 'https://gamma-api.polymarket.com/public-search?';
 
 /**
  * Extracts the mascot/team name from a full team name.
@@ -131,22 +131,46 @@ function filterCoreGameMarkets(
 export const getPolymarketData = async ({
     q,
 }: PolymarketQuery): Promise<PolymarketEvent[]> => {
-    const queryString = new URLSearchParams({ q: q || '' }).toString();
-    const response: Response = await fetch(`${BASE_URL}${queryString}`);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch Polymarket data: ${response.statusText}`);
+    const trimmed = q?.trim();
+    if (!trimmed) {
+        return [];
     }
-    const data: PolymarketResponse = await response.json();
-    const filteredEvents = data.events.filter((event) => event.active && event.active === true);
+    const path = API_ENDPOINTS.POLYMARKET_SEARCH;
+    const searchUrl = `${API_BASE_URL}${path}?${new URLSearchParams({ q: trimmed }).toString()}`;
+    if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[PolymarketProxy] GET', searchUrl);
+    }
+    try {
+        const data = await apiGet<PolymarketResponse>(path, { q: trimmed }, { auth: false });
+        const rawCount = Array.isArray(data?.events) ? data.events.length : 0;
+        const filteredEvents = (data.events ?? []).filter((event) => event.active && event.active === true);
 
-    const openEvents = [];
-    for (let i in filteredEvents) {
-        if (filteredEvents[i].closed === false) {
-            openEvents.push(filteredEvents[i]);
-        };
-    };
+        const openEvents = [];
+        for (let i in filteredEvents) {
+            if (filteredEvents[i].closed === false) {
+                openEvents.push(filteredEvents[i]);
+            }
+        }
 
-    return openEvents;
+        if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.log('[PolymarketProxy] OK', {
+                q: trimmed,
+                rawEvents: rawCount,
+                activeEvents: filteredEvents.length,
+                openNotClosed: openEvents.length,
+            });
+        }
+
+        return openEvents;
+    } catch (e) {
+        if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.warn('[PolymarketProxy] FAIL', { q: trimmed, error: e });
+        }
+        throw e;
+    }
 };
 
 export const usePolymarketData = (query: PolymarketQuery) => {

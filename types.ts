@@ -3,7 +3,8 @@ export type Stock = {
     id: number;
     name: string;
     fullName: string;
-    leagueID: number;
+    /** Numeric id from API, or string slug when the backend uses non-numeric league keys. */
+    leagueID: number | string;
     photoURL: string;
     price: number;
     about: string;
@@ -95,6 +96,16 @@ export type Portfolio = {
     totalGainLoss: number;
     totalGainLossPercentage: number;
     positions: Position[];
+};
+
+/** `GET /api/portfolio/metrics?period=` — period gain/loss for the chart header. */
+export type PortfolioPeriodMetrics = {
+    userId: string;
+    period: string;
+    totalValue: number;
+    totalInvested: number;
+    totalGainLoss: number;
+    totalGainLossPercentage: number;
 };
 
 export type Position = {

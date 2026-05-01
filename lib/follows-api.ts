@@ -10,7 +10,7 @@ export const followsKeys = {
 };
 
 export async function followStock(stockId: number | string): Promise<void> {
-    await apiPost<unknown>(API_ENDPOINTS.FOLLOWS, { stockId });
+    await apiPost<unknown>(API_ENDPOINTS.FOLLOWS, { stockID: stockId });
 }
 
 export async function unfollowStock(stockId: number | string): Promise<void> {

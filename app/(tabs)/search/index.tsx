@@ -48,7 +48,10 @@ export default function SearchScreen() {
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
-    const getLeagueForStock = useCallback((stock: Stock) => leaguesList.find((l) => l.id === stock.leagueID), [leaguesList]);
+    const getLeagueForStock = useCallback(
+        (stock: Stock) => leaguesList.find((l) => String(l.id) === String(stock.leagueID)),
+        [leaguesList]
+    );
 
     const renderStockCard = ({ item: stock }: { item: Stock }) => {
         const league = getLeagueForStock(stock);

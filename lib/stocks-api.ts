@@ -178,6 +178,7 @@ export function useOnTheRise(limit = 9, enabled = true) {
         queryKey: stocksKeys.onTheRise(limit),
         queryFn: () => fetchOnTheRise(limit),
         enabled,
+        placeholderData: (previousData) => previousData,
     });
 }
 
@@ -186,6 +187,7 @@ export function useUpsetAlert(limit = 9, enabled = true) {
         queryKey: stocksKeys.upsetAlert(limit),
         queryFn: () => fetchUpsetAlert(limit),
         enabled,
+        placeholderData: (previousData) => previousData,
     });
 }
 

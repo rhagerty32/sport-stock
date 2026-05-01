@@ -193,6 +193,8 @@ export function getChartTimeAxisDomain(
 /** Step-hold value at instant `tMs`: last sample with `timestamp ≤ tMs` (matches portfolio time chart scrub). */
 export function portfolioValueStepHoldAtTime(sortedAsc: PriceHistory[], tMs: number): number {
     if (sortedAsc.length === 0) return 0;
+    const t0 = +new Date(sortedAsc[0].timestamp);
+    if (tMs < t0) return sortedAsc[0].price;
     let best = sortedAsc[0].price;
     for (const p of sortedAsc) {
         if (+new Date(p.timestamp) <= tMs) best = p.price;
@@ -228,8 +230,26 @@ export function portfolioChartPeriodMetrics(
     return { startPrice, endPrice, dollar, percent };
 }
 
-const SNAP_LAST_TO_NOW_MS = 60_000;
 const PRICE_EPS = 1e-6;
+
+/**
+ * If the API sends many rows with the same total (e.g. daily snapshots), the last row is often “today”
+ * even though nothing changed since an earlier day — that hides the flat tail. Keep one point at the
+ * **first** timestamp of the trailing equal-price run so we draw horizontal from real last-change → now.
+ */
+function collapseTrailingEqualPricePlateau(
+    sortedAsc: PriceHistory[],
+    /** Portfolio totals: tolerate float noise between API snapshots. */
+    eps = 0.01
+): PriceHistory[] {
+    if (sortedAsc.length < 2) return sortedAsc;
+    const lastP = sortedAsc[sortedAsc.length - 1].price;
+    let i = sortedAsc.length - 1;
+    while (i > 0 && Math.abs(sortedAsc[i - 1].price - lastP) <= eps) {
+        i -= 1;
+    }
+    return [...sortedAsc.slice(0, i), sortedAsc[i]];
+}
 
 /**
  * Insert corners so value is **constant until the next sample time**, then jumps (no linear ramps).
@@ -286,10 +306,8 @@ export function expandPriceHistoryStepHold(sortedInput: PriceHistory[]): PriceHi
 }
 
 /**
- * Portfolio / time-axis series: keep real timestamps, anchor the left edge of the window, then run
- * **flat** from the last sample toward `now`, with only a short segment to `livePrice` when it differs.
- *
- * At `now`, steps to `livePrice` when it differs (same timestamp, vertical jump — no diagonal blend).
+ * Portfolio chart: real history points + a synthetic point at `now` with the same value as the last
+ * distinct level (flat line since last change). If `livePrice` differs, add a vertical tick at `now`.
  */
 export function buildTimeAxisPriceSeries(
     full: PriceHistory[],
@@ -373,47 +391,46 @@ export function buildTimeAxisPriceSeries(
         ];
     }
 
+    series = collapseTrailingEqualPricePlateau(series);
+
     let last = series[series.length - 1];
     let lastMs = +new Date(last.timestamp);
-    const lastP = last.price;
+    /** Value at the last *event* in `series` — held flat on the x-axis until `now` (Robinhood-style). */
+    const lastHoldP = last.price;
     const endP =
-        livePrice != null && Number.isFinite(livePrice) && livePrice >= 0 ? livePrice : lastP;
+        livePrice != null && Number.isFinite(livePrice) && livePrice >= 0 ? livePrice : lastHoldP;
 
-    if (lastMs >= maxT - SNAP_LAST_TO_NOW_MS) {
-        return [
-            ...series.slice(0, -1),
-            {
-                ...last,
-                timestamp: new Date(maxT),
-                price: endP,
-                change: 0,
-                changePercentage: 0,
-            },
-        ];
-    }
-
-    if (Math.abs(endP - lastP) <= PRICE_EPS) {
-        return [
+    // Horizontal tail: keep the last history timestamp on the line, then extend at the same Y to `now`.
+    if (lastMs < maxT) {
+        series = [
             ...series,
             {
                 stockID,
                 timestamp: new Date(maxT),
-                price: lastP,
+                price: lastHoldP,
                 change: 0,
                 changePercentage: 0,
             },
         ];
+        last = series[series.length - 1];
+        lastMs = maxT;
+    } else if (lastMs > maxT) {
+        series = [
+            ...series.slice(0, -1),
+            { ...last, timestamp: new Date(maxT) },
+        ];
+        last = series[series.length - 1];
+        lastMs = maxT;
+    }
+
+    const tailP = last.price;
+    if (Math.abs(endP - tailP) <= PRICE_EPS) {
+        series[series.length - 1] = { ...last, price: endP, change: 0, changePercentage: 0 };
+        return series;
     }
 
     return [
         ...series,
-        {
-            stockID,
-            timestamp: new Date(maxT),
-            price: lastP,
-            change: 0,
-            changePercentage: 0,
-        },
         {
             stockID,
             timestamp: new Date(maxT),

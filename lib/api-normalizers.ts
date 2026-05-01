@@ -1,9 +1,38 @@
-import type { BonusInfo, League, Portfolio, Position, PriceHistory, Stock, Transaction, Wallet } from '@/types';
+import type {
+    BonusInfo,
+    League,
+    Portfolio,
+    PortfolioPeriodMetrics,
+    Position,
+    PriceHistory,
+    Stock,
+    Transaction,
+    Wallet,
+} from '@/types';
 
 function parseDate(value: string | null | undefined): Date {
     if (value == null) return new Date(0);
     const d = new Date(value);
     return isNaN(d.getTime()) ? new Date(0) : d;
+}
+
+/** Resolve league id from various API shapes (camelCase, snake_case, nested league). */
+function leagueIdFromStockPayload(api: any): number | string {
+    const nested =
+        api?.league != null && typeof api.league === 'object'
+            ? api.league.id ?? api.league.leagueId ?? api.league.league_id
+            : undefined;
+    const raw = api?.leagueId ?? api?.leagueID ?? api?.league_id ?? nested;
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'number') return raw;
+    if (typeof raw === 'string') {
+        const t = raw.trim();
+        if (t === '') return 0;
+        const n = Number(t);
+        if (!Number.isNaN(n) && String(n) === t) return n;
+        return t;
+    }
+    return 0;
 }
 
 // API Stock: camelCase (photoUrl, fullName, leagueId, etc.)
@@ -12,7 +41,7 @@ export function normalizeStock(api: any): Stock {
         id: api.id ?? 0,
         name: api.name ?? '',
         fullName: api.fullName ?? api.name ?? '',
-        leagueID: api.leagueId ?? api.leagueID ?? 0,
+        leagueID: leagueIdFromStockPayload(api),
         photoURL: api.photoUrl ?? api.photoURL ?? '',
         price: typeof api.price === 'number' ? api.price : 0,
         about: api.about ?? '',
@@ -63,17 +92,26 @@ export function normalizePosition(api: any): Position {
     };
 }
 
+function normalizeTransactionStockId(raw: unknown): number {
+    if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
+    if (typeof raw === 'string' && raw !== '') {
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+}
+
 export function normalizeTransaction(api: any): Transaction {
     return {
-        id: api.id ?? 0,
+        id: typeof api.id === 'number' ? api.id : typeof api.pendingOrderId === 'number' ? api.pendingOrderId : 0,
         action: api.action === 'sell' ? 'sell' : 'buy',
         quantity: typeof api.quantity === 'number' ? api.quantity : 0,
         price: typeof api.price === 'number' ? api.price : 0,
         totalPrice: typeof api.totalPrice === 'number' ? api.totalPrice : 0,
         userID: api.userId ?? api.userID ?? 0,
-        stockID: api.stockId ?? api.stockID ?? 0,
+        stockID: normalizeTransactionStockId(api.stockId ?? api.stockID),
         createdAt: parseDate(api.createdAt),
-        updatedAt: parseDate(api.updatedAt),
+        updatedAt: parseDate(api.updatedAt ?? api.createdAt),
     };
 }
 
@@ -85,6 +123,18 @@ export function normalizePortfolio(api: any): Portfolio {
         totalGainLoss: typeof api.totalGainLoss === 'number' ? api.totalGainLoss : 0,
         totalGainLossPercentage: typeof api.totalGainLossPercentage === 'number' ? api.totalGainLossPercentage : 0,
         positions,
+    };
+}
+
+export function normalizePortfolioPeriodMetrics(api: any): PortfolioPeriodMetrics {
+    return {
+        userId: typeof api?.userId === 'string' ? api.userId : String(api?.userId ?? ''),
+        period: typeof api?.period === 'string' ? api.period : String(api?.period ?? ''),
+        totalValue: typeof api?.totalValue === 'number' ? api.totalValue : 0,
+        totalInvested: typeof api?.totalInvested === 'number' ? api.totalInvested : 0,
+        totalGainLoss: typeof api?.totalGainLoss === 'number' ? api.totalGainLoss : 0,
+        totalGainLossPercentage:
+            typeof api?.totalGainLossPercentage === 'number' ? api.totalGainLossPercentage : 0,
     };
 }
 

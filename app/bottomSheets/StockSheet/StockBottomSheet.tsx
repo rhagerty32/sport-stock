@@ -2,8 +2,14 @@ import Chart from '@/components/chart';
 import { Ticker } from '@/components/Ticker';
 import { brightenColor, isDarkColor, useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
-import { useLeague } from '@/lib/leagues-api';
-import { getSportKey } from '@/lib/odds-api';
+import { useLeague, useLeagues } from '@/lib/leagues-api';
+import {
+    getApiTeamName,
+    getSportKey,
+    inferCanonicalTeamNameFromStockId,
+    inferSportKeyFromStockId,
+} from '@/lib/odds-api';
+import { leagueWithPolymarketDefaults } from '@/lib/polymarket-league-defaults';
 import { STOCK_SHEET_PRICE_HISTORY, usePriceHistory, useStock } from '@/lib/stocks-api';
 import { useTransactions } from '@/lib/transactions-api';
 import { usePortfolio } from '@/lib/portfolio-api';
@@ -37,9 +43,20 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const Color = useColors();
 
     const { data: fetchedStock } = useStock(activeStockId);
-    const { data: league } = useLeague(
-        fetchedStock?.leagueID ?? null
-    );
+    /** Prefer store stock so league id is available before detail fetch finishes; skip invalid 0 from normalizer. */
+    const leagueQueryId = useMemo((): string | number | null => {
+        const raw = (fetchedStock ?? activeStock)?.leagueID as string | number | undefined | null;
+        if (raw == null) return null;
+        if (typeof raw === 'number' && raw === 0) return null;
+        if (typeof raw === 'string') {
+            const t = raw.trim();
+            if (t === '' || t === '0') return null;
+            return raw;
+        }
+        return raw;
+    }, [fetchedStock, activeStock]);
+    const { data: league } = useLeague(leagueQueryId);
+    const { data: leaguesList = [] } = useLeagues();
     const priceHistoryQuery = usePriceHistory(
         activeStockId,
         STOCK_SHEET_PRICE_HISTORY.period,
@@ -83,8 +100,41 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         []
     );
 
-    const apiTeamName = useMemo(() => stock?.fullName || null, [stock]);
-    const sportKey = useMemo(() => league ? getSportKey(league.name, league.sport) : null, [league]);
+    /** Name used for The Odds API team matching (id slug hint wins over incomplete fullName like "Oklahoma City"). */
+    const oddsTeamName = useMemo(() => {
+        if (!stock) return null;
+        const fromSlug = inferCanonicalTeamNameFromStockId(stock.id ?? activeStockId);
+        if (fromSlug) return fromSlug;
+        return (getApiTeamName(stock.name) ?? stock.fullName) || null;
+    }, [stock, activeStockId]);
+
+    const stockIdForInference = (fetchedStock ?? activeStock)?.id ?? activeStockId;
+    const slugSportKey = useMemo(() => inferSportKeyFromStockId(stockIdForInference), [stockIdForInference]);
+    const leagueFallbackFromList = useMemo(() => {
+        if (!leaguesList.length) return null;
+
+        const rawLeagueId = (fetchedStock ?? activeStock)?.leagueID as string | number | undefined | null;
+        if (
+            rawLeagueId != null &&
+            rawLeagueId !== '' &&
+            !(typeof rawLeagueId === 'number' && rawLeagueId === 0)
+        ) {
+            const byId = leaguesList.find((l) => String(l.id) === String(rawLeagueId));
+            if (byId) return byId;
+        }
+
+        if (!slugSportKey) return null;
+        return leaguesList.find((l) => getSportKey(l.name, l.sport) === slugSportKey) ?? null;
+    }, [leaguesList, slugSportKey, fetchedStock, activeStock]);
+    const leagueForUi = league ?? leagueFallbackFromList;
+    const leagueForPolymarket = useMemo(
+        () => leagueWithPolymarketDefaults(leagueForUi, slugSportKey),
+        [leagueForUi, slugSportKey]
+    );
+    const sportKey = useMemo(() => {
+        if (leagueForUi) return getSportKey(leagueForUi.name, leagueForUi.sport);
+        return slugSportKey;
+    }, [leagueForUi, slugSportKey]);
 
     const userPosition = stock && portfolio?.positions
         ? portfolio.positions.find((p) => p.stock.id === stock.id) ?? null
@@ -178,6 +228,52 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         });
     }, [activeStockId, priceHistoryQuery.data, priceHistoryQuery.dataUpdatedAt]);
 
+    useEffect(() => {
+        if (!__DEV__ || !activeStockId || !effectiveStock) return;
+        const sk = sportKey;
+        // eslint-disable-next-line no-console
+        console.log('[StockBottomSheet] oddsPolymarketWiring', {
+            stockId: activeStockId,
+            stockName: effectiveStock.name,
+            stockFullName: effectiveStock.fullName,
+            leagueQueryId,
+            slugSportKey,
+            leagueFromDetail: !!league,
+            leagueFromListFallback: !!leagueFallbackFromList,
+            oddsTeamName,
+            leagueLoaded: !!leagueForUi,
+            leagueName: leagueForUi?.name,
+            leagueSport: leagueForUi?.sport,
+            sportKey: sk,
+            showGameOddsSection: !!(effectiveStock && oddsTeamName && sk),
+            polymarketQueries: leagueForPolymarket
+                ? {
+                      playoff: leagueForPolymarket.playoffQuery?.trim() || null,
+                      division: leagueForPolymarket.divisionQuery?.trim() || null,
+                      conference: leagueForPolymarket.conferenceQuery?.trim() || null,
+                      champion: leagueForPolymarket.championQuery?.trim() || null,
+                  }
+                : null,
+            polymarketAnyQuery:
+                !!leagueForPolymarket &&
+                !!(leagueForPolymarket.playoffQuery?.trim() ||
+                    leagueForPolymarket.divisionQuery?.trim() ||
+                    leagueForPolymarket.conferenceQuery?.trim() ||
+                    leagueForPolymarket.championQuery?.trim()),
+        });
+    }, [
+        activeStockId,
+        effectiveStock,
+        leagueForUi,
+        leagueForPolymarket,
+        leagueQueryId,
+        leagueFallbackFromList,
+        league,
+        oddsTeamName,
+        slugSportKey,
+        sportKey,
+    ]);
+
     return (
         <BottomSheetModal
             ref={presentWhenReady}
@@ -208,7 +304,7 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                                 <Text style={styles.stockName}>{effectiveStock!.name}</Text>
                                 <View style={styles.headerBottomRow}>
                                     <View style={styles.headerLeftGroup}>
-                                        <Text style={styles.leagueName}>{league?.name}</Text>
+                                        <Text style={styles.leagueName}>{leagueForPolymarket?.name}</Text>
                                         <Ticker ticker={effectiveStock!.ticker} color={effectiveStock!.secondaryColor} size="small" />
                                     </View>
                                     <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
@@ -255,12 +351,12 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                         {/* Trade History Section */}
                         <TradeHistory stockTransactions={stockTransactions} stock={effectiveStock!} />
 
-                        {effectiveStock && apiTeamName && sportKey && (
-                            <OddsSection apiTeamName={apiTeamName} sportKey={sportKey} stock={effectiveStock} />
+                        {effectiveStock && oddsTeamName && sportKey && (
+                            <OddsSection apiTeamName={oddsTeamName} sportKey={sportKey} stock={effectiveStock} />
                         )}
 
-                        {league && effectiveStock && (
-                            <PredictionMarkets league={league} stock={effectiveStock} />
+                        {leagueForPolymarket && effectiveStock && (
+                            <PredictionMarkets league={leagueForPolymarket} stock={effectiveStock} />
                         )}
 
                         {/* Bottom Spacing */}

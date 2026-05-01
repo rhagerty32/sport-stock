@@ -4,7 +4,25 @@ import { apiGet, apiPost } from '@/lib/api';
 import { normalizeTransaction } from '@/lib/api-normalizers';
 import { listMarketAssets, listMarketPositions, listMarkets, submitMarketOrders } from '@/lib/markets-api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Crypto from 'expo-crypto';
 import { useAuthStore } from '@/stores/authStore';
+
+const IDEMPOTENCY_KEY_MIN_LEN = 8;
+const IDEMPOTENCY_KEY_MAX_LEN = 128;
+
+/** New UUIDv4 (36 chars), valid for `TransactionCreate.idempotencyKey`. */
+export function newTransactionIdempotencyKey(): string {
+    return Crypto.randomUUID();
+}
+
+function assertValidTransactionIdempotencyKey(key: string): void {
+    const len = key.length;
+    if (len < IDEMPOTENCY_KEY_MIN_LEN || len > IDEMPOTENCY_KEY_MAX_LEN) {
+        throw new Error(
+            `idempotencyKey must be ${IDEMPOTENCY_KEY_MIN_LEN}–${IDEMPOTENCY_KEY_MAX_LEN} characters (got ${len})`
+        );
+    }
+}
 
 export const transactionsKeys = {
     all: ['transactions'] as const,
@@ -19,6 +37,8 @@ export type TransactionCreate = {
     stockId: number;
     quantity: number;
     price?: number | null;
+    /** 8–128 chars when set; duplicate POSTs with the same key return the original queued order. */
+    idempotencyKey?: string;
 };
 
 /** Stock context for markets API fallback when transaction API returns "No position". */
@@ -38,14 +58,18 @@ export async function createTransaction(
     stockContext?: TransactionStockContext
 ): Promise<Transaction> {
     try {
+        if (body.idempotencyKey != null) {
+            assertValidTransactionIdempotencyKey(body.idempotencyKey);
+        }
+
         if (body.action === 'buy') {
             // Debug logging for buy requests
-            // eslint-disable-next-line no-console
             console.log('[createTransaction][BUY] request body', {
                 action: body.action,
                 stockId: body.stockId,
                 quantity: body.quantity,
                 price: body.price,
+                hasIdempotencyKey: body.idempotencyKey != null,
                 stockContext,
             });
         }
@@ -55,6 +79,7 @@ export async function createTransaction(
             stockId: body.stockId,
             quantity: body.quantity,
             ...(body.price != null && { price: body.price }),
+            ...(body.idempotencyKey != null && { idempotencyKey: body.idempotencyKey }),
         });
         return normalizeTransaction(data);
     } catch (err) {

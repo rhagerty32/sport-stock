@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
 
     // Portfolio
     PORTFOLIO: '/api/portfolio',
+    PORTFOLIO_METRICS: '/api/portfolio/metrics',
     PORTFOLIO_HISTORY: '/api/portfolio/history',
     PORTFOLIO_POSITIONS: '/api/portfolio/positions',
     PORTFOLIO_POSITION: (stockId: string) => `/api/portfolio/positions/${stockId}`,
@@ -49,4 +50,9 @@ export const API_ENDPOINTS = {
 
     // Search
     SEARCH: '/api/search',
+
+    /** Pass-through to The Odds API v4; server injects apiKey. Path mirrors upstream after /v4/. */
+    ODDS_V4_SPORT_ODDS: (sportKey: string) => `/api/odds/v4/sports/${encodeURIComponent(sportKey)}/odds`,
+    /** Proxy to Gamma GET /public-search; forwards query params (e.g. q). */
+    POLYMARKET_SEARCH: '/api/polymarket/search',
 } as const;

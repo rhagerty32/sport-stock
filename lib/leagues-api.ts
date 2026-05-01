@@ -38,10 +38,19 @@ export function useLeagues(enabled = true) {
     });
 }
 
+function isUsableLeagueId(leagueId: string | number | null | undefined): leagueId is string | number {
+    if (leagueId == null) return false;
+    if (leagueId === '') return false;
+    if (typeof leagueId === 'number' && leagueId === 0) return false;
+    if (typeof leagueId === 'string' && leagueId.trim() === '0') return false;
+    return true;
+}
+
 export function useLeague(leagueId: string | number | null, includeStocks = false) {
+    const enabled = isUsableLeagueId(leagueId);
     return useQuery({
-        queryKey: leagueId != null ? leaguesKeys.detail(leagueId, includeStocks) : ['leagues', 'detail', 'disabled'],
+        queryKey: enabled ? leaguesKeys.detail(leagueId, includeStocks) : ['leagues', 'detail', 'disabled'],
         queryFn: () => fetchLeague(leagueId!, includeStocks),
-        enabled: leagueId != null,
+        enabled,
     });
 }

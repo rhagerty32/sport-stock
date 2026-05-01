@@ -1,4 +1,5 @@
 import { AppHeader } from '@/components/AppHeader';
+import { HomeMoverDiscoverySection } from '@/components/HomeMoverDiscoverySection';
 import Chart from '@/components/chart';
 import { ChartLoadingSkeleton } from '@/components/ChartLoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -11,25 +12,50 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useFollowedStocksNotOwned } from '@/lib/follows-api';
 import { useLeagues } from '@/lib/leagues-api';
-import { buildTimeAxisPriceSeries, portfolioChartPeriodMetrics } from '@/lib/price-history-period';
+import {
+    buildTimeAxisPriceSeries,
+    portfolioChartPeriodMetrics,
+    type PortfolioChartPeriodMetrics,
+} from '@/lib/price-history-period';
 import {
     PORTFOLIO_CHART_HISTORY_PARAMS,
+    portfolioKeys,
     usePortfolio,
     usePortfolioHistory,
 } from '@/lib/portfolio-api';
-import { fetchStocks, useHighestVolume, useOnTheRise, useTopMovers, useUpsetAlert } from '@/lib/stocks-api';
+import {
+    fetchStocks,
+    stocksKeys,
+    useHighestVolume,
+    useOnTheRise,
+    useTopMovers,
+    useUpsetAlert,
+    type MoverItem,
+} from '@/lib/stocks-api';
 import { useWallet } from '@/lib/wallet-api';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import type { League, Stock, TimePeriod } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    InteractionManager,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 
 type SortType = 'percentage' | 'value' | null;
+
+const EMPTY_MOVERS: MoverItem[] = [];
 
 const PORTFOLIO_CHART_PERIOD_LABEL: Record<TimePeriod, string> = {
     '1H': 'Past hour',
@@ -56,8 +82,6 @@ export default function HomeScreen() {
     const router = useRouter();
     const [activePage, setActivePage] = useState(0);
     const [highestVolumePage, setHighestVolumePage] = useState(0);
-    const [onTheRisePage, setOnTheRisePage] = useState(0);
-    const [upsetAlertPage, setUpsetAlertPage] = useState(0);
     const [sortType, setSortType] = useState<SortType>(null);
     const [portfolioChartPeriod, setPortfolioChartPeriod] = useState<TimePeriod>('1M');
     const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -72,6 +96,8 @@ export default function HomeScreen() {
         followedStockIds,
     } = useStockStore();
     const sortDropdownRef = useRef<View>(null);
+    const queryClient = useQueryClient();
+    const [homeRefreshing, setHomeRefreshing] = useState(false);
 
     const {
         data: portfolio,
@@ -99,8 +125,10 @@ export default function HomeScreen() {
     }, [isAuthenticated]);
 
     const discoveryQueryEnabled = !isAuthenticated || discoveryEnabled;
+    const discoveryQueryEnabledRef = useRef(discoveryQueryEnabled);
+    discoveryQueryEnabledRef.current = discoveryQueryEnabled;
 
-    const { data: wallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
+    const { refetch: refetchWallet } = useWallet(isAuthenticated && user?.id ? user.id : null);
 
     const positions = portfolio?.positions ?? [];
     const sortedPositions = useMemo(() => {
@@ -123,6 +151,7 @@ export default function HomeScreen() {
         isAuthenticated && positions.length > 0,
         PORTFOLIO_CHART_HISTORY_PARAMS
     );
+    const { refetch: refetchPortfolioHistory } = portfolioHistoryQuery;
 
     const chartLoading =
         isAuthenticated &&
@@ -137,14 +166,13 @@ export default function HomeScreen() {
         return d;
     }, [positions.length, portfolioHistoryQuery.data]);
 
-    useEffect(() => {
-        setPortfolioChartPeriod('1M');
-    }, [portfolioCompositionKey]);
-
-    /** Period $/% and line color from chart history (`portfolioChartPeriodMetrics`). */
-    const { portfolioPeriodStats, portfolioChartLineColor } = useMemo(() => {
+    /** Same series as `<Chart />`: $ / % and line color all match the plotted window. */
+    const { chartPeriodStats, portfolioChartLineColor } = useMemo((): {
+        chartPeriodStats: PortfolioChartPeriodMetrics | null;
+        portfolioChartLineColor: string;
+    } => {
         if (!chartData?.length) {
-            return { portfolioPeriodStats: null, portfolioChartLineColor: Color.green };
+            return { chartPeriodStats: null, portfolioChartLineColor: Color.green };
         }
         const nowMs = Date.now();
         const series = buildTimeAxisPriceSeries(
@@ -155,27 +183,31 @@ export default function HomeScreen() {
         );
         const stats = portfolioChartPeriodMetrics(series, portfolioChartPeriod, nowMs);
         if (!stats) {
-            return { portfolioPeriodStats: null, portfolioChartLineColor: Color.green };
+            return { chartPeriodStats: null, portfolioChartLineColor: Color.green };
         }
         return {
-            portfolioPeriodStats: stats,
+            chartPeriodStats: stats,
             portfolioChartLineColor: stats.endPrice >= stats.startPrice ? Color.green : Color.red,
         };
     }, [chartData, portfolioChartPeriod, portfolio?.totalValue, Color.green, Color.red]);
+
+    useEffect(() => {
+        setPortfolioChartPeriod('1M');
+    }, [portfolioCompositionKey]);
 
     const topMoversQuery = useTopMovers(5, discoveryQueryEnabled);
     const highestVolumeQuery = useHighestVolume(9, discoveryQueryEnabled);
     const onTheRiseQuery = useOnTheRise(9, discoveryQueryEnabled);
     const upsetAlertQuery = useUpsetAlert(9, discoveryQueryEnabled);
     const leaguesQuery = useLeagues(discoveryQueryEnabled);
-    const { data: followedStocksFromApi = [] } = useFollowedStocksNotOwned(
+    const { data: followedStocksFromApi = [], refetch: refetchFollowedNotOwned } = useFollowedStocksNotOwned(
         isAuthenticated && discoveryQueryEnabled
     );
 
     const topMovers = topMoversQuery.data ?? { gainers: [], losers: [] };
     const highestVolumeStocks = highestVolumeQuery.data ?? [];
-    const onTheRiseStocks = onTheRiseQuery.data ?? [];
-    const upsetAlertStocks = upsetAlertQuery.data ?? [];
+    const onTheRiseStocks = onTheRiseQuery.data ?? EMPTY_MOVERS;
+    const upsetAlertStocks = upsetAlertQuery.data ?? EMPTY_MOVERS;
     const leaguesList: League[] = leaguesQuery.data ?? [];
     const sectionsLoading =
         (isAuthenticated && !discoveryEnabled) ||
@@ -184,6 +216,58 @@ export default function HomeScreen() {
         onTheRiseQuery.isLoading ||
         upsetAlertQuery.isLoading ||
         leaguesQuery.isLoading;
+
+    useFocusEffect(
+        useCallback(() => {
+            const interval = setInterval(() => {
+                if (isAuthenticated && user?.id) {
+                    void queryClient.refetchQueries({ queryKey: portfolioKeys.root(user.id) });
+                }
+                if (discoveryQueryEnabledRef.current) {
+                    void queryClient.refetchQueries({ queryKey: stocksKeys.onTheRise(9) });
+                    void queryClient.refetchQueries({ queryKey: stocksKeys.upsetAlert(9) });
+                }
+            }, 15_000);
+            return () => clearInterval(interval);
+        }, [isAuthenticated, user?.id, queryClient])
+    );
+
+    const onHomeRefresh = useCallback(async () => {
+        setHomeRefreshing(true);
+        try {
+            const tasks: Promise<unknown>[] = [];
+            if (isAuthenticated) {
+                tasks.push(refetchPortfolio());
+                if (user?.id) tasks.push(refetchWallet());
+                if (positions.length > 0) tasks.push(refetchPortfolioHistory());
+            }
+            if (discoveryQueryEnabled) {
+                tasks.push(topMoversQuery.refetch());
+                tasks.push(highestVolumeQuery.refetch());
+                tasks.push(onTheRiseQuery.refetch());
+                tasks.push(upsetAlertQuery.refetch());
+                tasks.push(leaguesQuery.refetch());
+                if (isAuthenticated) tasks.push(refetchFollowedNotOwned());
+            }
+            await Promise.all(tasks);
+        } finally {
+            setHomeRefreshing(false);
+        }
+    }, [
+        isAuthenticated,
+        user?.id,
+        discoveryQueryEnabled,
+        positions.length,
+        refetchPortfolio,
+        refetchWallet,
+        refetchPortfolioHistory,
+        topMoversQuery,
+        highestVolumeQuery,
+        onTheRiseQuery,
+        upsetAlertQuery,
+        leaguesQuery,
+        refetchFollowedNotOwned,
+    ]);
 
     const showPortfolioSkeleton =
         isAuthenticated && portfolio == null && (portfolioPending || portfolioFetching);
@@ -203,10 +287,10 @@ export default function HomeScreen() {
         }).format(amount);
     };
 
-    const formatPercentage = (percentage: number) => {
+    const formatPercentage = useCallback((percentage: number) => {
         const sign = percentage >= 0 ? '+' : '';
         return `${sign}${percentage.toFixed(2)}%`;
-    };
+    }, []);
 
     const formatNumber = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -232,23 +316,18 @@ export default function HomeScreen() {
         setHighestVolumePage(Math.round(page / (styles.stockPage.width + (styles.stockPage.marginRight / 2))));
     };
 
-    const handleOnTheRisePageChange = (page: number) => {
-        setOnTheRisePage(Math.round(page / (styles.stockPage.width + (styles.stockPage.marginRight / 2))));
-    };
-
-    const handleUpsetAlertPageChange = (page: number) => {
-        setUpsetAlertPage(Math.round(page / (styles.stockPage.width + (styles.stockPage.marginRight / 2))));
-    };
-
-    const handleStockPress = (stockOrId: Stock | number) => {
-        lightImpact();
-        if (typeof stockOrId === 'object') {
-            setActiveStock(stockOrId);
-            setActiveStockId(stockOrId.id);
-        } else {
-            setActiveStockId(stockOrId);
-        }
-    };
+    const handleStockPress = useCallback(
+        (stockOrId: Stock | number) => {
+            lightImpact();
+            if (typeof stockOrId === 'object') {
+                setActiveStock(stockOrId);
+                setActiveStockId(stockOrId.id);
+            } else {
+                setActiveStockId(stockOrId);
+            }
+        },
+        [lightImpact, setActiveStock, setActiveStockId]
+    );
 
     const handlePortfolioMarqueePress = useCallback(
         async (card: PortfolioPreviewCard) => {
@@ -384,7 +463,19 @@ export default function HomeScreen() {
 
     return (
         <ThemedView style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 120 }}>
+            <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingTop: 120 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={homeRefreshing}
+                        onRefresh={onHomeRefresh}
+                        tintColor={Color.baseText}
+                        colors={[Color.green]}
+                    />
+                }
+            >
                 <AppHeader />
 
                 {/* Top Movers Banner - wrapper reserves space so content below doesn't snap when banner loads */}
@@ -457,26 +548,26 @@ export default function HomeScreen() {
                                                             styles.portfolioGainLoss,
                                                             {
                                                                 color:
-                                                                    (portfolioPeriodStats?.dollar ?? 0) >= 0
+                                                                    (chartPeriodStats?.dollar ?? 0) >= 0
                                                                         ? Color.green
                                                                         : Color.red,
                                                             },
                                                         ]}
                                                     >
-                                                        {formatCurrency(portfolioPeriodStats?.dollar ?? 0)}
+                                                        {formatCurrency(chartPeriodStats?.dollar ?? 0)}
                                                     </Text>
                                                     <Text
                                                         style={[
                                                             styles.portfolioGainLoss,
                                                             {
                                                                 color:
-                                                                    (portfolioPeriodStats?.percent ?? 0) >= 0
+                                                                    (chartPeriodStats?.percent ?? 0) >= 0
                                                                         ? Color.green
                                                                         : Color.red,
                                                             },
                                                         ]}
                                                     >
-                                                        ({formatPercentage(portfolioPeriodStats?.percent ?? 0)})
+                                                        ({formatPercentage(chartPeriodStats?.percent ?? 0)})
                                                     </Text>
                                                     <Text style={[styles.portfolioToday, { color: Color.subText }]}>
                                                         {PORTFOLIO_CHART_PERIOD_LABEL[portfolioChartPeriod]} · Portfolio
@@ -550,222 +641,222 @@ export default function HomeScreen() {
                     {isAuthenticated ? (
                         <GlassCard style={styles.investmentsCard} padding={0}>
                             <View style={styles.investmentsContent}>
-                                    <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                        My Portfolio
-                                    </Text>
+                                <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
+                                    My Portfolio
+                                </Text>
 
-                                    {portfolioLoadError ? (
-                                        <View style={styles.portfolioInlineError}>
-                                            <Text style={[styles.portfolioErrorText, { color: Color.subText }]}>
-                                                {"Couldn't load portfolio"}
-                                            </Text>
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    lightImpact();
-                                                    refetchPortfolio();
-                                                }}
-                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                            >
-                                                <Text style={[styles.portfolioRetryText, { color: Color.green }]}>Tap to retry</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    ) : showPortfolioSkeleton ? (
-                                        <>
-                                            <View style={styles.investmentOverview}>
-                                                <View style={styles.investmentLeft}>
-                                                    <View style={[styles.skeletonBar, { width: 100, height: 22, backgroundColor: skeletonBg }]} />
-                                                    <View style={[styles.skeletonBar, { width: 52, height: 14, backgroundColor: skeletonBg, marginTop: 6 }]} />
-                                                </View>
-                                                <View style={styles.investmentRight}>
-                                                    <View style={[styles.skeletonBar, { width: 88, height: 22, backgroundColor: skeletonBg }]} />
-                                                    <View style={[styles.skeletonBar, { width: 36, height: 14, backgroundColor: skeletonBg, marginTop: 6 }]} />
-                                                </View>
-                                            </View>
-                                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
-                                            <View style={styles.summaryDetails}>
-                                                <View style={[styles.skeletonBar, { width: 96, height: 14, backgroundColor: skeletonBg }]} />
-                                                <View style={[styles.skeletonBar, { width: 120, height: 18, backgroundColor: skeletonBg }]} />
-                                            </View>
-                                            <View style={styles.summaryDetails}>
-                                                <View style={[styles.skeletonBar, { width: 88, height: 14, backgroundColor: skeletonBg }]} />
-                                                <View style={[styles.skeletonBar, { width: 56, height: 18, backgroundColor: skeletonBg }]} />
-                                            </View>
-                                            <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
-                                            <View style={styles.stocksOwnedHeader}>
-                                                <View style={styles.stocksOwnedLeft}>
-                                                    <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
-                                                        My Teams
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                            <View style={styles.skeletonTeamsBlock}>
-                                                {[0, 1, 2].map((i) => (
-                                                    <View key={i} style={styles.skeletonTeamRow}>
-                                                        <View style={[styles.skeletonBar, { width: 36, height: 14, backgroundColor: skeletonBg }]} />
-                                                        <View style={[styles.skeletonBar, { flex: 1, height: 14, backgroundColor: skeletonBg, marginHorizontal: 12 }]} />
-                                                        <View style={[styles.skeletonBar, { width: 64, height: 14, backgroundColor: skeletonBg }]} />
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </>
-                                    ) : portfolio != null ? (
-                                        <>
-                                    <View style={styles.investmentOverview}>
-                                        <View style={styles.investmentLeft}>
-                                            <Text style={[styles.investmentAmount, { color: Color.baseText }]}>
-                                                {formatCurrency(portfolio.totalInvested)}
-                                            </Text>
-                                            <Text style={[styles.investmentLabel, { color: Color.subText }]}>
-                                                Put In
-                                            </Text>
-                                        </View>
-                                        <View style={styles.investmentRight}>
-                                            <Text style={[
-                                                styles.investmentAmount,
-                                                { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
-                                            ]}>
-                                                {formatCurrency(portfolio.totalGainLoss)}
-                                            </Text>
-                                            <Text style={[styles.investmentLabel, { color: Color.subText }]}>
-                                                W/L
-                                            </Text>
-                                        </View>
+                                {portfolioLoadError ? (
+                                    <View style={styles.portfolioInlineError}>
+                                        <Text style={[styles.portfolioErrorText, { color: Color.subText }]}>
+                                            {"Couldn't load portfolio"}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                lightImpact();
+                                                refetchPortfolio();
+                                            }}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <Text style={[styles.portfolioRetryText, { color: Color.green }]}>Tap to retry</Text>
+                                        </TouchableOpacity>
                                     </View>
-
-                                    <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
-
-                                    <View style={styles.summaryDetails}>
-                                        <Text style={[styles.summaryLabel, { color: Color.subText }]}>
-                                            Total Value $
-                                        </Text>
-                                        <Text style={[styles.summaryValue, { color: Color.baseText }]}>
-                                            {formatCurrency(portfolio.totalValue)}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.summaryDetails}>
-                                        <Text style={[styles.summaryLabel, { color: Color.subText }]}>
-                                            Total Gain %
-                                        </Text>
-                                        <Text style={[
-                                            styles.summaryValue,
-                                            { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
-                                        ]}>
-                                            {formatPercentage(portfolio.totalGainLossPercentage)}
-                                        </Text>
-                                    </View>
-
-                                    <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
-
-                                    <View style={styles.stocksOwnedHeader}>
-                                        <View style={styles.stocksOwnedLeft}>
-                                            <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
-                                                My Teams
-                                            </Text>
+                                ) : showPortfolioSkeleton ? (
+                                    <>
+                                        <View style={styles.investmentOverview}>
+                                            <View style={styles.investmentLeft}>
+                                                <View style={[styles.skeletonBar, { width: 100, height: 22, backgroundColor: skeletonBg }]} />
+                                                <View style={[styles.skeletonBar, { width: 52, height: 14, backgroundColor: skeletonBg, marginTop: 6 }]} />
+                                            </View>
+                                            <View style={styles.investmentRight}>
+                                                <View style={[styles.skeletonBar, { width: 88, height: 22, backgroundColor: skeletonBg }]} />
+                                                <View style={[styles.skeletonBar, { width: 36, height: 14, backgroundColor: skeletonBg, marginTop: 6 }]} />
+                                            </View>
                                         </View>
-                                        <View style={styles.sortButtonContainer} ref={sortDropdownRef}>
-                                            <TouchableOpacity
-                                                style={[styles.sortButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
-                                                onPress={() => {
-                                                    sortType === 'percentage' ? handleSortSelect('value') : handleSortSelect('percentage');
-                                                    lightImpact();
-                                                }}
-                                                activeOpacity={0.7}
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                delayPressIn={0}
-                                            >
-                                                <Text style={[styles.sortButtonText, { color: Color.baseText }]}>
-                                                    {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
+                                        <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+                                        <View style={styles.summaryDetails}>
+                                            <View style={[styles.skeletonBar, { width: 96, height: 14, backgroundColor: skeletonBg }]} />
+                                            <View style={[styles.skeletonBar, { width: 120, height: 18, backgroundColor: skeletonBg }]} />
+                                        </View>
+                                        <View style={styles.summaryDetails}>
+                                            <View style={[styles.skeletonBar, { width: 88, height: 14, backgroundColor: skeletonBg }]} />
+                                            <View style={[styles.skeletonBar, { width: 56, height: 18, backgroundColor: skeletonBg }]} />
+                                        </View>
+                                        <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+                                        <View style={styles.stocksOwnedHeader}>
+                                            <View style={styles.stocksOwnedLeft}>
+                                                <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
+                                                    My Teams
                                                 </Text>
-                                            </TouchableOpacity>
+                                            </View>
                                         </View>
-                                    </View>
+                                        <View style={styles.skeletonTeamsBlock}>
+                                            {[0, 1, 2].map((i) => (
+                                                <View key={i} style={styles.skeletonTeamRow}>
+                                                    <View style={[styles.skeletonBar, { width: 36, height: 14, backgroundColor: skeletonBg }]} />
+                                                    <View style={[styles.skeletonBar, { flex: 1, height: 14, backgroundColor: skeletonBg, marginHorizontal: 12 }]} />
+                                                    <View style={[styles.skeletonBar, { width: 64, height: 14, backgroundColor: skeletonBg }]} />
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </>
+                                ) : portfolio != null ? (
+                                    <>
+                                        <View style={styles.investmentOverview}>
+                                            <View style={styles.investmentLeft}>
+                                                <Text style={[styles.investmentAmount, { color: Color.baseText }]}>
+                                                    {formatCurrency(portfolio.totalInvested)}
+                                                </Text>
+                                                <Text style={[styles.investmentLabel, { color: Color.subText }]}>
+                                                    Put In
+                                                </Text>
+                                            </View>
+                                            <View style={styles.investmentRight}>
+                                                <Text style={[
+                                                    styles.investmentAmount,
+                                                    { color: portfolio.totalGainLoss >= 0 ? Color.green : Color.red }
+                                                ]}>
+                                                    {formatCurrency(portfolio.totalGainLoss)}
+                                                </Text>
+                                                <Text style={[styles.investmentLabel, { color: Color.subText }]}>
+                                                    W/L
+                                                </Text>
+                                            </View>
+                                        </View>
 
-                                    {sortedPositions.length === 0 ? (
-                                        <EmptyState
-                                            icon="wallet-outline"
-                                            title="No teams yet"
-                                            subtitle="Buy your first stock to start building your portfolio."
-                                            actionLabel="Browse stocks"
-                                            onAction={() => router.push('/(tabs)/search')}
-                                        />
-                                    ) : (
-                                        <>
-                                            <ScrollView
-                                                horizontal
-                                                showsHorizontalScrollIndicator={false}
-                                                pagingEnabled
-                                                snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                                snapToAlignment="center"
-                                                decelerationRate="fast"
-                                                onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
-                                                style={styles.stockScrollView}
-                                                contentContainerStyle={styles.stockScrollContent}
-                                                scrollEventThrottle={16}
-                                                nestedScrollEnabled={true}
-                                            >
-                                                {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
-                                                    <View key={pageIndex} style={styles.stockPage}>
-                                                        {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
-                                                            <TouchableOpacity
-                                                                key={position.stock.id}
-                                                                style={styles.stockItem}
-                                                                onPress={() => {
-                                                                    mediumImpact();
-                                                                    setActivePosition(position);
-                                                                    setPositionDetailBottomSheetOpen(true);
-                                                                }}
-                                                                onPressIn={() => { }}
-                                                                activeOpacity={0.7}
-                                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                                delayPressIn={0}
-                                                            >
-                                                                <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
-                                                                    <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                                        {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                        <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+
+                                        <View style={styles.summaryDetails}>
+                                            <Text style={[styles.summaryLabel, { color: Color.subText }]}>
+                                                Total Value $
+                                            </Text>
+                                            <Text style={[styles.summaryValue, { color: Color.baseText }]}>
+                                                {formatCurrency(portfolio.totalValue)}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.summaryDetails}>
+                                            <Text style={[styles.summaryLabel, { color: Color.subText }]}>
+                                                Total Gain %
+                                            </Text>
+                                            <Text style={[
+                                                styles.summaryValue,
+                                                { color: portfolio.totalGainLossPercentage >= 0 ? Color.green : Color.red }
+                                            ]}>
+                                                {formatPercentage(portfolio.totalGainLossPercentage)}
+                                            </Text>
+                                        </View>
+
+                                        <View style={[styles.divider, { backgroundColor: isDark ? '#242428' : '#E5E7EB' }]} />
+
+                                        <View style={styles.stocksOwnedHeader}>
+                                            <View style={styles.stocksOwnedLeft}>
+                                                <Text style={[styles.stocksOwnedTitle, { color: Color.baseText }]}>
+                                                    My Teams
+                                                </Text>
+                                            </View>
+                                            <View style={styles.sortButtonContainer} ref={sortDropdownRef}>
+                                                <TouchableOpacity
+                                                    style={[styles.sortButton, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}
+                                                    onPress={() => {
+                                                        sortType === 'percentage' ? handleSortSelect('value') : handleSortSelect('percentage');
+                                                        lightImpact();
+                                                    }}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                    delayPressIn={0}
+                                                >
+                                                    <Text style={[styles.sortButtonText, { color: Color.baseText }]}>
+                                                        {sortType === 'percentage' ? 'Sort: %' : sortType === 'value' ? 'Sort: $' : 'Sort by'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+
+                                        {sortedPositions.length === 0 ? (
+                                            <EmptyState
+                                                icon="wallet-outline"
+                                                title="No teams yet"
+                                                subtitle="Buy your first stock to start building your portfolio."
+                                                actionLabel="Browse stocks"
+                                                onAction={() => router.push('/(tabs)/search')}
+                                            />
+                                        ) : (
+                                            <>
+                                                <ScrollView
+                                                    horizontal
+                                                    showsHorizontalScrollIndicator={false}
+                                                    pagingEnabled
+                                                    snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
+                                                    snapToAlignment="center"
+                                                    decelerationRate="fast"
+                                                    onScroll={(event) => handlePageChange(event.nativeEvent.contentOffset.x)}
+                                                    style={styles.stockScrollView}
+                                                    contentContainerStyle={styles.stockScrollContent}
+                                                    scrollEventThrottle={16}
+                                                    nestedScrollEnabled={true}
+                                                >
+                                                    {Array.from({ length: Math.ceil(sortedPositions.length / 3) }, (_, pageIndex) => (
+                                                        <View key={pageIndex} style={styles.stockPage}>
+                                                            {sortedPositions.slice(pageIndex * 3, (pageIndex + 1) * 3).map((position) => (
+                                                                <TouchableOpacity
+                                                                    key={position.stock.id}
+                                                                    style={styles.stockItem}
+                                                                    onPress={() => {
+                                                                        mediumImpact();
+                                                                        setActivePosition(position);
+                                                                        setPositionDetailBottomSheetOpen(true);
+                                                                    }}
+                                                                    onPressIn={() => { }}
+                                                                    activeOpacity={0.7}
+                                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                                    delayPressIn={0}
+                                                                >
+                                                                    <View style={[styles.stockIcon, { backgroundColor: position.stock.color }]}>
+                                                                        <Text style={[styles.stockIconText, { color: Color.white }]}>
+                                                                            {position.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                                                                        </Text>
+                                                                    </View>
+                                                                    <Text style={[styles.stockName, { color: Color.baseText }]}>
+                                                                        {position.stock.name}
                                                                     </Text>
-                                                                </View>
-                                                                <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                                    {position.stock.name}
-                                                                </Text>
-                                                                <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                                    {sortType === 'percentage' ? (
-                                                                        <View style={styles.stockValueContent}>
-                                                                            <Ionicons
-                                                                                name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
-                                                                                size={14}
-                                                                                color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
-                                                                            />
+                                                                    <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
+                                                                        {sortType === 'percentage' ? (
+                                                                            <View style={styles.stockValueContent}>
+                                                                                <Ionicons
+                                                                                    name={position.gainLossPercentage >= 0 ? 'trending-up' : 'trending-down'}
+                                                                                    size={14}
+                                                                                    color={position.gainLossPercentage >= 0 ? Color.green : Color.red}
+                                                                                />
+                                                                                <Text style={[
+                                                                                    styles.stockValueText,
+                                                                                    { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
+                                                                                ]}>
+                                                                                    {formatPercentage(position.gainLossPercentage)}
+                                                                                </Text>
+                                                                            </View>
+                                                                        ) : (
                                                                             <Text style={[
                                                                                 styles.stockValueText,
                                                                                 { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
                                                                             ]}>
-                                                                                {formatPercentage(position.gainLossPercentage)}
+                                                                                {formatCurrency(position.currentValue)}
                                                                             </Text>
-                                                                        </View>
-                                                                    ) : (
-                                                                        <Text style={[
-                                                                            styles.stockValueText,
-                                                                            { color: position.gainLossPercentage >= 0 ? Color.green : Color.red }
-                                                                        ]}>
-                                                                            {formatCurrency(position.currentValue)}
-                                                                        </Text>
-                                                                    )}
-                                                                </View>
-                                                            </TouchableOpacity>
-                                                        ))}
-                                                    </View>
-                                                ))}
-                                            </ScrollView>
+                                                                        )}
+                                                                    </View>
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </View>
+                                                    ))}
+                                                </ScrollView>
 
-                                            <View style={styles.paginationDots}>
-                                                {Array.from({ length: pageCount }, (_, index) => (
-                                                    <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                                ))}
-                                            </View>
-                                        </>
-                                    )}
-                                </>
-                                    ) : null}
+                                                <View style={styles.paginationDots}>
+                                                    {Array.from({ length: pageCount }, (_, index) => (
+                                                        <View key={index} style={[styles.paginationDot, { backgroundColor: activePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
+                                                    ))}
+                                                </View>
+                                            </>
+                                        )}
+                                    </>
+                                ) : null}
 
                             </View>
                         </GlassCard>
@@ -985,179 +1076,31 @@ export default function HomeScreen() {
                     </GlassCard>
                 </View>
 
-                {/* On the Rise Section */}
-                <View style={styles.section}>
-                    <GlassCard style={styles.investmentsCard} padding={0}>
-                        <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                ON THE RISE
-                            </Text>
-                            <Text style={[styles.sectionSubtitle, { color: Color.subText }]}>
-                                These stocks were bought and sold more over the last 30 days than any other stocks available on SportStock.
-                            </Text>
-                            {onTheRiseStocks.length === 0 && !sectionsLoading ? (
-                                <EmptyState
-                                    icon="trending-up-outline"
-                                    title="No risers yet"
-                                    subtitle="Stocks with positive movement will show up here."
-                                />
-                            ) : (
-                                <>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        pagingEnabled
-                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                        snapToAlignment="center"
-                                        decelerationRate="fast"
-                                        onScroll={(event) => handleOnTheRisePageChange(event.nativeEvent.contentOffset.x)}
-                                        style={styles.stockScrollView}
-                                        contentContainerStyle={styles.stockScrollContent}
-                                        scrollEventThrottle={16}
-                                        nestedScrollEnabled={true}
-                                    >
-                                        {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, pageIndex) => (
-                                            <View key={pageIndex} style={styles.stockPage}>
-                                                {onTheRiseStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={item.stock.id}
-                                                            style={styles.stockItem}
-                                                            onPress={() => {
-                                                                handleStockPress(item.stock);
-                                                            }}
-                                                            activeOpacity={0.7}
-                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                        >
-                                                            <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                                <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                                    {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                                </Text>
-                                                            </View>
-                                                            <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                                {item.stock.name}
-                                                            </Text>
-                                                            <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                                <View style={styles.stockValueContent}>
-                                                                    <Ionicons
-                                                                        name="trending-up"
-                                                                        size={14}
-                                                                        color={Color.green}
-                                                                    />
-                                                                    <Text style={[
-                                                                        styles.stockValueText,
-                                                                        { color: Color.green }
-                                                                    ]}>
-                                                                        {formatPercentage(item.changePercentage)}
-                                                                    </Text>
-                                                                </View>
-                                                            </View>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-                                        ))}
-                                    </ScrollView>
+                <HomeMoverDiscoverySection
+                    variant="rise"
+                    title="ON THE RISE"
+                    subtitle="These stocks were bought and sold more over the last 30 days than any other stocks available on SportStock."
+                    emptyIcon="trending-up-outline"
+                    emptyTitle="No risers yet"
+                    emptySubtitle="Stocks with positive movement will show up here."
+                    items={onTheRiseStocks}
+                    sectionsLoading={sectionsLoading}
+                    onStockPress={handleStockPress}
+                    formatPercentage={formatPercentage}
+                />
 
-                                    {Math.ceil(onTheRiseStocks.length / 3) > 1 && (
-                                        <View style={styles.paginationDots}>
-                                            {Array.from({ length: Math.ceil(onTheRiseStocks.length / 3) }, (_, index) => (
-                                                <View key={index} style={[styles.paginationDot, { backgroundColor: onTheRisePage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                            ))}
-                                        </View>
-                                    )}
-                                </>
-                            )}
-                        </View>
-                    </GlassCard>
-                </View>
-
-                {/* Upset Alert Section */}
-                <View style={styles.section}>
-                    <GlassCard style={styles.investmentsCard} padding={0}>
-                        <View style={styles.investmentsContent}>
-                            <Text style={[styles.investmentsTitle, { color: Color.baseText }]}>
-                                UPSET ALERT
-                            </Text>
-                            <Text style={[styles.sectionSubtitle, { color: Color.subText }]}>
-                                These teams gained or lost the most value today of any stock on SportStock.
-                            </Text>
-                            {upsetAlertStocks.length === 0 && !sectionsLoading ? (
-                                <EmptyState
-                                    icon="trending-down-outline"
-                                    title="No upset data yet"
-                                    subtitle="Stocks with big drops will show up here."
-                                />
-                            ) : (
-                                <>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        pagingEnabled
-                                        snapToInterval={styles.stockPage.width + (styles.stockPage.marginRight / 2)}
-                                        snapToAlignment="center"
-                                        decelerationRate="fast"
-                                        onScroll={(event) => handleUpsetAlertPageChange(event.nativeEvent.contentOffset.x)}
-                                        style={styles.stockScrollView}
-                                        contentContainerStyle={styles.stockScrollContent}
-                                        scrollEventThrottle={16}
-                                        nestedScrollEnabled={true}
-                                    >
-                                        {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, pageIndex) => (
-                                            <View key={pageIndex} style={styles.stockPage}>
-                                                {upsetAlertStocks.slice(pageIndex * 3, (pageIndex + 1) * 3).map((item) => {
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={item.stock.id}
-                                                            style={styles.stockItem}
-                                                            onPress={() => {
-                                                                handleStockPress(item.stock);
-                                                            }}
-                                                            activeOpacity={0.7}
-                                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                        >
-                                                            <View style={[styles.stockIcon, { backgroundColor: item.stock.color }]}>
-                                                                <Text style={[styles.stockIconText, { color: Color.white }]}>
-                                                                    {item.stock.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                                                                </Text>
-                                                            </View>
-                                                            <Text style={[styles.stockName, { color: Color.baseText }]}>
-                                                                {item.stock.name}
-                                                            </Text>
-                                                            <View style={[styles.stockValue, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
-                                                                <View style={styles.stockValueContent}>
-                                                                    <Ionicons
-                                                                        name="trending-down"
-                                                                        size={14}
-                                                                        color="#FF1744"
-                                                                    />
-                                                                    <Text style={[
-                                                                        styles.stockValueText,
-                                                                        { color: Color.red }
-                                                                    ]}>
-                                                                        {formatPercentage(item.changePercentage)}
-                                                                    </Text>
-                                                                </View>
-                                                            </View>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-                                        ))}
-                                    </ScrollView>
-
-                                    {Math.ceil(upsetAlertStocks.length / 3) > 1 && (
-                                        <View style={styles.paginationDots}>
-                                            {Array.from({ length: Math.ceil(upsetAlertStocks.length / 3) }, (_, index) => (
-                                                <View key={index} style={[styles.paginationDot, { backgroundColor: upsetAlertPage === index ? isDark ? '#ccc' : '#777' : isDark ? '#777' : '#ccc' }]} />
-                                            ))}
-                                        </View>
-                                    )}
-                                </>
-                            )}
-                        </View>
-                    </GlassCard>
-                </View>
+                <HomeMoverDiscoverySection
+                    variant="upset"
+                    title="UPSET ALERT"
+                    subtitle="These teams gained or lost the most value today of any stock on SportStock."
+                    emptyIcon="trending-down-outline"
+                    emptyTitle="No upset data yet"
+                    emptySubtitle="Stocks with big drops will show up here."
+                    items={upsetAlertStocks}
+                    sectionsLoading={sectionsLoading}
+                    onStockPress={handleStockPress}
+                    formatPercentage={formatPercentage}
+                />
 
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />

@@ -807,27 +807,27 @@ List[LiveGame]
 
 ## External API Integrations
 
-The frontend integrates with external APIs. The backend may need to proxy or cache these:
+The frontend calls SportStock backend proxies; the server forwards to third parties and injects secrets where needed.
 
-### Polymarket API
+### Polymarket (Gamma)
 
-Used for prediction markets data. Frontend queries:
-- `https://gamma-api.polymarket.com/public-search?q={query}`
+Used for prediction markets data. Frontend calls (same base as `EXPO_PUBLIC_API_BASE_URL`):
+- `GET /api/polymarket/search?q={query}` — proxy to Gamma `GET /public-search`; forwards query parameters.
 
 **Considerations:**
-- Backend may want to cache/proxy these requests
+- Backend may cache responses
 - Frontend uses queries like:
   - League playoff queries (e.g., "nfl playoffs")
   - Division/conference champion queries
   - Championship queries (e.g., "nfl champion")
 
-### Odds API (The Odds API)
+### Odds API (The Odds API v4)
 
-Used for game odds. Frontend queries:
-- `https://api.the-odds-api.com/v4/sports/{sportKey}/odds?regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=draftkings&apiKey={key}`
+Used for game odds. Frontend calls:
+- `GET /api/odds/v4/sports/{sportKey}/odds?regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=draftkings` — pass-through to upstream v4 after `/v4/`; server injects `apiKey`.
 
 **Considerations:**
-- Backend may want to cache/proxy these requests
+- Backend may cache responses
 - Frontend maps team names and sport keys
 
 ---
@@ -1002,8 +1002,4 @@ To wire the mobile app to real data, the backend must support:
 
 9. **State Restrictions:** The app has state restrictions logic (see `lib/state-restrictions.ts`). Backend should validate user location for compliance
 
-10. **External APIs:** Consider proxying/caching external API calls (Polymarket, Odds API) to:
-    - Reduce frontend API key exposure
-    - Improve performance
-    - Add rate limiting
-    - Add error handling/retries
+10. **External APIs:** The app uses backend proxies for Polymarket and The Odds API (`/api/polymarket/search`, `/api/odds/v4/...`). Backend should cache/rate-limit as needed.
