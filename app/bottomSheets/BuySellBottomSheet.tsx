@@ -5,6 +5,7 @@ import { usePortfolio } from "@/lib/portfolio-api";
 import { useStock } from "@/lib/stocks-api";
 import {
     newTransactionIdempotencyKey,
+    type TransactionCreate,
     useCreateTransaction,
 } from "@/lib/transactions-api";
 import { useWallet } from "@/lib/wallet-api";
@@ -135,37 +136,46 @@ export default function BuySellBottomSheet({
             console.log("[BuySellBottomSheet] runTrade aborted due to invalid state");
             return;
         }
-        // If orderMode is "entries", treat selectedAmount as entries. Otherwise, convert dollars to entries when price > 0.
-        const quantity =
-            orderMode === "entries"
+        // Dollar buys: send notional as quantity + quantityUnit "usd" (server sizes fill ~within 1%).
+        // Otherwise: entries as quantity, or dollars→entries via price for sells / legacy path.
+        const isUsdNotionalBuy =
+            buySellMode === "buy" && orderMode === "dollars";
+        const quantity = isUsdNotionalBuy
+            ? selectedAmount
+            : orderMode === "entries"
                 ? selectedAmount
                 : stock.price > 0
                     ? selectedAmount / stock.price
                     : selectedAmount;
         if (quantity <= 0) return;
         setTradeError(null);
+        const stockIdForApi = stock.ticker?.trim() || stock.id;
         // eslint-disable-next-line no-console
         console.log("[BuySellBottomSheet] runTrade called", {
             mode: buySellMode,
             selectedAmount,
-            stockId: stock.id,
+            stockId: stockIdForApi,
             stockPrice: stock.price,
             quantity,
             orderMode,
+            quantityUnit: isUsdNotionalBuy ? "usd" : undefined,
         });
         try {
             const idempotencyKey = newTransactionIdempotencyKey();
-            await createTransactionMutation.mutateAsync({
-                body: {
-                    action: buySellMode,
-                    stockId: stock.id,
-                    quantity,
-                    // Only send a concrete price when we have one; otherwise let backend derive it.
-                    price: stock.price > 0 ? stock.price : null,
-                    idempotencyKey,
-                },
-                stockContext: { leagueID: Number(stock.leagueID), ticker: stock.ticker },
-            });
+            const body: TransactionCreate = {
+                action: buySellMode,
+                stockId: stockIdForApi,
+                quantity,
+                idempotencyKey,
+            };
+            if (isUsdNotionalBuy) {
+                body.quantityUnit = "usd";
+            } else if (stock.price > 0) {
+                body.price = stock.price;
+            } else {
+                body.price = null;
+            }
+            await createTransactionMutation.mutateAsync({ body });
             if (activeStockId) removeFollow(activeStockId);
             lightImpact();
             closeModal();
@@ -177,6 +187,7 @@ export default function BuySellBottomSheet({
         selectedAmount,
         stock,
         buySellMode,
+        orderMode,
         activeStockId,
         removeFollow,
         createTransactionMutation,

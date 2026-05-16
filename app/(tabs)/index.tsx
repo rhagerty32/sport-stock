@@ -1,28 +1,31 @@
 import { AppHeader } from '@/components/AppHeader';
-import { HomeMoverDiscoverySection } from '@/components/HomeMoverDiscoverySection';
 import Chart from '@/components/chart';
 import { ChartLoadingSkeleton } from '@/components/ChartLoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
+import { GamesTickerBanner } from '@/components/GamesTickerBanner';
+import { HomeMoverDiscoverySection } from '@/components/HomeMoverDiscoverySection';
 import { PortfolioPreviewMarquee, type PortfolioPreviewCard } from '@/components/PortfolioPreviewMarquee';
+import { SportsHeadlinesBanner } from '@/components/SportsHeadlinesBanner';
 import { ThemedView } from '@/components/themed-view';
-import { TopMoversBanner } from '@/components/TopMoversBanner';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useFollowedStocksNotOwned } from '@/lib/follows-api';
+import { useGamesTicker } from '@/lib/games-ticker-api';
+import { headlinesQueryEnabled, useSportsHeadlines } from '@/lib/headlines-api';
 import { useLeagues } from '@/lib/leagues-api';
-import {
-    buildTimeAxisPriceSeries,
-    portfolioChartPeriodMetrics,
-    type PortfolioChartPeriodMetrics,
-} from '@/lib/price-history-period';
 import {
     PORTFOLIO_CHART_HISTORY_PARAMS,
     portfolioKeys,
     usePortfolio,
     usePortfolioHistory,
 } from '@/lib/portfolio-api';
+import {
+    buildTimeAxisPriceSeries,
+    portfolioChartPeriodMetrics,
+    type PortfolioChartPeriodMetrics,
+} from '@/lib/price-history-period';
 import {
     fetchStocks,
     stocksKeys,
@@ -37,8 +40,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import type { League, Stock, TimePeriod } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -50,7 +54,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 
 type SortType = 'percentage' | 'value' | null;
@@ -73,6 +76,23 @@ const leagueImages: Record<string, any> = {
     'NBA': require('@/assets/images/leagues/proBasketball.png'),
     'NCAA Football': require('@/assets/images/leagues/collegeFootball.png'),
     'NCAA Basketball': require('@/assets/images/leagues/collegeBasketball.png'),
+};
+
+const PREFERRED_LEAGUE_ORDER = ['NFL', 'NBA', 'NCAA Basketball', 'NCAA Football'] as const;
+
+function bundledLeagueImageForName(name: string): number | undefined {
+    const key = name.trim().toLowerCase();
+    for (const [label, img] of Object.entries(leagueImages) as [string, number][]) {
+        if (label.trim().toLowerCase() === key) return img;
+    }
+    return undefined;
+}
+
+type LeagueButtonItem = {
+    id: number;
+    name: string;
+    /** Bundled `require()` id or remote URI; null uses text fallback in the row */
+    source: number | { uri: string } | null;
 };
 
 export default function HomeScreen() {
@@ -196,10 +216,14 @@ export default function HomeScreen() {
     }, [portfolioCompositionKey]);
 
     const topMoversQuery = useTopMovers(5, discoveryQueryEnabled);
+    const gamesTickerQuery = useGamesTicker();
+    const sportsHeadlinesQuery = useSportsHeadlines();
+    const headlinesEnabled = headlinesQueryEnabled();
     const highestVolumeQuery = useHighestVolume(9, discoveryQueryEnabled);
     const onTheRiseQuery = useOnTheRise(9, discoveryQueryEnabled);
     const upsetAlertQuery = useUpsetAlert(9, discoveryQueryEnabled);
-    const leaguesQuery = useLeagues(discoveryQueryEnabled);
+    /** Always load on home so league shortcuts work even before discovery sections hydrate. */
+    const leaguesQuery = useLeagues(true);
     const { data: followedStocksFromApi = [], refetch: refetchFollowedNotOwned } = useFollowedStocksNotOwned(
         isAuthenticated && discoveryQueryEnabled
     );
@@ -208,7 +232,7 @@ export default function HomeScreen() {
     const highestVolumeStocks = highestVolumeQuery.data ?? [];
     const onTheRiseStocks = onTheRiseQuery.data ?? EMPTY_MOVERS;
     const upsetAlertStocks = upsetAlertQuery.data ?? EMPTY_MOVERS;
-    const leaguesList: League[] = leaguesQuery.data ?? [];
+    const leaguesList: League[] = useMemo(() => leaguesQuery.data ?? [], [leaguesQuery.data]);
     const sectionsLoading =
         (isAuthenticated && !discoveryEnabled) ||
         topMoversQuery.isLoading ||
@@ -249,6 +273,9 @@ export default function HomeScreen() {
                 tasks.push(leaguesQuery.refetch());
                 if (isAuthenticated) tasks.push(refetchFollowedNotOwned());
             }
+            if (headlinesEnabled) {
+                tasks.push(sportsHeadlinesQuery.refetch());
+            }
             await Promise.all(tasks);
         } finally {
             setHomeRefreshing(false);
@@ -267,6 +294,8 @@ export default function HomeScreen() {
         upsetAlertQuery,
         leaguesQuery,
         refetchFollowedNotOwned,
+        headlinesEnabled,
+        sportsHeadlinesQuery,
     ]);
 
     const showPortfolioSkeleton =
@@ -393,14 +422,71 @@ export default function HomeScreen() {
         return { amount: 0, percentage: 0 };
     }, [topMovers, onTheRiseStocks, upsetAlertStocks]);
 
-    const leagueButtons = useMemo(() => {
-        const order = ['NFL', 'NBA', 'NCAA Basketball', 'NCAA Football'];
-        const byName = new Map(leaguesList.map(l => [l.name, l]));
-        return order.map(name => {
-            const league = byName.get(name);
-            return league ? { id: league.id, name: league.name, image: leagueImages[league.name] ?? null } : null;
-        }).filter((b): b is { id: number; name: string; image: any } => b != null && b.image != null);
+    const leagueButtons = useMemo((): LeagueButtonItem[] => {
+        if (leaguesList.length === 0) return [];
+
+        const byNameLower = new Map(leaguesList.map((l) => [l.name.trim().toLowerCase(), l]));
+        const usedIds = new Set<number>();
+        const ordered: League[] = [];
+
+        for (const label of PREFERRED_LEAGUE_ORDER) {
+            const league = byNameLower.get(label.toLowerCase());
+            if (league) {
+                ordered.push(league);
+                usedIds.add(league.id);
+            }
+        }
+
+        const rest = [...leaguesList]
+            .filter((l) => !usedIds.has(l.id))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        ordered.push(...rest);
+
+        return ordered.map((league) => {
+            const bundled = bundledLeagueImageForName(league.name);
+            const uri = league.photoURL?.trim();
+            const source = bundled ?? (uri ? { uri } : null);
+            return { id: league.id, name: league.name, source };
+        });
     }, [leaguesList]);
+
+    useEffect(() => {
+        if (!__DEV__) return;
+        const err = leaguesQuery.error;
+        console.log('[HomeScreen][leagues]', {
+            status: leaguesQuery.status,
+            fetchStatus: leaguesQuery.fetchStatus,
+            isPending: leaguesQuery.isPending,
+            isFetching: leaguesQuery.isFetching,
+            isError: leaguesQuery.isError,
+            isSuccess: leaguesQuery.isSuccess,
+            dataUpdatedAt: leaguesQuery.dataUpdatedAt,
+            errorMessage: err instanceof Error ? err.message : err != null ? String(err) : null,
+            leaguesCount: leaguesList.length,
+            leagues: leaguesList.map((l) => ({
+                id: l.id,
+                name: l.name,
+                photoURL: l.photoURL ? `${l.photoURL.slice(0, 72)}${l.photoURL.length > 72 ? '…' : ''}` : '',
+            })),
+            leagueButtonsCount: leagueButtons.length,
+            leagueButtons: leagueButtons.map((b) => ({
+                id: b.id,
+                name: b.name,
+                sourceKind: b.source == null ? 'fallback' : typeof b.source === 'number' ? 'bundled' : 'uri',
+            })),
+        });
+    }, [
+        leaguesQuery.status,
+        leaguesQuery.fetchStatus,
+        leaguesQuery.isPending,
+        leaguesQuery.isFetching,
+        leaguesQuery.isError,
+        leaguesQuery.isSuccess,
+        leaguesQuery.dataUpdatedAt,
+        leaguesQuery.error,
+        leaguesList,
+        leagueButtons,
+    ]);
 
     const stocksByTicker = useMemo(() => {
         const m = new Map<string, Stock>();
@@ -478,13 +564,10 @@ export default function HomeScreen() {
             >
                 <AppHeader />
 
-                {/* Top Movers Banner - wrapper reserves space so content below doesn't snap when banner loads */}
-                <View style={styles.topMoversBannerWrapper}>
-                    <TopMoversBanner
-                        onStockPress={(stock) => handleStockPress(stock)}
-                        gainers={topMovers.gainers}
-                        losers={topMovers.losers}
-                        loading={sectionsLoading}
+                <View style={styles.gamesTickerWrapper}>
+                    <GamesTickerBanner
+                        games={gamesTickerQuery.data ?? []}
+                        loading={gamesTickerQuery.isLoading}
                     />
                 </View>
 
@@ -635,6 +718,16 @@ export default function HomeScreen() {
                         </GlassCard>
                     </View>
                 )}
+
+                {headlinesEnabled &&
+                    (sportsHeadlinesQuery.isLoading || (sportsHeadlinesQuery.data?.length ?? 0) > 0) ? (
+                    <View style={styles.headlinesBannerWrapper}>
+                        <SportsHeadlinesBanner
+                            headlines={sportsHeadlinesQuery.data ?? []}
+                            loading={sportsHeadlinesQuery.isLoading}
+                        />
+                    </View>
+                ) : null}
 
                 {/* My Portfolio: full content when logged in, CTA when logged out */}
                 <View style={styles.section}>
@@ -974,30 +1067,48 @@ export default function HomeScreen() {
                 )}
 
                 {/* League Buttons */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.leagueButtonsScrollContent}
-                    style={styles.leagueButtonsScrollView}
-                >
-                    {leagueButtons.map((league) => (
-                        <TouchableOpacity
-                            key={league.id}
-                            style={styles.leagueButton}
-                            onPress={() => {
-                                lightImpact();
-                                router.push(`/league/${league.id}`);
-                            }}
-                            activeOpacity={0.7}
-                        >
-                            <Image
-                                source={league.image}
-                                style={styles.leagueButtonImage}
-                                contentFit="contain"
-                            />
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                {leagueButtons.length > 0 ? (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.leagueButtonsScrollContent}
+                        style={styles.leagueButtonsScrollView}
+                    >
+                        {leagueButtons.map((league) => (
+                            <TouchableOpacity
+                                key={league.id}
+                                style={styles.leagueButton}
+                                onPress={() => {
+                                    lightImpact();
+                                    router.push(`/league/${league.id}`);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                {league.source != null ? (
+                                    <Image
+                                        source={league.source}
+                                        style={styles.leagueButtonImage}
+                                        contentFit="contain"
+                                    />
+                                ) : (
+                                    <View
+                                        style={[
+                                            styles.leagueButtonFallback,
+                                            { backgroundColor: isDark ? '#2A2F36' : '#E8EAED' },
+                                        ]}
+                                    >
+                                        <Text
+                                            style={[styles.leagueButtonFallbackText, { color: Color.baseText }]}
+                                            numberOfLines={3}
+                                        >
+                                            {league.name}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                ) : null}
 
                 {/* Highest Volume Section */}
                 <View style={styles.section}>
@@ -1079,7 +1190,7 @@ export default function HomeScreen() {
                 <HomeMoverDiscoverySection
                     variant="rise"
                     title="ON THE RISE"
-                    subtitle="These stocks were bought and sold more over the last 30 days than any other stocks available on SportStock."
+                    subtitle="These teams gained the most value of any team on SportStock today."
                     emptyIcon="trending-up-outline"
                     emptyTitle="No risers yet"
                     emptySubtitle="Stocks with positive movement will show up here."
@@ -1092,7 +1203,7 @@ export default function HomeScreen() {
                 <HomeMoverDiscoverySection
                     variant="upset"
                     title="UPSET ALERT"
-                    subtitle="These teams gained or lost the most value today of any stock on SportStock."
+                    subtitle="These teams lost the most value of any team on SportStock today."
                     emptyIcon="trending-down-outline"
                     emptyTitle="No upset data yet"
                     emptySubtitle="Stocks with big drops will show up here."
@@ -1116,8 +1227,14 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
     },
-    topMoversBannerWrapper: {
-        minHeight: 88, // banner height 80 + marginBottom 24 + marginTop -16 = 88; reserves space so no snap when it loads
+    gamesTickerWrapper: {
+        minHeight: 120,
+        width: '100%',
+        alignSelf: 'stretch',
+        paddingVertical: 4,
+    },
+    headlinesBannerWrapper: {
+        minHeight: 132,
     },
     cardContainer: {
         marginTop: 0,
@@ -1299,6 +1416,19 @@ const styles = StyleSheet.create({
     leagueButtonImage: {
         width: '100%',
         height: '100%',
+    },
+    leagueButtonFallback: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+    },
+    leagueButtonFallbackText: {
+        fontSize: 14,
+        fontWeight: '700',
+        textAlign: 'center',
     },
     sectionSubtitle: {
         fontSize: 14,

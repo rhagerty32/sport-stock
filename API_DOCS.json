@@ -2,13 +2,17 @@
     "openapi": "3.1.0",
     "info": {
         "title": "SportStock API",
-        "description": "Read-mostly API; auth for /me and orders.",
+        "description": "SportStock REST API: sports-team style assets, portfolios, and **tick-based** simulated trading.\n\n## JSON naming\nMost payloads under `/api` use **camelCase** in JSON when served by models in `app.schemas.api` (e.g. `stockId`, `pendingOrderId`).\n**Exception:** `UserResponse` from **`POST /api/users`**, **`GET/PATCH /api/users/me`** uses **snake_case** keys (`user_id`, `profile_picture_url`, …). Query parameters often expose camelCase aliases (`leagueID`, `stockID`).\n\n## Authentication\nSend **`Authorization: Bearer \u003CJWT\u003E`** on routes that require authentication.\n- **Production**: use the Cognito **ID token** (not the access token); the API validates via JWKS.\n- **Local dev**: when `DEV_USE_X_USER_ID` is enabled, you may send **`X-User-Id: \u003Cuser-id\u003E`** instead of Bearer.\n\n## Errors\nError bodies are shaped as `{\"error\": {\"code\": \"...\", \"message\": \"...\", \"details\": {...}?}}`. Codes include `UNAUTHORIZED`, `VALIDATION_ERROR`, `INSUFFICIENT_CREDITS`, `STOCK_NOT_FOUND`, `PROFILE_PRIVATE`, and others—see the **ErrorResponse** schema.\n\n## Trading model\nOrder endpoints **enqueue** work for the market tick worker; responses describe queued pending orders until settlement. Use **`idempotencyKey`** where documented to make retries safe.\n",
         "version": "0.1.0"
     },
     "paths": {
         "/": {
             "get": {
-                "summary": "Root",
+                "tags": [
+                    "meta"
+                ],
+                "summary": "Liveness",
+                "description": "Minimal JSON for uptime checks (no auth).",
                 "operationId": "root__get",
                 "responses": {
                     "200": {
@@ -24,7 +28,11 @@
         },
         "/health": {
             "get": {
+                "tags": [
+                    "meta"
+                ],
                 "summary": "Health",
+                "description": "Same as `/`; kept for load balancer conventions.",
                 "operationId": "health_health_get",
                 "responses": {
                     "200": {
@@ -44,7 +52,7 @@
                     "users"
                 ],
                 "summary": "Register",
-                "description": "Register a new user. Balance is always set to 0.",
+                "description": "Bootstrap an internal account row keyed by `user_id`.\n\nDuplicate `user_id` values receive **409 Conflict** — mobile clients should branch to login when appropriate.\nNew accounts receive **$2000** trading credits, matching the ``users.balance`` column default.",
                 "operationId": "register_api_users__post",
                 "requestBody": {
                     "content": {
@@ -86,7 +94,7 @@
                     "users"
                 ],
                 "summary": "Get Me",
-                "description": "Get current user. Requires auth.",
+                "description": "Hydrate the caller using bearer/`X-User-Id`; snake_case JSON (`UserResponse`).",
                 "operationId": "get_me_api_users_me_get",
                 "security": [
                     {
@@ -139,7 +147,7 @@
                     "users"
                 ],
                 "summary": "Update Me",
-                "description": "Update current user. Only name, phone_number, email. No balance.",
+                "description": "Partial updates — unset fields stay unchanged. Balance cannot be edited via this route.",
                 "operationId": "update_me_api_users_me_patch",
                 "security": [
                     {
@@ -198,13 +206,555 @@
                 }
             }
         },
+        "/api/users/me/profile-picture": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update Me Profile Picture",
+                "description": "Issue presigned **PUT** + optimistic profile URL.\n\nFlow: `PUT` binary bytes to `uploadUrl`, then refresh `/me` — CDN propagation may lag briefly.",
+                "operationId": "update_me_profile_picture_api_users_me_profile_picture_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadUrlRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UploadUrlResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/friends/requests": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create Friend Request",
+                "description": "Send a friend request.\n\nIf the inverse pending edge exists we flip it to **accepted** immediately (social symmetry shortcut).",
+                "operationId": "create_friend_request_api_users_me_friends_requests_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FriendRequestBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FriendRequestStatusResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/friends/requests/{requester_id}/accept": {
+            "post": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Accept Friend Request",
+                "description": "Accept where `{requester_id}` originally invited the authenticated user.",
+                "operationId": "accept_friend_request_api_users_me_friends_requests__requester_id__accept_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "requester_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Requester Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FriendRequestStatusResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/friends/{friend_user_id}": {
+            "delete": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Remove Friend",
+                "description": "Remove an accepted friendship (either direction).",
+                "operationId": "remove_friend_api_users_me_friends__friend_user_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "friend_user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Friend User Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/friends": {
+            "get": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get My Friends",
+                "description": "Alias for ``GET /api/users/{userId}/friends`` using implicit auth id (no literal `me` path segment elsewhere).",
+                "operationId": "get_my_friends_api_users_me_friends_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stockID",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "If set, each friend's highlighted position prefers this asset.",
+                            "title": "Stockid"
+                        },
+                        "description": "If set, each friend's highlighted position prefers this asset."
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FriendsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{user_id}/friends": {
+            "get": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get User Friends",
+                "description": "List accepted friends with one position each (largest holding, or filtered by stockID). Owner only.",
+                "operationId": "get_user_friends_api_users__user_id__friends_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "User Id"
+                        }
+                    },
+                    {
+                        "name": "stockID",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional asset filter for highlighted positions.",
+                            "title": "Stockid"
+                        },
+                        "description": "Optional asset filter for highlighted positions."
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FriendsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{user_id}": {
+            "get": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get User Profile",
+                "description": "Public profile when is_public; owner always sees own profile.",
+                "operationId": "get_user_profile_api_users__user_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "User Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfile"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Put User Profile",
+                "description": "Update profile (spec PUT). Must be authenticated as the same user.",
+                "operationId": "put_user_profile_api_users__user_id__put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "User Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserProfileUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfile"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/markets/": {
             "get": {
                 "tags": [
                     "markets"
                 ],
                 "summary": "List Markets",
-                "description": "List all markets.",
+                "description": "Discovery helper returning `{marketId,name}` tuples for dropdowns.",
                 "operationId": "list_markets_api_markets__get",
                 "responses": {
                     "200": {
@@ -431,7 +981,7 @@
                     "markets"
                 ],
                 "summary": "Submit Orders",
-                "description": "Submit buy/sell orders. All positions must belong to current user.\nBuys require user.balance >= total cost. Auth required.",
+                "description": "Queue buy/sell orders for the next market tick. All positions must belong to current user.\nAuth required.\n\nOptional ``idempotencyKey`` (8–128 chars): only with **exactly one** order in ``orders``.\n\nWithout a client key, a server **auto** idempotency key is still applied for a **single**\norder so duplicate POSTs and calls that mirror ``POST /api/transactions`` in the same UTC\nminute share one pending.\n\nUse ``quantityUnit: usd`` and a signed dollar amount in ``deltaQuantity`` to match\n``POST /api/transactions`` USD sizing for **buys** (cash out) and **sells** (cash in);\ndo **not** convert to shares client-side.\nUSD is only allowed when ``orders`` has length **1**.",
                 "operationId": "submit_orders_api_markets__market_id__orders_post",
                 "security": [
                     {
@@ -481,7 +1031,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/MarketStateResponse"
+                                    "$ref": "#/components/schemas/OrdersQueuedResponse"
                                 }
                             }
                         }
@@ -505,7 +1055,7 @@
                     "stocks"
                 ],
                 "summary": "List Stocks",
-                "description": "Get all stocks with optional filtering. Public.",
+                "description": "Paginated discovery feed with optional league + fuzzy filters.",
                 "operationId": "list_stocks_api_stocks_get",
                 "parameters": [
                     {
@@ -521,10 +1071,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by league/market ID",
+                            "description": "Restrict to one market id.",
                             "title": "Leagueid"
                         },
-                        "description": "Filter by league/market ID"
+                        "description": "Restrict to one market id."
                     },
                     {
                         "name": "search",
@@ -539,8 +1089,10 @@
                                     "type": "null"
                                 }
                             ],
+                            "description": "Substring match on display name or asset id.",
                             "title": "Search"
-                        }
+                        },
+                        "description": "Substring match on display name or asset id."
                     },
                     {
                         "name": "limit",
@@ -550,9 +1102,11 @@
                             "type": "integer",
                             "maximum": 100,
                             "minimum": 1,
+                            "description": "Page size (max 100).",
                             "default": 20,
                             "title": "Limit"
-                        }
+                        },
+                        "description": "Page size (max 100)."
                     },
                     {
                         "name": "offset",
@@ -561,9 +1115,11 @@
                         "schema": {
                             "type": "integer",
                             "minimum": 0,
+                            "description": "Stable alphabetical paging offset.",
                             "default": 0,
                             "title": "Offset"
-                        }
+                        },
+                        "description": "Stable alphabetical paging offset."
                     }
                 ],
                 "responses": {
@@ -573,6 +1129,69 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PaginatedStocks"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Create Stock",
+                "description": "Create a new stock (asset). Auth required.",
+                "operationId": "create_stock_api_stocks_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StockCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Stock"
                                 }
                             }
                         }
@@ -780,7 +1399,7 @@
                     "stocks"
                 ],
                 "summary": "Get Stock",
-                "description": "Get a single stock by ID (asset_id). Public.",
+                "description": "Get a single stock by ID (numeric id or asset_id). Public.",
                 "operationId": "get_stock_api_stocks__stock_id__get",
                 "parameters": [
                     {
@@ -815,6 +1434,133 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Update Stock",
+                "description": "Update a stock by ID (numeric or asset_id). Auth required.",
+                "operationId": "update_stock_api_stocks__stock_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StockUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Stock"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "stocks"
+                ],
+                "summary": "Delete Stock",
+                "description": "Delete a stock by ID (numeric or asset_id). Auth required. Cascades to positions and asset_price.",
+                "operationId": "delete_stock_api_stocks__stock_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/stocks/{stock_id}/price-history": {
@@ -823,7 +1569,7 @@
                     "stocks"
                 ],
                 "summary": "Get Price History",
-                "description": "Get price history for a stock. Currently returns empty history (no time-series table yet). Public.",
+                "description": "Get mark price history after each settled tick (for charts). Public.",
                 "operationId": "get_price_history_api_stocks__stock_id__price_history_get",
                 "parameters": [
                     {
@@ -915,13 +1661,62 @@
                 }
             }
         },
+        "/api/leagues/{league_id}/polymarket-search": {
+            "get": {
+                "tags": [
+                    "leagues"
+                ],
+                "summary": "League Polymarket Search",
+                "description": "Inject league-configured Polymarket Gamma queries (`playoff`, `division`, `conference`, `champion`).\n\nForwards remaining query params verbatim (pagination, filters) just like `/api/polymarket/search`.",
+                "operationId": "league_polymarket_search_api_leagues__league_id__polymarket_search_get",
+                "parameters": [
+                    {
+                        "name": "league_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "League Id"
+                        }
+                    },
+                    {
+                        "name": "kind",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/PolymarketLeagueQueryKind"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/leagues/{league_id}": {
             "get": {
                 "tags": [
                     "leagues"
                 ],
                 "summary": "Get League",
-                "description": "Get a single league by ID (market_id). Public.",
+                "description": "Hydrate league aggregate metrics + optional nested teams.",
                 "operationId": "get_league_api_leagues__league_id__get",
                 "parameters": [
                     {
@@ -939,9 +1734,11 @@
                         "required": false,
                         "schema": {
                             "type": "boolean",
+                            "description": "Embed full `Stock` array (heavier payload).",
                             "default": false,
                             "title": "Includestocks"
-                        }
+                        },
+                        "description": "Embed full `Stock` array (heavier payload)."
                     }
                 ],
                 "responses": {
@@ -1023,13 +1820,87 @@
                 }
             }
         },
+        "/api/portfolio/metrics": {
+            "get": {
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Get Portfolio Metrics",
+                "description": "Same aggregate totals as `GET /api/portfolio` (exit-priced liquidation view), with a `period`\necho so clients can align with `/history` and stock charts. Tick snapshots use mark prices and\ncan diverge; these numbers always match the base portfolio endpoint.\n\n`period`: `1H`, `1D`, `1W`, `1M`, `3M`, `1Y`, `5Y`, `ALL` — same as `/api/portfolio/history`\nand stock price history.",
+                "operationId": "get_portfolio_metrics_api_portfolio_metrics_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Echo token aligned with `/history` (`1H`,`1D`,`1W`,`1M`,`3M`,`1Y`,`5Y`,`ALL`).",
+                            "default": "1D",
+                            "title": "Period"
+                        },
+                        "description": "Echo token aligned with `/history` (`1H`,`1D`,`1W`,`1M`,`3M`,`1Y`,`5Y`,`ALL`)."
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/portfolio/positions": {
             "get": {
                 "tags": [
                     "portfolio"
                 ],
                 "summary": "List Positions",
-                "description": "Get all positions for the authenticated user. Auth required.",
+                "description": "Holdings table backing portfolio screens.",
                 "operationId": "list_positions_api_portfolio_positions_get",
                 "security": [
                     {
@@ -1050,8 +1921,10 @@
                                     "type": "null"
                                 }
                             ],
+                            "description": "`percentage` or `value` sorting before pagination slice.",
                             "title": "Sortby"
-                        }
+                        },
+                        "description": "`percentage` or `value` sorting before pagination slice."
                     },
                     {
                         "name": "limit",
@@ -1061,9 +1934,11 @@
                             "type": "integer",
                             "maximum": 100,
                             "minimum": 1,
+                            "description": "Max rows returned.",
                             "default": 100,
                             "title": "Limit"
-                        }
+                        },
+                        "description": "Max rows returned."
                     },
                     {
                         "name": "offset",
@@ -1072,9 +1947,11 @@
                         "schema": {
                             "type": "integer",
                             "minimum": 0,
+                            "description": "Skip after sort.",
                             "default": 0,
                             "title": "Offset"
-                        }
+                        },
+                        "description": "Skip after sort."
                     },
                     {
                         "name": "X-User-Id",
@@ -1123,7 +2000,7 @@
                     "portfolio"
                 ],
                 "summary": "Get Position",
-                "description": "Get position for a specific stock (stock_id can be numeric API id or asset_id string).\nReturns 404 if user doesn't own the stock. Auth required.",
+                "description": "Get position for a specific stock (stock_id = asset_id). Auth required.",
                 "operationId": "get_position_api_portfolio_positions__stock_id__get",
                 "security": [
                     {
@@ -1181,13 +2058,101 @@
                 }
             }
         },
+        "/api/portfolio/history": {
+            "get": {
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Get Portfolio History",
+                "description": "Time-series snapshots for charting.\n\nPlot **gain/loss** metrics for performance; raw NAV climbs when deploying fresh capital—pair copy with `/metrics` for labeling.",
+                "operationId": "get_portfolio_history_api_portfolio_history_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Window preset shared with stock charts (`1H`…`ALL`).",
+                            "default": "1D",
+                            "title": "Period"
+                        },
+                        "description": "Window preset shared with stock charts (`1H`…`ALL`)."
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 500,
+                            "minimum": 1,
+                            "description": "Maximum snapshot points returned.",
+                            "default": 100,
+                            "title": "Limit"
+                        },
+                        "description": "Maximum snapshot points returned."
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/transactions": {
             "get": {
                 "tags": [
                     "transactions"
                 ],
                 "summary": "List Transactions",
-                "description": "List transactions for the authenticated user. Auth required.",
+                "description": "Cursor through settled fills for the authenticated user (not pending queue rows).",
                 "operationId": "list_transactions_api_transactions_get",
                 "security": [
                     {
@@ -1202,14 +2167,16 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "integer"
+                                    "type": "string"
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
+                            "description": "Restrict to one asset id.",
                             "title": "Stockid"
-                        }
+                        },
+                        "description": "Restrict to one asset id."
                     },
                     {
                         "name": "action",
@@ -1224,8 +2191,10 @@
                                     "type": "null"
                                 }
                             ],
+                            "description": "`buy` or `sell` filter.",
                             "title": "Action"
-                        }
+                        },
+                        "description": "`buy` or `sell` filter."
                     },
                     {
                         "name": "limit",
@@ -1235,9 +2204,11 @@
                             "type": "integer",
                             "maximum": 100,
                             "minimum": 1,
+                            "description": "Page size (max 100).",
                             "default": 20,
                             "title": "Limit"
-                        }
+                        },
+                        "description": "Page size (max 100)."
                     },
                     {
                         "name": "offset",
@@ -1246,9 +2217,11 @@
                         "schema": {
                             "type": "integer",
                             "minimum": 0,
+                            "description": "Rows to skip from newest-first ordering.",
                             "default": 0,
                             "title": "Offset"
-                        }
+                        },
+                        "description": "Rows to skip from newest-first ordering."
                     },
                     {
                         "name": "X-User-Id",
@@ -1295,7 +2268,7 @@
                     "transactions"
                 ],
                 "summary": "Create Transaction",
-                "description": "Create a buy/sell transaction by stock ID.\nResolves stock_id to your position and executes the order. Auth required.",
+                "description": "Queue a buy/sell for execution at the next market tick (by stock / asset_id). Auth required.\n\nUse quantityUnit `shares` (default) when quantity is share count; use `usd` when quantity is\ndollar notional — the server sizes **buy** and **sell** share amounts so tick **debit** /\n**credit** matches that amount within about 1% (same ``P_entry`` / ``P_exit`` as settlement).\n\nOptional body field ``idempotencyKey`` (8–128 chars): duplicate requests with the same key\nreturn the original queued order so network retries / double-submits do not create extra pendings.\nWithout a client key, a per-minute server key applies; for ``quantityUnit: usd`` it hashes dollar\nnotional (not mark-converted shares) so retries after the mark moves still dedupe. Prefer a\nfresh client key for each distinct buy/sell intent in production.\n\nIf the user has no existing PositionModel for this stock, a new position is\nopened automatically with zero quantity before queueing the buy.",
                 "operationId": "create_transaction_api_transactions_post",
                 "security": [
                     {
@@ -1336,7 +2309,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Transaction"
+                                    "$ref": "#/components/schemas/QueuedOrderResponse"
                                 }
                             }
                         }
@@ -1360,7 +2333,7 @@
                     "transactions"
                 ],
                 "summary": "Get Transaction",
-                "description": "Get a single transaction by ID. Auth required (own only).",
+                "description": "Get a single transaction by id. Auth required (own only).",
                 "operationId": "get_transaction_api_transactions__transaction_id__get",
                 "security": [
                     {
@@ -1592,7 +2565,7 @@
                     "search"
                 ],
                 "summary": "Search",
-                "description": "Search stocks and leagues by name or ticker/id.\ntype: stock, league, or all. leagueID: filter stocks by market. Public.",
+                "description": "Cross-search stocks + leagues (≤50 hits each).\n\nResults use camelCase team/league bodies identical to list/detail endpoints for straight rendering.",
                 "operationId": "search_api_search_get",
                 "parameters": [
                     {
@@ -1602,8 +2575,10 @@
                         "schema": {
                             "type": "string",
                             "minLength": 1,
+                            "description": "Case-insensitive substring on names / ids.",
                             "title": "Q"
-                        }
+                        },
+                        "description": "Case-insensitive substring on names / ids."
                     },
                     {
                         "name": "type",
@@ -1611,9 +2586,11 @@
                         "required": false,
                         "schema": {
                             "type": "string",
+                            "description": "`stock`, `league`, or `all` (default searches both buckets).",
                             "default": "all",
                             "title": "Type"
-                        }
+                        },
+                        "description": "`stock`, `league`, or `all` (default searches both buckets)."
                     },
                     {
                         "name": "leagueID",
@@ -1628,8 +2605,10 @@
                                     "type": "null"
                                 }
                             ],
+                            "description": "When searching stocks, restrict hits to this market/league id.",
                             "title": "Leagueid"
-                        }
+                        },
+                        "description": "When searching stocks, restrict hits to this market/league id."
                     }
                 ],
                 "responses": {
@@ -1655,6 +2634,389 @@
                     }
                 }
             }
+        },
+        "/api/follows": {
+            "post": {
+                "tags": [
+                    "follows"
+                ],
+                "summary": "Create Follow",
+                "description": "Follow a stock (`stockID` = asset id). Idempotent: repeating returns **201** with the same logical row\n(existing `id` preserved).",
+                "operationId": "create_follow_api_follows_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FollowCreateBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowRecord"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "follows"
+                ],
+                "summary": "List Follows",
+                "description": "All stocks the authenticated user follows, newest first.",
+                "operationId": "list_follows_api_follows_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowsListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/follows/{stock_id}": {
+            "post": {
+                "tags": [
+                    "follows"
+                ],
+                "summary": "Create Follow By Stock Path",
+                "description": "Same as ``POST /api/follows`` with JSON body; convenience when the client puts `stockId` in the path.",
+                "operationId": "create_follow_by_stock_path_api_follows__stock_id__post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowRecord"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "follows"
+                ],
+                "summary": "Unfollow",
+                "description": "Stop following a stock.",
+                "operationId": "unfollow_api_follows__stock_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Stock Id"
+                        }
+                    },
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnfollowResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/follows/not-owned": {
+            "get": {
+                "tags": [
+                    "follows"
+                ],
+                "summary": "List Followed Not Owned",
+                "description": "Followed stocks the user does **not** currently hold (no position or quantity ≤ 0).",
+                "operationId": "list_followed_not_owned_api_follows_not_owned_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "X-User-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-User-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowedNotOwnedStocksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/polymarket/search": {
+            "get": {
+                "tags": [
+                    "polymarket"
+                ],
+                "summary": "Polymarket Search",
+                "description": "Proxy to Gamma ``GET /public-search``. Forwards all query parameters from the\nrequest (including optional Gamma filters); ``q`` is validated here.",
+                "operationId": "polymarket_search_api_polymarket_search_get",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512,
+                            "title": "Q"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/odds/v4/{full_path}": {
+            "get": {
+                "tags": [
+                    "odds"
+                ],
+                "summary": "Odds V4",
+                "description": "Pass-through to The Odds API v4. Example: ``GET /api/odds/v4/sports`` →\n``GET https://api.the-odds-api.com/v4/sports`` with ``apiKey`` from the server.",
+                "operationId": "odds_v4_api_odds_v4__full_path__get",
+                "parameters": [
+                    {
+                        "name": "full_path",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Full Path"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1663,20 +3025,48 @@
                 "properties": {
                     "asset_id": {
                         "type": "string",
-                        "title": "Asset Id"
+                        "title": "Asset Id",
+                        "description": "Canonical team/asset identifier."
                     },
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "Human-readable title."
+                    },
+                    "ticker": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ticker",
+                        "description": "Short symbol when configured."
+                    },
+                    "conference": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conference",
+                        "description": "Conference string."
                     },
                     "initial_value": {
                         "type": "number",
-                        "title": "Initial Value"
+                        "title": "Initial Value",
+                        "description": "Seed reference price / IPO analogue."
                     },
                     "volatility_params": {
                         "additionalProperties": true,
                         "type": "object",
-                        "title": "Volatility Params"
+                        "title": "Volatility Params",
+                        "description": "Opaque simulator tuning blob consumed server-side."
                     }
                 },
                 "type": "object",
@@ -1686,14 +3076,15 @@
                     "initial_value",
                     "volatility_params"
                 ],
-                "title": "AssetResponse"
+                "title": "AssetResponse",
+                "description": "Static asset metadata plus simulator knobs."
             },
             "BonusInfo": {
                 "properties": {
                     "baseMultiplier": {
                         "type": "number",
                         "title": "Basemultiplier",
-                        "default": 0.0
+                        "default": 0
                     },
                     "tierMultipliers": {
                         "items": {
@@ -1708,12 +3099,208 @@
                     "firstTimeBonus": {
                         "type": "number",
                         "title": "Firsttimebonus",
-                        "default": 0.0
+                        "default": 0
                     }
                 },
                 "type": "object",
                 "title": "BonusInfo",
                 "description": "Bonus information for purchases (currently all zeros)."
+            },
+            "FollowCreateBody": {
+                "properties": {
+                    "stockID": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Stockid",
+                        "description": "Asset id to follow (`stockID` in JSON)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stockID"
+                ],
+                "title": "FollowCreateBody",
+                "description": "Body for ``POST /api/follows``."
+            },
+            "FollowRecord": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id",
+                        "description": "Follow row id."
+                    },
+                    "userId": {
+                        "type": "string",
+                        "title": "Userid",
+                        "description": "Owner (`userId` in JSON)."
+                    },
+                    "stockId": {
+                        "type": "string",
+                        "title": "Stockid",
+                        "description": "Asset id (`stockId` in JSON)."
+                    },
+                    "createdAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Createdat",
+                        "description": "When follow was created (UTC)."
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updatedat",
+                        "description": "Last update (UTC)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "userId",
+                    "stockId"
+                ],
+                "title": "FollowRecord",
+                "description": "Persistent follow row returned from ``POST /api/follows``."
+            },
+            "FollowResponse": {
+                "properties": {
+                    "stock": {
+                        "$ref": "#/components/schemas/Stock",
+                        "description": "Full stock payload for UI."
+                    },
+                    "followedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Followedat",
+                        "description": "When the user followed (`followedAt` in JSON)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "stock"
+                ],
+                "title": "FollowResponse",
+                "description": "One followed stock in ``GET /api/follows`` (`stock` + `followedAt`)."
+            },
+            "FollowedNotOwnedStocksResponse": {
+                "properties": {
+                    "stocks": {
+                        "items": {
+                            "$ref": "#/components/schemas/Stock"
+                        },
+                        "type": "array",
+                        "title": "Stocks"
+                    }
+                },
+                "type": "object",
+                "title": "FollowedNotOwnedStocksResponse",
+                "description": "``GET /api/follows/not-owned``."
+            },
+            "FollowsListResponse": {
+                "properties": {
+                    "follows": {
+                        "items": {
+                            "$ref": "#/components/schemas/FollowResponse"
+                        },
+                        "type": "array",
+                        "title": "Follows"
+                    }
+                },
+                "type": "object",
+                "title": "FollowsListResponse",
+                "description": "``GET /api/follows``."
+            },
+            "FriendEntry": {
+                "properties": {
+                    "user": {
+                        "$ref": "#/components/schemas/UserProfile"
+                    },
+                    "position": {
+                        "$ref": "#/components/schemas/Position"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user",
+                    "position"
+                ],
+                "title": "FriendEntry",
+                "description": "One friend with a single highlighted position (GET /api/users/{userId}/friends)."
+            },
+            "FriendRequestBody": {
+                "properties": {
+                    "targetUserId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Targetuserid",
+                        "description": "Recipient's user id (`targetUserId` in JSON)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "targetUserId"
+                ],
+                "title": "FriendRequestBody",
+                "description": "Body for ``POST /api/users/me/friends/requests``."
+            },
+            "FriendRequestStatusResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "accepted"
+                        ],
+                        "title": "Status",
+                        "description": "`pending`: request sent or awaiting acceptance; `accepted`: friendship active."
+                    },
+                    "friendshipId": {
+                        "type": "integer",
+                        "title": "Friendshipid",
+                        "description": "Database id of the friendship row (`friendshipId` in JSON)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "friendshipId"
+                ],
+                "title": "FriendRequestStatusResponse",
+                "description": "Result of creating or accepting a friend request."
+            },
+            "FriendsResponse": {
+                "properties": {
+                    "friends": {
+                        "items": {
+                            "$ref": "#/components/schemas/FriendEntry"
+                        },
+                        "type": "array",
+                        "title": "Friends"
+                    }
+                },
+                "type": "object",
+                "title": "FriendsResponse",
+                "description": "Friends list with one showcase position each (largest holding unless filtered)."
             },
             "HTTPValidationError": {
                 "properties": {
@@ -1744,7 +3331,7 @@
             "League": {
                 "properties": {
                     "id": {
-                        "type": "integer",
+                        "type": "string",
                         "title": "Id"
                     },
                     "name": {
@@ -1854,11 +3441,13 @@
                 "properties": {
                     "market_id": {
                         "type": "string",
-                        "title": "Market Id"
+                        "title": "Market Id",
+                        "description": "Same id used as `leagueId` in stock queries."
                     },
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "League / market title."
                     }
                 },
                 "type": "object",
@@ -1866,44 +3455,52 @@
                     "market_id",
                     "name"
                 ],
-                "title": "MarketListItem"
+                "title": "MarketListItem",
+                "description": "Minimal discovery tuple."
             },
             "MarketResponse": {
                 "properties": {
                     "market_id": {
                         "type": "string",
-                        "title": "Market Id"
+                        "title": "Market Id",
+                        "description": "Market key."
                     },
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "Display name."
                     },
                     "tick_index": {
                         "type": "integer",
-                        "title": "Tick Index"
+                        "title": "Tick Index",
+                        "description": "Current tick index."
                     },
                     "last_updated": {
                         "type": "string",
                         "format": "date-time",
-                        "title": "Last Updated"
+                        "title": "Last Updated",
+                        "description": "Last structural price refresh."
                     },
                     "virtual_liquidity": {
                         "type": "number",
-                        "title": "Virtual Liquidity"
+                        "title": "Virtual Liquidity",
+                        "description": "Liquidity parameter."
                     },
                     "assets": {
                         "items": {
                             "$ref": "#/components/schemas/AssetResponse"
                         },
                         "type": "array",
-                        "title": "Assets"
+                        "title": "Assets",
+                        "description": "Teams configured in this market."
                     },
                     "prices": {
                         "additionalProperties": {
                             "type": "number"
                         },
                         "type": "object",
-                        "title": "Prices"
+                        "title": "Prices",
+                        "description": "Mark prices keyed by `asset_id` string."
                     }
                 },
                 "type": "object",
@@ -1917,22 +3514,25 @@
                     "prices"
                 ],
                 "title": "MarketResponse",
-                "description": "Full market; no per-user positions, only assets/prices/state."
+                "description": "Full market payload with parallel **prices** map keyed by ``asset_id``."
             },
             "MarketStateResponse": {
                 "properties": {
                     "tick_index": {
                         "type": "integer",
-                        "title": "Tick Index"
+                        "title": "Tick Index",
+                        "description": "Monotonic tick counter advanced when orders settle."
                     },
                     "last_updated": {
                         "type": "string",
                         "format": "date-time",
-                        "title": "Last Updated"
+                        "title": "Last Updated",
+                        "description": "Wall-clock timestamp of last tick metadata refresh."
                     },
                     "virtual_liquidity": {
                         "type": "number",
-                        "title": "Virtual Liquidity"
+                        "title": "Virtual Liquidity",
+                        "description": "Mechanism liquidity parameter driving marginal pricing."
                     }
                 },
                 "type": "object",
@@ -1941,7 +3541,8 @@
                     "last_updated",
                     "virtual_liquidity"
                 ],
-                "title": "MarketStateResponse"
+                "title": "MarketStateResponse",
+                "description": "Market-wide simulator cadence and liquidity snapshot."
             },
             "MoverItem": {
                 "properties": {
@@ -1951,12 +3552,12 @@
                     "change": {
                         "type": "number",
                         "title": "Change",
-                        "default": 0.0
+                        "default": 0
                     },
                     "changePercentage": {
                         "type": "number",
                         "title": "Changepercentage",
-                        "default": 0.0
+                        "default": 0
                     }
                 },
                 "type": "object",
@@ -1981,22 +3582,58 @@
             },
             "OrderItem": {
                 "properties": {
-                    "position_id": {
+                    "positionId": {
                         "type": "string",
-                        "title": "Position Id"
+                        "title": "Positionid",
+                        "description": "Must belong to the caller inside this market."
                     },
-                    "delta_quantity": {
+                    "deltaQuantity": {
                         "type": "number",
-                        "title": "Delta Quantity"
+                        "title": "Deltaquantity",
+                        "description": "Signed share delta, or signed USD notional when ``quantityUnit`` is ``usd`` (+ buy / - sell)."
+                    },
+                    "quantityUnit": {
+                        "type": "string",
+                        "enum": [
+                            "shares",
+                            "usd"
+                        ],
+                        "title": "Quantityunit",
+                        "description": "`shares`: ``deltaQuantity`` is shares. `usd`: dollars — **buy** debit / **sell** credit matched like ``POST /api/transactions`` (~1%).",
+                        "default": "shares"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "position_id",
-                    "delta_quantity"
+                    "positionId",
+                    "deltaQuantity"
                 ],
                 "title": "OrderItem",
-                "description": "Single order: positive delta_quantity = buy, negative = sell."
+                "description": "One delta applied to an existing ``position_id`` after auth checks."
+            },
+            "OrdersQueuedResponse": {
+                "properties": {
+                    "market_id": {
+                        "type": "string",
+                        "title": "Market Id",
+                        "description": "Echo of path parameter."
+                    },
+                    "orders": {
+                        "items": {
+                            "$ref": "#/components/schemas/QueuedMarketOrderItem"
+                        },
+                        "type": "array",
+                        "title": "Orders",
+                        "description": "Parallel list to request order."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "orders"
+                ],
+                "title": "OrdersQueuedResponse",
+                "description": "Mirror of submitted deltas with assigned pending ids."
             },
             "OrdersSubmit": {
                 "properties": {
@@ -2006,14 +3643,28 @@
                         },
                         "type": "array",
                         "minItems": 1,
-                        "title": "Orders"
+                        "title": "Orders",
+                        "description": "Non-empty list of deltas to queue atomically."
+                    },
+                    "idempotencyKey": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Idempotencykey",
+                        "description": "Allowed only when `orders` has length **1**; same semantics as transaction idempotency."
                     }
                 },
                 "type": "object",
                 "required": [
                     "orders"
                 ],
-                "title": "OrdersSubmit"
+                "title": "OrdersSubmit",
+                "description": "Batch enqueue body for ``POST /api/markets/{market_id}/orders``."
             },
             "PaginatedPositions": {
                 "properties": {
@@ -2027,11 +3678,13 @@
                     "total": {
                         "type": "integer",
                         "title": "Total",
+                        "description": "Positions count before limit/offset.",
                         "default": 0
                     }
                 },
                 "type": "object",
-                "title": "PaginatedPositions"
+                "title": "PaginatedPositions",
+                "description": "Positions slice after optional sort applied server-side."
             },
             "PaginatedStocks": {
                 "properties": {
@@ -2045,26 +3698,31 @@
                     "total": {
                         "type": "integer",
                         "title": "Total",
+                        "description": "Matching rows before pagination.",
                         "default": 0
                     },
                     "limit": {
                         "type": "integer",
                         "title": "Limit",
+                        "description": "Page size requested.",
                         "default": 20
                     },
                     "offset": {
                         "type": "integer",
                         "title": "Offset",
+                        "description": "Rows skipped from newest/default ordering.",
                         "default": 0
                     },
                     "hasMore": {
                         "type": "boolean",
                         "title": "Hasmore",
+                        "description": "True when another page exists (`hasMore` in JSON).",
                         "default": false
                     }
                 },
                 "type": "object",
-                "title": "PaginatedStocks"
+                "title": "PaginatedStocks",
+                "description": "Cursor-style page over stocks (`limit` / `offset` / `hasMore`)."
             },
             "PaginatedTransactions": {
                 "properties": {
@@ -2078,90 +3736,226 @@
                     "total": {
                         "type": "integer",
                         "title": "Total",
+                        "description": "Rows matching filters before pagination.",
                         "default": 0
                     },
                     "limit": {
                         "type": "integer",
                         "title": "Limit",
+                        "description": "Page size.",
                         "default": 20
                     },
                     "offset": {
                         "type": "integer",
                         "title": "Offset",
+                        "description": "Rows skipped.",
                         "default": 0
                     },
                     "hasMore": {
                         "type": "boolean",
                         "title": "Hasmore",
+                        "description": "Another page follows (`hasMore` in JSON).",
                         "default": false
                     }
                 },
                 "type": "object",
-                "title": "PaginatedTransactions"
+                "title": "PaginatedTransactions",
+                "description": "Transactions newest-first with simple offset pagination."
+            },
+            "PolymarketLeagueQueryKind": {
+                "type": "string",
+                "enum": [
+                    "playoff",
+                    "division",
+                    "conference",
+                    "champion"
+                ],
+                "title": "PolymarketLeagueQueryKind",
+                "description": "Selects one of the league's configured Polymarket search query templates."
             },
             "Portfolio": {
                 "properties": {
                     "totalValue": {
                         "type": "number",
                         "title": "Totalvalue",
-                        "default": 0.0
+                        "description": "Sum of position values at current marks.",
+                        "default": 0
                     },
                     "totalInvested": {
                         "type": "number",
                         "title": "Totalinvested",
-                        "default": 0.0
+                        "description": "Capital tied up / cost basis aggregate.",
+                        "default": 0
                     },
                     "totalGainLoss": {
                         "type": "number",
                         "title": "Totalgainloss",
-                        "default": 0.0
+                        "description": "Total unrealized (and realized-in-scope) P&L.",
+                        "default": 0
                     },
                     "totalGainLossPercentage": {
                         "type": "number",
                         "title": "Totalgainlosspercentage",
-                        "default": 0.0
+                        "description": "Percent vs invested baseline.",
+                        "default": 0
                     },
                     "positions": {
                         "items": {
                             "$ref": "#/components/schemas/Position"
                         },
                         "type": "array",
-                        "title": "Positions"
+                        "title": "Positions",
+                        "description": "Non-empty holdings only."
                     }
                 },
                 "type": "object",
                 "title": "Portfolio",
-                "description": "User's complete portfolio summary."
+                "description": "Aggregate snapshot — totals align with exit-priced liquidation view used elsewhere."
             },
-            "Position": {
+            "PortfolioHistoryPoint": {
                 "properties": {
-                    "stock": {
-                        "$ref": "#/components/schemas/Stock"
+                    "timestamp": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timestamp"
                     },
-                    "entries": {
+                    "totalValue": {
                         "type": "number",
-                        "title": "Entries",
-                        "default": 0.0
+                        "title": "Totalvalue",
+                        "default": 0
                     },
-                    "avgEntryPrice": {
+                    "totalInvested": {
                         "type": "number",
-                        "title": "Avgentryprice",
-                        "default": 0.0
-                    },
-                    "currentValue": {
-                        "type": "number",
-                        "title": "Currentvalue",
-                        "default": 0.0
+                        "title": "Totalinvested",
+                        "default": 0
                     },
                     "totalGainLoss": {
                         "type": "number",
                         "title": "Totalgainloss",
-                        "default": 0.0
+                        "default": 0
                     },
                     "gainLossPercentage": {
                         "type": "number",
                         "title": "Gainlosspercentage",
-                        "default": 0.0
+                        "default": 0
+                    },
+                    "change": {
+                        "type": "number",
+                        "title": "Change",
+                        "default": 0
+                    },
+                    "changePercentage": {
+                        "type": "number",
+                        "title": "Changepercentage",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "title": "PortfolioHistoryPoint",
+                "description": "Portfolio snapshot over time.\n\nFor charts, plot `total_gain_loss` or `gain_loss_percentage` so moves reflect performance;\n`total_value` moves when you deploy more capital into positions (buys), not just returns.\n`change` / `change_percentage` are step deltas in P&L vs the prior point; the step % uses\nprior `total_invested` when positive, otherwise prior `total_value` (so the first step after\na bad `invested=0` snapshot is still expressible as a %)."
+            },
+            "PortfolioHistoryResponse": {
+                "properties": {
+                    "userId": {
+                        "type": "string",
+                        "title": "Userid"
+                    },
+                    "history": {
+                        "items": {
+                            "$ref": "#/components/schemas/PortfolioHistoryPoint"
+                        },
+                        "type": "array",
+                        "title": "History"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "userId"
+                ],
+                "title": "PortfolioHistoryResponse",
+                "description": "Response for GET /api/portfolio/history."
+            },
+            "PortfolioMetricsResponse": {
+                "properties": {
+                    "userId": {
+                        "type": "string",
+                        "title": "Userid"
+                    },
+                    "period": {
+                        "type": "string",
+                        "title": "Period"
+                    },
+                    "totalValue": {
+                        "type": "number",
+                        "title": "Totalvalue",
+                        "default": 0
+                    },
+                    "totalInvested": {
+                        "type": "number",
+                        "title": "Totalinvested",
+                        "default": 0
+                    },
+                    "totalGainLoss": {
+                        "type": "number",
+                        "title": "Totalgainloss",
+                        "default": 0
+                    },
+                    "totalGainLossPercentage": {
+                        "type": "number",
+                        "title": "Totalgainlosspercentage",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "userId",
+                    "period"
+                ],
+                "title": "PortfolioMetricsResponse",
+                "description": "Summary totals for a time window (aligned with GET /api/portfolio/history `period`)."
+            },
+            "Position": {
+                "properties": {
+                    "stock": {
+                        "$ref": "#/components/schemas/Stock",
+                        "description": "Underlying asset and live price."
+                    },
+                    "entries": {
+                        "type": "number",
+                        "title": "Entries",
+                        "description": "Share quantity held (unlocked).",
+                        "default": 0
+                    },
+                    "avgEntryPrice": {
+                        "type": "number",
+                        "title": "Avgentryprice",
+                        "description": "Average cost per share for the open lot.",
+                        "default": 0
+                    },
+                    "currentValue": {
+                        "type": "number",
+                        "title": "Currentvalue",
+                        "description": "`entries` × current mark.",
+                        "default": 0
+                    },
+                    "totalGainLoss": {
+                        "type": "number",
+                        "title": "Totalgainloss",
+                        "description": "Unrealized P&L vs cost basis.",
+                        "default": 0
+                    },
+                    "gainLossPercentage": {
+                        "type": "number",
+                        "title": "Gainlosspercentage",
+                        "description": "Percent return on invested capital when defined.",
+                        "default": 0
                     },
                     "colors": {
                         "items": {
@@ -2171,7 +3965,8 @@
                             "type": "object"
                         },
                         "type": "array",
-                        "title": "Colors"
+                        "title": "Colors",
+                        "description": "UI accent colors, e.g. `[{\"hex\": \"#112233\"}]`."
                     }
                 },
                 "type": "object",
@@ -2179,33 +3974,39 @@
                     "stock"
                 ],
                 "title": "Position",
-                "description": "User's position in a stock (computed from transactions)."
+                "description": "One open holding with mark-to-market value and cost metrics."
             },
             "PositionResponse": {
                 "properties": {
                     "position_id": {
                         "type": "string",
-                        "title": "Position Id"
+                        "title": "Position Id",
+                        "description": "Deterministic id tying user + asset + venue semantics."
                     },
                     "user_id": {
                         "type": "string",
-                        "title": "User Id"
+                        "title": "User Id",
+                        "description": "Owner."
                     },
                     "asset_id": {
                         "type": "string",
-                        "title": "Asset Id"
+                        "title": "Asset Id",
+                        "description": "Underlying asset."
                     },
                     "quantity": {
                         "type": "number",
-                        "title": "Quantity"
+                        "title": "Quantity",
+                        "description": "Shares available after subtracting locks."
                     },
                     "locked_quantity": {
                         "type": "number",
-                        "title": "Locked Quantity"
+                        "title": "Locked Quantity",
+                        "description": "Shares reserved for pending sells/settlement."
                     },
                     "cost_basis": {
                         "type": "number",
-                        "title": "Cost Basis"
+                        "title": "Cost Basis",
+                        "description": "Tracked acquisition basis for P&L."
                     }
                 },
                 "type": "object",
@@ -2217,14 +4018,15 @@
                     "locked_quantity",
                     "cost_basis"
                 ],
-                "title": "PositionResponse"
+                "title": "PositionResponse",
+                "description": "Authoritative ledger row for a user's stake prior to aggregate portfolio recomputation."
             },
             "PriceHistoryPoint": {
                 "properties": {
                     "stockId": {
-                        "type": "integer",
+                        "type": "string",
                         "title": "Stockid",
-                        "default": 0
+                        "default": ""
                     },
                     "timestamp": {
                         "anyOf": [
@@ -2241,17 +4043,17 @@
                     "price": {
                         "type": "number",
                         "title": "Price",
-                        "default": 0.0
+                        "default": 0
                     },
                     "change": {
                         "type": "number",
                         "title": "Change",
-                        "default": 0.0
+                        "default": 0
                     },
                     "changePercentage": {
                         "type": "number",
                         "title": "Changepercentage",
-                        "default": 0.0
+                        "default": 0
                     }
                 },
                 "type": "object",
@@ -2261,7 +4063,7 @@
             "PriceHistoryResponse": {
                 "properties": {
                     "stockId": {
-                        "type": "integer",
+                        "type": "string",
                         "title": "Stockid"
                     },
                     "history": {
@@ -2278,6 +4080,104 @@
                 ],
                 "title": "PriceHistoryResponse",
                 "description": "Response for GET /api/stocks/{stockId}/price-history."
+            },
+            "QueuedMarketOrderItem": {
+                "properties": {
+                    "pending_order_id": {
+                        "type": "integer",
+                        "title": "Pending Order Id",
+                        "description": "Pending row id until tick."
+                    },
+                    "position_id": {
+                        "type": "string",
+                        "title": "Position Id",
+                        "description": "Impacted ledger row."
+                    },
+                    "asset_id": {
+                        "type": "string",
+                        "title": "Asset Id",
+                        "description": "Resolved asset for convenience."
+                    },
+                    "delta_quantity": {
+                        "type": "number",
+                        "title": "Delta Quantity",
+                        "description": "Signed delta echoed."
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Always `pending` in this API version.",
+                        "default": "pending"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pending_order_id",
+                    "position_id",
+                    "asset_id",
+                    "delta_quantity"
+                ],
+                "title": "QueuedMarketOrderItem",
+                "description": "Single queue slot acknowledged back to the client."
+            },
+            "QueuedOrderResponse": {
+                "properties": {
+                    "pendingOrderId": {
+                        "type": "integer",
+                        "title": "Pendingorderid",
+                        "description": "Use to correlate with settlement logs (`pendingOrderId` in JSON)."
+                    },
+                    "marketId": {
+                        "type": "string",
+                        "title": "Marketid",
+                        "description": "Market routing key (`marketId` in JSON)."
+                    },
+                    "stockId": {
+                        "type": "string",
+                        "title": "Stockid",
+                        "description": "Asset id (`stockId` in JSON)."
+                    },
+                    "status": {
+                        "type": "string",
+                        "const": "pending",
+                        "title": "Status",
+                        "description": "Always `pending` until the worker fills or rejects.",
+                        "default": "pending"
+                    },
+                    "createdAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Createdat",
+                        "description": "Queue time (UTC)."
+                    },
+                    "idempotencyKey": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Idempotencykey",
+                        "description": "Echo of client key when supplied (`idempotencyKey` in JSON)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pendingOrderId",
+                    "marketId",
+                    "stockId"
+                ],
+                "title": "QueuedOrderResponse",
+                "description": "Acknowledgement after queueing — execution happens on the periodic tick."
             },
             "SearchResponse": {
                 "properties": {
@@ -2298,41 +4198,54 @@
                     "total": {
                         "type": "integer",
                         "title": "Total",
+                        "description": "`len(stocks) + len(leagues)` for this response page.",
                         "default": 0
                     }
                 },
                 "type": "object",
                 "title": "SearchResponse",
-                "description": "Response for GET /api/search."
+                "description": "Combined stock + league hits for ``GET /api/search``."
             },
             "Stock": {
                 "properties": {
                     "id": {
-                        "type": "integer",
-                        "title": "Id"
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Asset id; use as `stockId` on trading routes."
                     },
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "Display name."
                     },
                     "fullName": {
                         "type": "string",
                         "title": "Fullname",
+                        "description": "Long-form name when configured.",
                         "default": ""
                     },
                     "leagueId": {
-                        "type": "integer",
-                        "title": "Leagueid"
+                        "type": "string",
+                        "title": "Leagueid",
+                        "description": "Parent market id (same as `market_id`; `leagueId` in JSON)."
+                    },
+                    "conference": {
+                        "type": "string",
+                        "title": "Conference",
+                        "description": "Conference label when configured.",
+                        "default": ""
                     },
                     "photoUrl": {
                         "type": "string",
                         "title": "Photourl",
+                        "description": "Logo or team image URL.",
                         "default": ""
                     },
                     "price": {
                         "type": "number",
                         "title": "Price",
-                        "default": 0.0
+                        "description": "Current simulated mark price for valuation.",
+                        "default": 0
                     },
                     "about": {
                         "type": "string",
@@ -2408,7 +4321,210 @@
                     "leagueId"
                 ],
                 "title": "Stock",
-                "description": "Sports team/stock that users can trade. Maps from AssetModel + price."
+                "description": "Tradable team/asset with display metadata and latest **mark** price."
+            },
+            "StockCreate": {
+                "properties": {
+                    "marketId": {
+                        "type": "string",
+                        "title": "Marketid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "initialValue": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "title": "Initialvalue"
+                    },
+                    "assetId": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assetid"
+                    },
+                    "volatilityParams": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Volatilityparams"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "marketId",
+                    "name",
+                    "initialValue"
+                ],
+                "title": "StockCreate",
+                "description": "Request body for POST /api/stocks."
+            },
+            "StockUpdate": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name"
+                    },
+                    "initialValue": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Initialvalue"
+                    },
+                    "fullName": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Fullname"
+                    },
+                    "about": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "About"
+                    },
+                    "ticker": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ticker"
+                    },
+                    "coach": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Coach"
+                    },
+                    "founded": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Founded"
+                    },
+                    "photoUrl": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Photourl"
+                    },
+                    "color": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Color"
+                    },
+                    "secondaryColor": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Secondarycolor"
+                    },
+                    "topThreePlayers": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Topthreeplayers"
+                    },
+                    "leagueId": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Leagueid"
+                    },
+                    "volatilityParams": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Volatilityparams"
+                    }
+                },
+                "type": "object",
+                "title": "StockUpdate",
+                "description": "Request body for PATCH /api/stocks/{stockId}. All fields optional."
             },
             "TopMoversResponse": {
                 "properties": {
@@ -2434,7 +4550,8 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "title": "Id"
+                        "title": "Id",
+                        "description": "Numeric transaction id for `GET /api/transactions/{id}`."
                     },
                     "action": {
                         "type": "string",
@@ -2442,30 +4559,48 @@
                             "buy",
                             "sell"
                         ],
-                        "title": "Action"
+                        "title": "Action",
+                        "description": "Trade side."
                     },
                     "quantity": {
                         "type": "number",
                         "title": "Quantity",
-                        "default": 0.0
+                        "description": "Shares filled.",
+                        "default": 0
                     },
                     "price": {
                         "type": "number",
                         "title": "Price",
-                        "default": 0.0
+                        "description": "Execution price per share.",
+                        "default": 0
                     },
                     "totalPrice": {
                         "type": "number",
                         "title": "Totalprice",
-                        "default": 0.0
+                        "description": "`quantity` × `price` before fees (fees not modeled here).",
+                        "default": 0
                     },
                     "userId": {
-                        "type": "integer",
-                        "title": "Userid"
+                        "type": "string",
+                        "title": "Userid",
+                        "description": "Owner (`userId` in JSON)."
                     },
                     "stockId": {
-                        "type": "integer",
-                        "title": "Stockid"
+                        "type": "string",
+                        "title": "Stockid",
+                        "description": "Asset id (`stockId` in JSON)."
+                    },
+                    "idempotencyKey": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Idempotencykey",
+                        "description": "Client key if supplied when queueing; echoed for correlation."
                     },
                     "createdAt": {
                         "anyOf": [
@@ -2477,7 +4612,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Createdat"
+                        "title": "Createdat",
+                        "description": "Settlement timestamp (UTC)."
                     },
                     "updatedAt": {
                         "anyOf": [
@@ -2489,7 +4625,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Updatedat"
+                        "title": "Updatedat",
+                        "description": "Last update if mutated."
                     }
                 },
                 "type": "object",
@@ -2500,7 +4637,7 @@
                     "stockId"
                 ],
                 "title": "Transaction",
-                "description": "Buy or sell transaction."
+                "description": "Settled trade ledger row after tick execution."
             },
             "TransactionCreate": {
                 "properties": {
@@ -2510,16 +4647,19 @@
                             "buy",
                             "sell"
                         ],
-                        "title": "Action"
+                        "title": "Action",
+                        "description": "Side to execute."
                     },
                     "stockId": {
-                        "type": "integer",
-                        "title": "Stockid"
+                        "type": "string",
+                        "title": "Stockid",
+                        "description": "Target asset id (`stockId` in JSON)."
                     },
                     "quantity": {
                         "type": "number",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Quantity"
+                        "exclusiveMinimum": 0,
+                        "title": "Quantity",
+                        "description": "Size: share count or USD notional (`quantityUnit`). For USD **buys**, shares sized so **debit** ≈ this amount; for USD **sells**, shares sized so **credit** ≈ this amount (~1%)."
                     },
                     "price": {
                         "anyOf": [
@@ -2530,7 +4670,30 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Price"
+                        "title": "Price",
+                        "description": "Ignored for pricing; execution uses internal market mechanics."
+                    },
+                    "quantityUnit": {
+                        "type": "string",
+                        "enum": [
+                            "shares",
+                            "usd"
+                        ],
+                        "title": "Quantityunit",
+                        "description": "`shares`: `quantity` is share count. `usd`: `quantity` is dollar notional converted to shares at the current mark before queueing (`quantityUnit` in JSON).",
+                        "default": "shares"
+                    },
+                    "idempotencyKey": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Idempotencykey",
+                        "description": "Optional 8–128 char key; retries with the same key replay the first queued pending (`idempotencyKey` in JSON)."
                     }
                 },
                 "type": "object",
@@ -2540,29 +4703,104 @@
                     "quantity"
                 ],
                 "title": "TransactionCreate",
-                "description": "Request body for POST /api/transactions."
+                "description": "Queue a trade for the next market tick (`POST /api/transactions`)."
+            },
+            "UnfollowResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "title": "Success",
+                        "description": "True when a follow row was removed.",
+                        "default": true
+                    }
+                },
+                "type": "object",
+                "title": "UnfollowResponse",
+                "description": "Envelope for ``DELETE /api/follows/{stockId}``."
+            },
+            "UploadUrlRequest": {
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "title": "Filename",
+                        "description": "Original filename; used in stored object key."
+                    },
+                    "contentType": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "title": "Contenttype",
+                        "description": "Must match the `Content-Type` header on the subsequent PUT.",
+                        "default": "application/octet-stream"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "filename"
+                ],
+                "title": "UploadUrlRequest",
+                "description": "Ask for a short-lived **PUT** URL to upload a profile image binary."
+            },
+            "UploadUrlResponse": {
+                "properties": {
+                    "uploadUrl": {
+                        "type": "string",
+                        "title": "Uploadurl",
+                        "description": "Presigned S3 URL (`uploadUrl` in JSON)."
+                    },
+                    "objectKey": {
+                        "type": "string",
+                        "title": "Objectkey",
+                        "description": "Object key written (`objectKey` in JSON)."
+                    },
+                    "bucket": {
+                        "type": "string",
+                        "title": "Bucket",
+                        "description": "Bucket name."
+                    },
+                    "expiresIn": {
+                        "type": "integer",
+                        "title": "Expiresin",
+                        "description": "TTL seconds for the presigned URL (`expiresIn` in JSON)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "uploadUrl",
+                    "objectKey",
+                    "bucket",
+                    "expiresIn"
+                ],
+                "title": "UploadUrlResponse",
+                "description": "Upload instructions — ``PUT`` the raw bytes to ``uploadUrl`` before it expires."
             },
             "UserCreate": {
                 "properties": {
                     "user_id": {
                         "type": "string",
                         "minLength": 1,
-                        "title": "User Id"
+                        "title": "User Id",
+                        "description": "Opaque id (typically Cognito `sub`)."
                     },
                     "name": {
                         "type": "string",
                         "minLength": 1,
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "Display name; split into first/last server-side when absent."
                     },
                     "phone_number": {
                         "type": "string",
                         "minLength": 1,
-                        "title": "Phone Number"
+                        "title": "Phone Number",
+                        "description": "Stored phone string."
                     },
                     "email": {
                         "type": "string",
                         "format": "email",
-                        "title": "Email"
+                        "title": "Email",
+                        "description": "Primary email."
                     }
                 },
                 "type": "object",
@@ -2573,29 +4811,258 @@
                     "email"
                 ],
                 "title": "UserCreate",
-                "description": "Register; backend always sets balance=0."
+                "description": "Initial signup payload; starting balance is set server-side (DB default / registration flow)."
+            },
+            "UserProfile": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable user id (e.g. Cognito `sub`), opaque string."
+                    },
+                    "firstName": {
+                        "type": "string",
+                        "title": "Firstname",
+                        "description": "Given name.",
+                        "default": ""
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "title": "Lastname",
+                        "description": "Family name.",
+                        "default": ""
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email",
+                        "description": "Contact email if exposed.",
+                        "default": ""
+                    },
+                    "phoneNumber": {
+                        "type": "string",
+                        "title": "Phonenumber",
+                        "description": "E.164 or stored phone string.",
+                        "default": ""
+                    },
+                    "birthday": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Birthday",
+                        "description": "Birthday when set; may be date-only serialized."
+                    },
+                    "photoURL": {
+                        "type": "string",
+                        "title": "Photourl",
+                        "description": "Avatar URL (`photoURL` in JSON).",
+                        "default": ""
+                    },
+                    "public": {
+                        "type": "boolean",
+                        "title": "Public",
+                        "description": "If false, only the owner may read full profile.",
+                        "default": false
+                    },
+                    "createdAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Createdat",
+                        "description": "Record creation time (UTC)."
+                    },
+                    "updatedAt": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Updatedat",
+                        "description": "Last profile update (UTC)."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ],
+                "title": "UserProfile",
+                "description": "Public user profile surfaced at ``GET|PUT /api/users/{userId}`` (camelCase JSON)."
+            },
+            "UserProfileUpdate": {
+                "properties": {
+                    "firstName": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Firstname",
+                        "description": "Replace given name."
+                    },
+                    "lastName": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Lastname",
+                        "description": "Replace family name."
+                    },
+                    "email": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Email",
+                        "description": "Replace email."
+                    },
+                    "phoneNumber": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Phonenumber",
+                        "description": "Replace phone."
+                    },
+                    "photoURL": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Photourl",
+                        "description": "Replace avatar URL (`photoURL` in JSON)."
+                    },
+                    "public": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Public",
+                        "description": "Toggle discoverability of profile fields."
+                    }
+                },
+                "type": "object",
+                "title": "UserProfileUpdate",
+                "description": "Partial update for ``PUT /api/users/{userId}``; omit fields you do not change."
             },
             "UserResponse": {
                 "properties": {
                     "user_id": {
                         "type": "string",
-                        "title": "User Id"
+                        "title": "User Id",
+                        "description": "Same id sent at registration."
                     },
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "Combined display name."
                     },
                     "phone_number": {
                         "type": "string",
-                        "title": "Phone Number"
+                        "title": "Phone Number",
+                        "description": "Phone on file."
                     },
                     "email": {
                         "type": "string",
-                        "title": "Email"
+                        "title": "Email",
+                        "description": "Email on file."
                     },
                     "balance": {
                         "type": "number",
-                        "title": "Balance"
+                        "title": "Balance",
+                        "description": "Trading credits available for buys (maps to `UserModel.balance`)."
+                    },
+                    "first_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "First Name",
+                        "description": "Given name."
+                    },
+                    "last_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Name",
+                        "description": "Family name."
+                    },
+                    "birthday": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Birthday",
+                        "description": "Birthday when set."
+                    },
+                    "is_public": {
+                        "type": "boolean",
+                        "title": "Is Public",
+                        "description": "Profile visibility toggle.",
+                        "default": false
+                    },
+                    "profile_picture_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Picture Url",
+                        "description": "CDN URL after upload completes."
                     },
                     "created_at": {
                         "anyOf": [
@@ -2607,7 +5074,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Created At"
+                        "title": "Created At",
+                        "description": "Signup timestamp (UTC)."
                     },
                     "updated_at": {
                         "anyOf": [
@@ -2619,7 +5087,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Updated At"
+                        "title": "Updated At",
+                        "description": "Last mutation (UTC)."
                     }
                 },
                 "type": "object",
@@ -2630,7 +5099,8 @@
                     "email",
                     "balance"
                 ],
-                "title": "UserResponse"
+                "title": "UserResponse",
+                "description": "Authenticated account projection (`POST /api/users`, `GET|PATCH /api/users/me`)."
             },
             "UserUpdate": {
                 "properties": {
@@ -2643,7 +5113,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "Full display name override."
                     },
                     "phone_number": {
                         "anyOf": [
@@ -2654,7 +5125,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Phone Number"
+                        "title": "Phone Number",
+                        "description": "Phone replacement."
                     },
                     "email": {
                         "anyOf": [
@@ -2666,12 +5138,62 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Email"
+                        "title": "Email",
+                        "description": "Email replacement."
+                    },
+                    "first_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "First Name",
+                        "description": "Given name."
+                    },
+                    "last_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Name",
+                        "description": "Family name."
+                    },
+                    "birthday": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Birthday",
+                        "description": "Birthday."
+                    },
+                    "is_public": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Public",
+                        "description": "Whether anonymous viewers may see public profile fields."
                     }
                 },
                 "type": "object",
                 "title": "UserUpdate",
-                "description": "Update self; only name, phone, email. No balance."
+                "description": "Patch self profile — omit fields you are not changing. Cannot change balance via API."
             },
             "ValidationError": {
                 "properties": {
@@ -2718,16 +5240,19 @@
                     "fanCoins": {
                         "type": "number",
                         "title": "Fancoins",
-                        "default": 0.0
+                        "description": "Reserved second currency; currently always `0`.",
+                        "default": 0
                     },
                     "tradingCredits": {
                         "type": "number",
                         "title": "Tradingcredits",
-                        "default": 0.0
+                        "description": "Spendable simulated balance for buys (`tradingCredits` in JSON).",
+                        "default": 0
                     },
                     "userId": {
-                        "type": "integer",
-                        "title": "Userid"
+                        "type": "string",
+                        "title": "Userid",
+                        "description": "Wallet owner (`userId` in JSON)."
                     },
                     "updatedAt": {
                         "anyOf": [
@@ -2739,7 +5264,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Updatedat"
+                        "title": "Updatedat",
+                        "description": "Last balance mutation time."
                     }
                 },
                 "type": "object",
@@ -2747,14 +5273,65 @@
                     "userId"
                 ],
                 "title": "Wallet",
-                "description": "User's wallet balances. tradingCredits maps to UserModel.balance."
+                "description": "Balances returned from ``GET /api/wallet/{userId}`` (must match authenticated user)."
             }
         },
         "securitySchemes": {
             "HTTPBearer": {
                 "type": "http",
-                "scheme": "bearer"
+                "scheme": "bearer",
+                "description": "Cognito ID token (production) or dev substitute when `DEV_USE_X_USER_ID` is set (`X-User-Id` header). Format: `Authorization: Bearer \u003Ctoken\u003E`."
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "meta",
+            "description": "Root and health probes (no `/api` prefix)."
+        },
+        {
+            "name": "users",
+            "description": "Registration (`POST /api/users`), authenticated account (`/me`), public profiles (`GET|PUT /api/users/{userId}`), profile picture presigned uploads, and friend requests. `userId` values are opaque strings (e.g. Cognito `sub`), not integers."
+        },
+        {
+            "name": "markets",
+            "description": "Market discovery, live state, asset listings, **your** positions in a market (auth), and **batch** order queue by `positionId` + `deltaQuantity`. Prefer `POST /api/transactions` for app-style trades keyed by `stockId`."
+        },
+        {
+            "name": "stocks",
+            "description": "Paginated stock lists, detail by `stockId` (numeric DB id or string `asset_id`), price history, movers/volume feeds, and admin CRUD (auth). `leagueID` query params filter by market id."
+        },
+        {
+            "name": "leagues",
+            "description": "Leagues mirror markets (`league_id` = `market_id`). Optional `includeStocks` embeds teams; Polymarket search helpers per league."
+        },
+        {
+            "name": "portfolio",
+            "description": "Authenticated aggregate portfolio, positions, per-stock position, history snapshots, and metrics (aligned `period` with charts)."
+        },
+        {
+            "name": "transactions",
+            "description": "List and fetch settled trades; **queue** new buys/sells for the next tick via `stockId` + `quantity` + optional `quantityUnit` (`shares` | `usd`) and `idempotencyKey`."
+        },
+        {
+            "name": "wallet",
+            "description": "Trading credits balance for the authenticated user (`tradingCredits`); bonus stubs and unimplemented purchase endpoints."
+        },
+        {
+            "name": "search",
+            "description": "Cross-search stocks and leagues; optional `leagueID` narrows stock hits."
+        },
+        {
+            "name": "follows",
+            "description": "Authenticated watchlist: follow/unfollow by `stockId` (asset id), list follows, and `/not-owned` for followed teams without an open position (`quantity` \u003E 0)."
+        },
+        {
+            "name": "polymarket",
+            "description": "Server-side proxy to Polymarket Gamma `public-search`; forwards query params."
+        },
+        {
+            "name": "odds",
+            "description": "Pass-through to The Odds API v4; server injects `apiKey`. Paths mirror upstream after `/api/odds/v4/`."
+        }
+    ]
 }

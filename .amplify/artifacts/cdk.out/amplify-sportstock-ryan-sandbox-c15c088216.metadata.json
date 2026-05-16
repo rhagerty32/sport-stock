@@ -1,0 +1,311 @@
+{
+  "/amplify-sportstock-ryan-sandbox-c15c088216": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    },
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "amplify:deployment-type",
+          "value": "sandbox"
+        },
+        {
+          "key": "created-by",
+          "value": "amplify"
+        }
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/deploymentType": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "deploymentType"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...<anonymous> in @aws-amplify/backend-output-storage...",
+        "Array.forEach (:)",
+        "...@aws-amplify/backend-output-storage, defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/region": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "region"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...<anonymous> in @aws-amplify/backend-output-storage...",
+        "Array.forEach (:)",
+        "...@aws-amplify/backend-output-storage, defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...<anonymous> in @aws-amplify/backend...",
+        "Array.forEach (:)",
+        "...defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/definedFunctions": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "definedFunctions"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...<anonymous> in @aws-amplify/backend-output-storage...",
+        "Array.forEach (:)",
+        "...@aws-amplify/backend-output-storage, @aws-amplify/backend-function, <anonymous> in @aws-amplify/backend...",
+        "Array.forEach (:)",
+        "...defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/customOutputs": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "customOutputs"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...<anonymous> in @aws-amplify/backend-output-storage...",
+        "Array.forEach (:)",
+        "...@aws-amplify/backend-output-storage, Object.addOutput in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:38 (:)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/amplifysportstockryansandboxc15c088216functionheadlineslambda557627FERef": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "amplifysportstockryansandboxc15c088216functionheadlineslambda557627FERef"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/amplifysportstockryansandboxc15c088216functionheadlineslambdaFunctionUrlE4B0D3B2FunctionUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "amplifysportstockryansandboxc15c088216functionheadlineslambdaFunctionUrlE4B0D3B2FunctionUrl"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function.NestedStack/function.NestedStackResource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "function1351588B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, <anonymous> in @aws-amplify/backend...",
+        "Array.forEach (:)",
+        "...defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/CDKMetadata/Condition": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadataAvailable"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/headlines-lambda/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "headlineslambda07F54334"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend-function, <anonymous> in @aws-amplify/backend...",
+        "Array.forEach (:)",
+        "...defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/headlines-lambda/invoke-function-url": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "headlineslambdainvokefunctionurlFB4E630C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...NodejsFunction.addFunctionUrl in aws-cdk-lib...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:29: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:29:5)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/headlines-lambda/invoke-function": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "headlineslambdainvokefunctionEC0EDFF9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...NodejsFunction.addFunctionUrl in aws-cdk-lib...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:29: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:29:5)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/CDKMetadata/Condition": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadataAvailable"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend, node internals, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/headlines-lambda/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "headlineslambdaServiceRoleA390FA65"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, @aws-amplify/backend-function, <anonymous> in @aws-amplify/backend...",
+        "Array.forEach (:)",
+        "...defineBackend in @aws-amplify/backend...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:17:1)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/headlines-lambda/FunctionUrl/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "headlineslambdaFunctionUrl84EAECE1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...NodejsFunction.addFunctionUrl in aws-cdk-lib...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:29: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:29:5)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ],
+  "/amplify-sportstock-ryan-sandbox-c15c088216/function/headlines-lambda/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "headlineslambdaServiceRoleDefaultPolicy67483863"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...NodejsFunction.addToRolePolicy in aws-cdk-lib...",
+        "file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:21: (file:///Users/ryan/GROUND/shift5/projects/SportStock/SportStock/amplify/backend.ts:21:3)",
+        "...node internals, tsx, @aws-amplify/backend-deployer, @aws-cdk/toolkit-lib, @aws-amplify/backend-deployer, @aws-amplify/sandbox, @aws-amplify/backend-cli..."
+      ]
+    }
+  ]
+}

@@ -14,4 +14,9 @@ export const LEAGUES = [
         name: 'NCAA Basketball',
         photoURL: 'https://www.ncaa.com/assets/logos/ncaa-basketball/ncaa-basketball-logo_500x500.png',
     },
+    {
+        id: 4,
+        name: 'NCAA Football',
+        photoURL: 'https://www.ncaa.com/assets/logos/ncaa-football/ncaa-football-logo_500x500.png',
+    },
 ];

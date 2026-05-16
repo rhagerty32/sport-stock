@@ -38,6 +38,12 @@ const DEFAULT_QUERIES_BY_SPORT: Partial<Record<string, QueryDefaults>> = {
         conferenceQuery: 'ncaa basketball conference champion',
         championQuery: 'ncaa basketball champion',
     },
+    americanfootball_ncaaf: {
+        playoffQuery: 'college football playoff',
+        divisionQuery: 'big ten championship game winner',
+        conferenceQuery: 'college football playoff',
+        championQuery: 'college football national champion',
+    },
 };
 
 function emptyShell(name: string, sport: string): League {
@@ -71,6 +77,7 @@ export function leagueWithPolymarketDefaults(league: League | null, sportKey: st
         if (sportKey === 'baseball_mlb') return { ...emptyShell('MLB', 'Baseball'), ...defaults };
         if (sportKey === 'icehockey_nhl') return { ...emptyShell('NHL', 'Hockey'), ...defaults };
         if (sportKey === 'basketball_ncaab') return { ...emptyShell('NCAA Basketball', 'Basketball'), ...defaults };
+        if (sportKey === 'americanfootball_ncaaf') return { ...emptyShell('NCAA Football', 'Football'), ...defaults };
         return null;
     }
 

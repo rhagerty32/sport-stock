@@ -66,6 +66,9 @@ export const SPORT_KEY_MAP: Record<string, string> = {
     'NCAA Basketball': 'basketball_ncaab',
     'NCAAB': 'basketball_ncaab',
     'College Basketball': 'basketball_ncaab',
+    'NCAA Football': 'americanfootball_ncaaf',
+    'NCAAF': 'americanfootball_ncaaf',
+    'College Football': 'americanfootball_ncaaf',
 };
 
 // Team name mapping: App team name → the-odds-api team name
@@ -234,6 +237,14 @@ export function inferSportKeyFromStockId(stockId: string | number | null | undef
     if (s.startsWith('mlb_') || s.includes('_mlb_')) return 'baseball_mlb';
     if (s.startsWith('nhl_') || s.includes('_nhl_')) return 'icehockey_nhl';
     if (s.includes('ncaab') || s.includes('ncaa_b') || s.startsWith('cbb_')) return 'basketball_ncaab';
+    if (
+        s.startsWith('cfb_') ||
+        s.includes('ncaa_football') ||
+        s.includes('ncaaf') ||
+        s.startsWith('ncaa_f_')
+    ) {
+        return 'americanfootball_ncaaf';
+    }
     return null;
 }
 

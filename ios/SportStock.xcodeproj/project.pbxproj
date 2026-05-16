@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		1EA1B728E1436B29065F885E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2B406E9D59D12736B28BA9E2 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		56AB6F3F23603F27C079301B /* libPods-SportStock.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3CA3F9544BDC9D322DDE356C /* libPods-SportStock.a */; };
-		B179E2F50B071F2AE1E4638B /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBEE3825DEE217355992A80 /* ExpoModulesProvider.swift */; };
+		6C104EE4695D2C80405FDA04 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A31E6FC846ACC269EC3C1C /* ExpoModulesProvider.swift */; };
+		827EF69CE3E0EB6241EA324F /* libPods-SportStock.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F7B6D2FCD328D6971A789FE /* libPods-SportStock.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		E115DBCB5E8F931B117633BD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FD99E017A7EB3FA10763392C /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		00A35F92B62DAC364A0EFA77 /* Pods-SportStock.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SportStock.release.xcconfig"; path = "Target Support Files/Pods-SportStock/Pods-SportStock.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* SportStock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SportStock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SportStock/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = SportStock/Info.plist; sourceTree = "<group>"; };
-		2B406E9D59D12736B28BA9E2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = SportStock/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		3CA3F9544BDC9D322DDE356C /* libPods-SportStock.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SportStock.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		97AEFB8933300597EF921E9B /* Pods-SportStock.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SportStock.debug.xcconfig"; path = "Target Support Files/Pods-SportStock/Pods-SportStock.debug.xcconfig"; sourceTree = "<group>"; };
-		9CBEE3825DEE217355992A80 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SportStock/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		4F7B6D2FCD328D6971A789FE /* libPods-SportStock.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SportStock.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		52A31E6FC846ACC269EC3C1C /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SportStock/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		970C555E7B399C63A1810999 /* Pods-SportStock.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SportStock.release.xcconfig"; path = "Target Support Files/Pods-SportStock/Pods-SportStock.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = SportStock/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SportStock/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* SportStock-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "SportStock-Bridging-Header.h"; path = "SportStock/SportStock-Bridging-Header.h"; sourceTree = "<group>"; };
+		F3D2A313C4355D4B1EF1F509 /* Pods-SportStock.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SportStock.debug.xcconfig"; path = "Target Support Files/Pods-SportStock/Pods-SportStock.debug.xcconfig"; sourceTree = "<group>"; };
+		FD99E017A7EB3FA10763392C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = SportStock/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				56AB6F3F23603F27C079301B /* libPods-SportStock.a in Frameworks */,
+				827EF69CE3E0EB6241EA324F /* libPods-SportStock.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,26 +53,36 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				2B406E9D59D12736B28BA9E2 /* PrivacyInfo.xcprivacy */,
+				FD99E017A7EB3FA10763392C /* PrivacyInfo.xcprivacy */,
 			);
 			name = SportStock;
+			sourceTree = "<group>";
+		};
+		1E699301B0394E0EEF776966 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				A86064A702EA88897EBC3F82 /* SportStock */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				3CA3F9544BDC9D322DDE356C /* libPods-SportStock.a */,
+				4F7B6D2FCD328D6971A789FE /* libPods-SportStock.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		658FF15DC50948D75878B61A /* ExpoModulesProviders */ = {
+		3CBE614E79C71FC71AF130DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				DF2597CF31D52444794E8E1B /* SportStock */,
+				F3D2A313C4355D4B1EF1F509 /* Pods-SportStock.debug.xcconfig */,
+				970C555E7B399C63A1810999 /* Pods-SportStock.release.xcconfig */,
 			);
-			name = ExpoModulesProviders;
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -89,8 +99,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				F685E79FE812D5B3BCA031FF /* Pods */,
-				658FF15DC50948D75878B61A /* ExpoModulesProviders */,
+				3CBE614E79C71FC71AF130DB /* Pods */,
+				1E699301B0394E0EEF776966 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -105,6 +115,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		A86064A702EA88897EBC3F82 /* SportStock */ = {
+			isa = PBXGroup;
+			children = (
+				52A31E6FC846ACC269EC3C1C /* ExpoModulesProvider.swift */,
+			);
+			name = SportStock;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -112,24 +130,6 @@
 			);
 			name = Supporting;
 			path = SportStock/Supporting;
-			sourceTree = "<group>";
-		};
-		DF2597CF31D52444794E8E1B /* SportStock */ = {
-			isa = PBXGroup;
-			children = (
-				9CBEE3825DEE217355992A80 /* ExpoModulesProvider.swift */,
-			);
-			name = SportStock;
-			sourceTree = "<group>";
-		};
-		F685E79FE812D5B3BCA031FF /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				97AEFB8933300597EF921E9B /* Pods-SportStock.debug.xcconfig */,
-				00A35F92B62DAC364A0EFA77 /* Pods-SportStock.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SportStock" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				C7A79B98BA53A5A38A6C0C00 /* [Expo] Configure project */,
+				11F26ED55447F34A19B291F4 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				CB819E8FF9153DA131631B7D /* [CP] Embed Pods Frameworks */,
+				F491F2231F04707172C6AF2E /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -166,9 +166,7 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = J22RD5YVQW;
 						LastSwiftMigration = 1250;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -198,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				1EA1B728E1436B29065F885E /* PrivacyInfo.xcprivacy in Resources */,
+				E115DBCB5E8F931B117633BD /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,6 +242,30 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		11F26ED55447F34A19B291F4 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/SportStock/SportStock.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-SportStock/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Pods/Target Support Files/Pods-SportStock/ExpoModulesProvider.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-SportStock/expo-configure-project.sh\"\n";
+		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -288,46 +310,22 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SportStock/Pods-SportStock-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C7A79B98BA53A5A38A6C0C00 /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/SportStock/SportStock.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-SportStock/expo-configure-project.sh",
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-SportStock/ExpoModulesProvider.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-SportStock/expo-configure-project.sh\"\n";
-		};
-		CB819E8FF9153DA131631B7D /* [CP] Embed Pods Frameworks */ = {
+		F491F2231F04707172C6AF2E /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SportStock/Pods-SportStock-frameworks.sh",
-				"${PODS_ROOT}/hermes-engine/destroot/Library/Frameworks/ios/hermesvm.framework",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermesvm.framework/hermesvm",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -342,7 +340,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				B179E2F50B071F2AE1E4638B /* ExpoModulesProvider.swift in Sources */,
+				6C104EE4695D2C80405FDA04 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,13 +349,11 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 97AEFB8933300597EF921E9B /* Pods-SportStock.debug.xcconfig */;
+			baseConfigurationReference = F3D2A313C4355D4B1EF1F509 /* Pods-SportStock.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SportStock/SportStock.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = J22RD5YVQW;
 				ENABLE_BITCODE = NO;
@@ -390,13 +386,11 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 00A35F92B62DAC364A0EFA77 /* Pods-SportStock.release.xcconfig */;
+			baseConfigurationReference = 970C555E7B399C63A1810999 /* Pods-SportStock.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SportStock/SportStock.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = J22RD5YVQW;
 				INFOPLIST_FILE = SportStock/Info.plist;

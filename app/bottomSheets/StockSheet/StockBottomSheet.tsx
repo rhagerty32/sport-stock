@@ -1,4 +1,5 @@
 import Chart from '@/components/chart';
+import { SportsHeadlinesBanner } from '@/components/SportsHeadlinesBanner';
 import { Ticker } from '@/components/Ticker';
 import { brightenColor, isDarkColor, useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -9,13 +10,13 @@ import {
     inferCanonicalTeamNameFromStockId,
     inferSportKeyFromStockId,
 } from '@/lib/odds-api';
+import { headlinesQueryEnabled, useTeamHeadlines } from '@/lib/headlines-api';
 import { leagueWithPolymarketDefaults } from '@/lib/polymarket-league-defaults';
 import { STOCK_SHEET_PRICE_HISTORY, usePriceHistory, useStock } from '@/lib/stocks-api';
-import { useTransactions } from '@/lib/transactions-api';
 import { usePortfolio } from '@/lib/portfolio-api';
 import { useStockStore } from '@/stores/stockStore';
 import { appendLivePricePoint, priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
-import type { League, PriceHistory, Stock, TimePeriod, Transaction } from '@/types';
+import type { League, PriceHistory, Stock, TimePeriod } from '@/types';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -24,7 +25,6 @@ import BuySellBottomSheet from '../BuySellBottomSheet';
 import { ActionButtons } from './ActionButtons';
 import { OddsSection } from './OddsSection';
 import { PredictionMarkets } from './PredictionMarkets';
-import { TradeHistory } from './TradeHistory';
 import { formatCurrency, formatPercentage } from './utils';
 import { YourPosition } from './YourPosition';
 
@@ -66,14 +66,8 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const priceHistoryInitialPending =
         priceHistoryQuery.isPending ||
         (priceHistoryQuery.isFetching && priceHistoryQuery.data === undefined);
-    const { data: txData } = useTransactions(
-        activeStockId ? { stockID: activeStockId, limit: 50 } : undefined
-    );
     const stock = fetchedStock ?? activeStock ?? null;
-    const stockTransactions: Transaction[] = txData?.transactions ?? [];
-    const loading =
-        (!!activeStockId && fetchedStock === undefined && !activeStock) ||
-        (!!activeStockId && txData === undefined);
+    const loading = !!activeStockId && fetchedStock === undefined && !activeStock;
 
     useEffect(() => {
         if (fetchedStock) setActiveStock(fetchedStock);
@@ -171,6 +165,14 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
     const effectiveStock = stock ?? activeStock ?? null;
     const hasStock = !!effectiveStock;
+
+    const teamHeadlineName = useMemo(() => {
+        if (!effectiveStock && !oddsTeamName) return null;
+        return oddsTeamName || effectiveStock?.fullName || effectiveStock?.name || null;
+    }, [effectiveStock, oddsTeamName]);
+
+    const headlinesEnabled = headlinesQueryEnabled();
+    const teamHeadlinesQuery = useTeamHeadlines(teamHeadlineName, sportKey ?? null);
 
     const currentPrice = effectiveStock?.price ?? 0;
     const [sheetChartPeriod, setSheetChartPeriod] = useState<TimePeriod>('ALL');
@@ -343,20 +345,29 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
                         {/* Action Buttons */}
                         <ActionButtons userOwnsStock={userOwnsStock} userFollowsStock={userFollowsStock} stock={effectiveStock!} />
 
+                        {headlinesEnabled &&
+                        teamHeadlineName &&
+                        sportKey &&
+                        (teamHeadlinesQuery.isLoading || (teamHeadlinesQuery.data?.length ?? 0) > 0) ? (
+                            <View style={styles.teamHeadlinesWrapper}>
+                                <SportsHeadlinesBanner
+                                    headlines={teamHeadlinesQuery.data ?? []}
+                                    loading={teamHeadlinesQuery.isLoading}
+                                />
+                            </View>
+                        ) : null}
+
                         {/* Position Details - Only show if user owns the stock */}
                         {userOwnsStock && userPosition && (
                             <YourPosition userPosition={userPosition} currentPrice={currentPrice} />
                         )}
 
-                        {/* Trade History Section */}
-                        <TradeHistory stockTransactions={stockTransactions} stock={effectiveStock!} />
-
                         {effectiveStock && oddsTeamName && sportKey && (
                             <OddsSection apiTeamName={oddsTeamName} sportKey={sportKey} stock={effectiveStock} />
                         )}
 
-                        {leagueForPolymarket && effectiveStock && (
-                            <PredictionMarkets league={leagueForPolymarket} stock={effectiveStock} />
+                        {effectiveStock && sportKey && (
+                            <PredictionMarkets stock={effectiveStock} sportKey={sportKey} />
                         )}
 
                         {/* Bottom Spacing */}
@@ -424,7 +435,11 @@ const styles = StyleSheet.create({
     },
     chartContainer: {
         marginHorizontal: 20,
-        marginBottom: 20,
+        marginBottom: 12,
+    },
+    teamHeadlinesWrapper: {
+        minHeight: 126,
+        marginBottom: 8,
     },
     chartNote: {
         marginTop: 8,

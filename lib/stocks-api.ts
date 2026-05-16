@@ -7,6 +7,14 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 export type MoverItem = { stock: Stock; change: number; changePercentage: number };
 
+/** OpenAPI: GET /api/stocks `limit` minimum 1, maximum 100. */
+export const STOCKS_LIST_MAX_LIMIT = 100;
+
+function clampStocksListLimit(value: number | undefined): number {
+    const raw = value ?? 20;
+    return Math.min(STOCKS_LIST_MAX_LIMIT, Math.max(1, Math.floor(raw)));
+}
+
 export const stocksKeys = {
     all: ['stocks'] as const,
     lists: () => [...stocksKeys.all, 'list'] as const,
@@ -30,7 +38,7 @@ export async function fetchStocks(params?: {
     const search: Record<string, string | number | undefined> = {};
     if (params?.leagueID != null) search.leagueID = params.leagueID;
     if (params?.search != null) search.search = params.search;
-    if (params?.limit != null) search.limit = params.limit;
+    search.limit = clampStocksListLimit(params?.limit);
     if (params?.offset != null) search.offset = params.offset;
     const data = await apiGet<{ stocks?: unknown[]; total?: number; limit?: number; offset?: number; hasMore?: boolean }>(
         API_ENDPOINTS.STOCKS,
@@ -45,6 +53,25 @@ export async function fetchStocks(params?: {
         offset: data?.offset ?? 0,
         hasMore: data?.hasMore ?? false,
     };
+}
+
+/** Paginate GET /api/stocks until `hasMore` is false (respects `STOCKS_LIST_MAX_LIMIT`). */
+export async function fetchAllStocksForLeague(leagueID: string): Promise<Stock[]> {
+    const all: Stock[] = [];
+    let offset = 0;
+    for (let guard = 0; guard < 100; guard++) {
+        const page = await fetchStocks({
+            leagueID,
+            limit: STOCKS_LIST_MAX_LIMIT,
+            offset,
+        });
+        all.push(...page.stocks);
+        if (!page.hasMore || page.stocks.length === 0) {
+            break;
+        }
+        offset += page.stocks.length;
+    }
+    return all;
 }
 
 export async function fetchStock(stockId: string | number): Promise<Stock | null> {

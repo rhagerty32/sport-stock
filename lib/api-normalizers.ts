@@ -35,8 +35,26 @@ function leagueIdFromStockPayload(api: any): number | string {
     return 0;
 }
 
+function optionalFiniteNumber(...candidates: unknown[]): number | undefined {
+    for (const v of candidates) {
+        if (typeof v === 'number' && Number.isFinite(v)) return v;
+    }
+    return undefined;
+}
+
+function optionalConferenceString(api: any): string | undefined {
+    const raw = api?.conference ?? api?.conferenceName ?? api?.conference_name;
+    if (typeof raw !== 'string') return undefined;
+    const t = raw.trim();
+    return t === '' ? undefined : t;
+}
+
 // API Stock: camelCase (photoUrl, fullName, leagueId, etc.)
 export function normalizeStock(api: any): Stock {
+    const wins = optionalFiniteNumber(api.wins, api.win_count);
+    const losses = optionalFiniteNumber(api.losses, api.loss_count);
+    const conference = optionalConferenceString(api);
+
     return {
         id: api.id ?? 0,
         name: api.name ?? '',
@@ -54,6 +72,9 @@ export function normalizeStock(api: any): Stock {
         secondaryColor: api.secondaryColor ?? '#000000',
         createdAt: parseDate(api.createdAt),
         updatedAt: parseDate(api.updatedAt),
+        ...(wins !== undefined ? { wins } : {}),
+        ...(losses !== undefined ? { losses } : {}),
+        ...(conference !== undefined ? { conference } : {}),
     };
 }
 

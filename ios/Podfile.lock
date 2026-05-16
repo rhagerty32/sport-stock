@@ -127,16 +127,8 @@ PODS:
     - Yoga
   - FBLazyVector (0.83.2)
   - hermes-engine (0.14.1):
-    - hermes-engine/cdp (= 0.14.1)
-    - hermes-engine/Hermes (= 0.14.1)
-    - hermes-engine/inspector (= 0.14.1)
-    - hermes-engine/inspector_chrome (= 0.14.1)
-    - hermes-engine/Public (= 0.14.1)
-  - hermes-engine/cdp (0.14.1)
-  - hermes-engine/Hermes (0.14.1)
-  - hermes-engine/inspector (0.14.1)
-  - hermes-engine/inspector_chrome (0.14.1)
-  - hermes-engine/Public (0.14.1)
+    - hermes-engine/Pre-built (= 0.14.1)
+  - hermes-engine/Pre-built (0.14.1)
   - libavif/core (1.0.0)
   - libavif/libdav1d (1.0.0):
     - libavif/core
@@ -2435,7 +2427,7 @@ DEPENDENCIES:
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
-  https://github.com/CocoaPods/Specs.git:
+  trunk:
     - libavif
     - libdav1d
     - libwebp
@@ -2692,7 +2684,7 @@ SPEC CHECKSUMS:
   ExpoWebBrowser: 19c5d250e0c101027677970a5f2fc635d9df2e73
   FastSquircle: 8f9e8cace8dae3e738e775a4fbeed6fb3851929d
   FBLazyVector: 32e9ed0301d0fcbc1b2b341dd7fcbf291f51eb83
-  hermes-engine: da32c4fcb3d87ad71c9784ca18238a73b3396862
+  hermes-engine: 4ef50f5a97548637c3ddd55a48e3a9b79f66189c
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
@@ -2774,7 +2766,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: e85a99325df9eb0191a6ee2b2a842644c7eb29f4
   RNGestureHandler: 8e4a9372425d4caa9e3da5072a8dda7a54ed1097
   RNReanimated: 0de2f2ee429ff5e566104e177a69f58e9216668a
-  RNScreens: fb11b7412bcbdc0ffafcaf9174938d998d4e2bc4
+  RNScreens: 62b74ab28af2fcde74afafd00d7500df4289bab4
   RNSVG: b5bd4454de003a99d3130a3c6a1b1c949c89d37d
   RNWorklets: 69360224ddca4bd2b93c7f673fa063ebc32ba9a7
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
@@ -2783,6 +2775,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: dd994d8c85dca5cc9b10f5df8c01f9ef1d0da191
 
-PODFILE CHECKSUM: cf97fe43f124e469ad71a7f80b46193df46ebce8
+PODFILE CHECKSUM: 6ad91a926da01fbd9b199264b73ff4fac0a071a1
 
 COCOAPODS: 1.16.2

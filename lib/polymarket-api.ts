@@ -130,6 +130,7 @@ function filterCoreGameMarkets(
 
 export const getPolymarketData = async ({
     q,
+    includeClosedEvents = false,
 }: PolymarketQuery): Promise<PolymarketEvent[]> => {
     const trimmed = q?.trim();
     if (!trimmed) {
@@ -146,12 +147,9 @@ export const getPolymarketData = async ({
         const rawCount = Array.isArray(data?.events) ? data.events.length : 0;
         const filteredEvents = (data.events ?? []).filter((event) => event.active && event.active === true);
 
-        const openEvents = [];
-        for (let i in filteredEvents) {
-            if (filteredEvents[i].closed === false) {
-                openEvents.push(filteredEvents[i]);
-            }
-        }
+        const resultEvents = includeClosedEvents
+            ? filteredEvents
+            : filteredEvents.filter((event) => event.closed === false);
 
         if (__DEV__) {
             // eslint-disable-next-line no-console
@@ -159,11 +157,12 @@ export const getPolymarketData = async ({
                 q: trimmed,
                 rawEvents: rawCount,
                 activeEvents: filteredEvents.length,
-                openNotClosed: openEvents.length,
+                returned: resultEvents.length,
+                includeClosedEvents,
             });
         }
 
-        return openEvents;
+        return resultEvents;
     } catch (e) {
         if (__DEV__) {
             // eslint-disable-next-line no-console
@@ -173,9 +172,13 @@ export const getPolymarketData = async ({
     }
 };
 
+/** Season-long futures search: includes closed events for discovery; caller filters to open markets. */
+export const getPolymarketSeasonSearch = async (q: string): Promise<PolymarketEvent[]> =>
+    getPolymarketData({ q, includeClosedEvents: true });
+
 export const usePolymarketData = (query: PolymarketQuery) => {
     return useQuery({
-        queryKey: ['polymarketData', query],
+        queryKey: ['polymarketData', query.q, query.includeClosedEvents],
         queryFn: async () => {
             const result = await getPolymarketData(query);
             // React Query requires a defined value (not undefined)

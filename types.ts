@@ -17,6 +17,10 @@ export type Stock = {
     secondaryColor: string;
     createdAt: Date;
     updatedAt: Date;
+    /** Present when API includes standings; used for league page sections and W/L. */
+    wins?: number;
+    losses?: number;
+    conference?: string;
 };
 
 export type League = {
@@ -214,7 +218,22 @@ export type BonusInfo = {
     firstTimeBonus: number; // Additional bonus for first purchase (e.g., 0.2 = 20% extra)
 };
 
-export type PolymarketQuery = { q: string | null; };
+export type PolymarketQuery = {
+    q: string | null;
+    /** When true, returns active events even if event.closed (season resolver still filters to open markets). */
+    includeClosedEvents?: boolean;
+};
+
+export type SeasonPredictionSlotId = 'playoffs' | 'division' | 'conference' | 'champion';
+
+export type SeasonPrediction = {
+    slotId: SeasonPredictionSlotId;
+    label: string;
+    yesPercent: number;
+    eventSlug: string;
+    marketSlug?: string;
+    url: string;
+};
 
 export type PolymarketResponse = {
     events: PolymarketEvent[];

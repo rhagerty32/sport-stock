@@ -89,7 +89,11 @@ if [ ! -f "$EXPORT_OPTIONS_PLIST" ]; then
 <plist version="1.0">
 <dict>
   <key>method</key>
-  <string>app-store</string>
+  <string>app-store-connect</string>
+  <key>teamID</key>
+  <string>J22RD5YVQW</string>
+  <key>signingStyle</key>
+  <string>automatic</string>
   <key>uploadBitcode</key>
   <false/>
   <key>uploadSymbols</key>
@@ -125,7 +129,24 @@ xcodebuild -exportArchive \
   -allowProvisioningUpdates
 
 if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ Export failed!${NC}"
+  echo -e "${RED}❌ Export failed.${NC}"
+  echo ""
+  echo -e "${YELLOW}Typical causes (fix in this order):${NC}"
+  echo "  1. ${YELLOW}PLA Update available${NC} — An Account Holder or Admin must sign in to"
+  echo "     https://developer.apple.com/account and https://appstoreconnect.apple.com"
+  echo "     and accept any Program License Agreement / agreements banners for team ${DEVELOPMENT_TEAM}."
+  echo "     Until that is done, Apple may refuse signing and you can see bogus cert errors."
+  echo ""
+  echo "  2. ${YELLOW}Distribution certificate${NC} — In Xcode: Settings → Accounts → your Apple ID →"
+  echo "     team Sport Stock → Manage Certificates → ensure an ${YELLOW}Apple Distribution${NC} cert exists."
+  echo "     (Legacy name was 'iOS Distribution'; export needs the modern cert via automatic signing.)"
+  echo ""
+  echo "  3. ${YELLOW}Re-archive after fixing signing${NC} — Open ios/SportStock.xcworkspace, Product → Archive,"
+  echo "     confirm Release signing, then export from Organizer OR re-run this script."
+  echo ""
+  echo "  Installed signing identities mentioning Distribution:"
+  security find-identity -v -p codesigning 2>/dev/null | grep -i distribution || echo "     (none found — add Apple Distribution in Xcode or developer.apple.com)"
+  echo ""
   exit 1
 fi
 

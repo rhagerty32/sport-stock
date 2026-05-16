@@ -42,4 +42,7 @@ app-example
 
 .env
 
+# Amplify Gen 2 sandbox outputs (copy `headlinesUrl` into EXPO_PUBLIC_HEADLINES_URL locally)
+amplify_outputs.json
+
 build

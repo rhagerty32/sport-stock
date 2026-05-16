@@ -1,55 +1,32 @@
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
-import { usePolymarketData } from '@/lib/polymarket-api';
-import { League, PolymarketEvent, PolymarketMarket, Stock } from '@/types';
+import { useSeasonPredictions } from '@/lib/season-predictions';
+import { Stock } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import React from 'react';
+import {
+    ActivityIndicator,
+    Linking,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
 
-export const PredictionMarkets = ({ league, stock }: { league: League, stock: Stock }) => {
+export const PredictionMarkets = ({
+    stock,
+    sportKey,
+}: {
+    stock: Stock;
+    sportKey: string | null;
+}) => {
     const Color = useColors();
     const { isDark } = useTheme();
-    const [allEvents, setAllEvents] = useState<PolymarketEvent[]>([]);
-    const { data: playoffData, isLoading: playoffLoading } = usePolymarketData({
-        q: league?.playoffQuery || null
-    });
-    const { data: divisionData, isLoading: divisionLoading } = usePolymarketData({
-        q: league?.divisionQuery || null
-    });
-    const { data: conferenceData, isLoading: conferenceLoading } = usePolymarketData({
-        q: league?.conferenceQuery || null
-    });
-    const { data: championData, isLoading: championLoading } = usePolymarketData({
-        q: league?.championQuery || null
-    });
+    const { data: predictions, isLoading } = useSeasonPredictions(stock, sportKey);
 
-    useEffect(() => {
-        if (!playoffLoading && !divisionLoading && !conferenceLoading && !championLoading) {
-            // Ensure all data are arrays or default to empty array
-            const safePlayoffData = Array.isArray(playoffData) ? playoffData : [];
-            const safeDivisionData = Array.isArray(divisionData) ? divisionData : [];
-            const safeConferenceData = Array.isArray(conferenceData) ? conferenceData : [];
-            const safeChampionData = Array.isArray(championData) ? championData : [];
-
-            const allEventsTemp = [
-                ...safePlayoffData,
-                ...safeDivisionData,
-                ...safeConferenceData,
-                ...safeChampionData
-            ];
-
-            setAllEvents(allEventsTemp);
-        }
-    }, [playoffLoading, divisionLoading, conferenceLoading, championLoading]);
-
-    const sortOrder = ['Playoffs', 'Division', 'Conference', 'Champion'];
-    const sortedEvents = allEvents.sort((a, b) => {
-        const aIndex = sortOrder.indexOf(a.title.includes('Playoffs') ? 'Playoffs' : a.title.includes('Division') ? 'Division' : a.title.includes('Conference') ? 'Conference' : a.title.includes('Champion') ? 'Champion' : a.title);
-        const bIndex = sortOrder.indexOf(b.title.includes('Playoffs') ? 'Playoffs' : b.title.includes('Division') ? 'Division' : b.title.includes('Conference') ? 'Conference' : b.title.includes('Champion') ? 'Champion' : b.title);
-        return aIndex - bIndex;
-    });
+    const rows = predictions ?? [];
 
     return (
         <View style={styles.statsContainer}>
@@ -70,103 +47,92 @@ export const PredictionMarkets = ({ league, stock }: { league: League, stock: St
                     </View>
                 </View>
 
-
-                {playoffLoading || divisionLoading || conferenceLoading || championLoading ? (
+                {isLoading ? (
                     <ActivityIndicator size="small" color={Color.black} />
-                ) : allEvents.length > 0 ? (
+                ) : rows.length > 0 ? (
                     <View style={styles.predictionMarketsContainer}>
-                        {sortedEvents.map((event) => {
-                            if (!stock?.name) return;
-                            const teamMarket: PolymarketMarket | undefined = event.markets.find((market) => market.question.includes(stock?.name) || market.question.includes(stock?.fullName) || market.groupItemTitle.includes(stock?.name));
-
-                            if (!teamMarket) return;
-
-                            let oddsPercent = null;
-
-                            if (JSON.parse(teamMarket.outcomes)[0] === "Yes") {
-                                oddsPercent = JSON.parse(teamMarket.outcomePrices)[0];
-                            } else {
-                                oddsPercent = JSON.parse(teamMarket.outcomePrices)[1];
-                            }
+                        {rows.map((prediction) => {
+                            const yesProb = prediction.yesPercent / 100;
+                            const noProb = 1 - yesProb;
+                            const noPctRounded = Math.max(0, 100 - prediction.yesPercent);
 
                             return (
-                                <View key={event.id} style={styles.predictionMarketItem}>
-                                    <Text style={[styles.predictionMarketItemText, { color: Color.baseText }]}>{event.title.includes('Playoffs') ? 'Make the Playoffs' : event.title.includes('Division') ? 'Division Champion' : event.title.includes('Conference') ? 'Conference Champion' : event.title.includes('Champion') ? `${league?.name === "NFL" ? "Super Bowl" : league?.name} Champion` : event.title}</Text>
-
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                                        <Text style={[styles.predictionMarketItemText, { color: Color.baseText }]}>{Math.round(oddsPercent * 100)}%</Text>
-
-                                        {/* Small lie chart for winning percentage */}
-                                        <Svg width={28} height={28} viewBox="0 0 28 28">
-                                            {/* Green segment: percent = event.implied_prob or event.percent or fallback */}
-                                            {(() => {
-                                                // fallback: 0.5 if can't find a percent
-                                                const angle = oddsPercent * 360;
-                                                // Calculate coordinates for pie arc
-                                                const r = 14, cx = 14, cy = 14;
-                                                const largeArcFlag = angle > 180 ? 1 : 0;
-                                                const rad = (deg: any) => (Math.PI / 180) * deg;
-                                                const x = cx + r * Math.cos(rad(-90 + angle));
-                                                const y = cy + r * Math.sin(rad(-90 + angle));
-                                                if (oddsPercent === 1) {
-                                                    return (
-                                                        <Circle
-                                                            cx={cx}
-                                                            cy={cy}
-                                                            r={r}
-                                                            fill={oddsPercent > 0.8 ? Color.green : oddsPercent < 0.2 ? Color.red : Color.offWhite}
-                                                        />
-                                                    );
-                                                }
-                                                if (oddsPercent === 0) {
-                                                    return (
-                                                        <Circle
-                                                            cx={cx}
-                                                            cy={cy}
-                                                            r={r}
-                                                            fill={isDark ? Color.offBlack : Color.white}
-                                                        />
-                                                    );
-                                                }
-                                                return (
-                                                    <>
-                                                        {/* Gray full background */}
-                                                        <Circle cx={cx} cy={cy} r={r} fill={isDark ? Color.offBlack : Color.white} />
-                                                        {/* Green arc */}
-                                                        <Path
-                                                            d={`
-                                                        M ${cx} ${cy}
-                                            L ${cx} ${cy - r}
-                                            A ${r} ${r} 0 ${largeArcFlag} 1 ${x} ${y}
-                                            Z
-                                                    `}
-                                                            fill={oddsPercent > 0.8 ? Color.green : oddsPercent < 0.2 ? Color.red : Color.offWhite}
-                                                        />
-                                                    </>
-                                                );
-                                            })()}
-                                        </Svg>
+                                <Pressable
+                                    key={prediction.slotId}
+                                    style={styles.predictionMarketItem}
+                                    onPress={() => Linking.openURL(prediction.url)}
+                                    accessibilityRole="link"
+                                    accessibilityLabel={`${prediction.label}, ${prediction.yesPercent}% on Polymarket`}
+                                >
+                                    <View style={styles.predictionMarketLabelRow}>
+                                        <Text
+                                            style={[
+                                                styles.predictionMarketItemText,
+                                                { color: Color.baseText },
+                                            ]}
+                                        >
+                                            {prediction.label}
+                                        </Text>
+                                        <Ionicons
+                                            name="open-outline"
+                                            size={14}
+                                            color={Color.subText}
+                                        />
                                     </View>
-                                </View>
-                            )
-                        })
-                        }
-                    </View >
+
+                                    <View style={styles.predictionOddsBarWrap}>
+                                        <View
+                                            style={[
+                                                styles.predictionOddsBarTrack,
+                                                { backgroundColor: isDark ? '#242428' : '#E5E7EB' },
+                                            ]}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.predictionOddsBarSegment,
+                                                    { flex: yesProb || 0, backgroundColor: Color.green },
+                                                ]}
+                                            />
+                                            <View
+                                                style={[
+                                                    styles.predictionOddsBarSegment,
+                                                    { flex: noProb || 0, backgroundColor: Color.red },
+                                                ]}
+                                            />
+                                        </View>
+                                        <View style={styles.predictionOddsPctRow}>
+                                            <Text style={[styles.predictionOddsPct, { color: Color.green }]}>
+                                                {prediction.yesPercent}%
+                                            </Text>
+                                            <Text style={[styles.predictionOddsPct, { color: Color.red }]}>
+                                                {noPctRounded}%
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
                 ) : (
                     <View>
-                        <Text>No prediction markets found</Text>
+                        <Text style={{ color: Color.subText }}>No prediction markets found</Text>
                     </View>
                 )}
-
-            </GlassCard >
-        </View >
-    )
+            </GlassCard>
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({
     predictionMarketItemText: {
         fontSize: 14,
         fontWeight: '500',
+        flex: 1,
+    },
+    predictionMarketLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     statsContainer: {
         marginHorizontal: 20,
@@ -186,10 +152,6 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: 16,
     },
-    draftkingsBranding: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     poweredByRow: {
         flexDirection: 'column',
         alignItems: 'flex-end',
@@ -197,7 +159,7 @@ const styles = StyleSheet.create({
         gap: 2,
         position: 'absolute',
         top: 0,
-        right: 0
+        right: 0,
     },
     poweredByText: {
         fontSize: 10,
@@ -214,19 +176,36 @@ const styles = StyleSheet.create({
         marginVertical: 8,
     },
     predictionMarketItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 12,
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: 10,
         padding: 12,
         borderRadius: 12,
         width: '100%',
         backgroundColor: 'rgba(156, 163, 175, 0.1)',
     },
-    draftkingsText: {
-        fontSize: 12,
+    predictionOddsBarWrap: {
+        width: '100%',
+        gap: 8,
+    },
+    predictionOddsBarTrack: {
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+        flexDirection: 'row',
+        width: '100%',
+    },
+    predictionOddsBarSegment: {
+        height: '100%',
+    },
+    predictionOddsPctRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+    },
+    predictionOddsPct: {
+        fontSize: 13,
         fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    }
+    },
 });
