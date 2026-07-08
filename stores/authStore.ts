@@ -10,6 +10,9 @@ export type AuthUser = {
     firstName?: string;
     lastName?: string;
     phoneNumber?: string;
+    kycStatus?: string | null;
+    kycVerifiedAt?: string | null;
+    diditSessionId?: string | null;
 };
 
 type AuthState = {

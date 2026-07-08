@@ -12,6 +12,9 @@ export type ApiMeResponse = {
     balance: number;
     created_at: string;
     updated_at: string;
+    kyc_status?: string | null;
+    kyc_verified_at?: string | null;
+    didit_session_id?: string | null;
 };
 
 export function mapApiMeToAuthUser(me: ApiMeResponse): AuthUser {
@@ -33,6 +36,9 @@ export function mapApiMeToAuthUser(me: ApiMeResponse): AuthUser {
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         phoneNumber,
+        kycStatus: me.kyc_status ?? null,
+        kycVerifiedAt: me.kyc_verified_at ?? null,
+        diditSessionId: me.didit_session_id ?? null,
     };
 }
 

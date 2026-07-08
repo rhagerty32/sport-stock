@@ -964,6 +964,53 @@ Consider implementing rate limiting:
 
 ---
 
+## KYC (Didit Identity Verification)
+
+The mobile app triggers KYC immediately after signup. Backend integrates with [Didit](https://docs.didit.me) via the Sessions API. **Implementation guide:** [`docs/DIDIT_KYC_BACKEND.md`](docs/DIDIT_KYC_BACKEND.md).
+
+### Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/kyc/session` | Bearer JWT | Create Didit session; returns `session_token` for mobile SDK |
+| POST | `/api/webhooks/didit` | HMAC signature | Didit webhook — updates `users.kyc_status` |
+| GET | `/api/users/me` | Bearer JWT | Extended with `kyc_status`, `didit_session_id`, `kyc_verified_at` |
+
+### POST /api/kyc/session
+
+**Request (optional):**
+```json
+{ "language": "en" }
+```
+
+**Response (201):**
+```json
+{
+  "session_id": "uuid",
+  "session_token": "12-char-token",
+  "url": "https://verify.didit.me/session/...",
+  "status": "Not Started"
+}
+```
+
+Backend sets `vendor_data` to Cognito `user_id` and `callback` to `sportstock://kyc/callback`.
+
+### User KYC fields (`UserResponse`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kyc_status` | string \| null | Didit status — compare case-sensitively (`Approved`, `Declined`, …) |
+| `didit_session_id` | string \| null | Latest session id |
+| `kyc_verified_at` | datetime \| null | Set when status becomes `Approved` |
+
+### Backend secrets (not in mobile app)
+
+- `DIDIT_API_KEY`
+- `DIDIT_WORKFLOW_ID`
+- `DIDIT_WEBHOOK_SECRET`
+
+---
+
 ## App wiring checklist
 
 To wire the mobile app to real data, the backend must support:

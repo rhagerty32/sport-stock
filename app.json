@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.thesportstock.app",
-      "buildNumber": "18",
+      "buildNumber": "21",
       "appleTeamId": "J22RD5YVQW"
     },
     "android": {
@@ -55,6 +55,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "SportStock needs your location to verify which states allow our service."
+        }
+      ],
+      [
+        "@didit-protocol/sdk-react-native",
+        {
+          "iosVariant": "autodetection",
+          "androidVariant": "autodetection"
         }
       ],
       "expo-font",

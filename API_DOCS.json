@@ -206,6 +206,80 @@
                 }
             }
         },
+        "/api/kyc/session": {
+            "post": {
+                "tags": [
+                    "kyc"
+                ],
+                "summary": "Create KYC Session",
+                "description": "Create a Didit verification session for the authenticated user. Returns a session token for the mobile SDK — never expose the Didit API key to clients.",
+                "operationId": "create_kyc_session_api_kyc_session_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/KycSessionCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KycSessionCreateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/webhooks/didit": {
+            "post": {
+                "tags": [
+                    "kyc"
+                ],
+                "summary": "Didit Webhook",
+                "description": "Inbound Didit webhook (HMAC `X-Signature-V2`). No Bearer auth. Updates user KYC status by `vendor_data` (Cognito user id).",
+                "operationId": "didit_webhook_api_webhooks_didit_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/me/profile-picture": {
             "post": {
                 "tags": [
@@ -5089,6 +5163,43 @@
                         ],
                         "title": "Updated At",
                         "description": "Last mutation (UTC)."
+                    },
+                    "kyc_status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Kyc Status",
+                        "description": "Didit session status (case-sensitive), e.g. Approved, Declined, In Review."
+                    },
+                    "didit_session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Didit Session Id",
+                        "description": "Latest Didit verification session id."
+                    },
+                    "kyc_verified_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Kyc Verified At",
+                        "description": "When identity was last approved (UTC)."
                     }
                 },
                 "type": "object",
@@ -5101,6 +5212,55 @@
                 ],
                 "title": "UserResponse",
                 "description": "Authenticated account projection (`POST /api/users`, `GET|PATCH /api/users/me`)."
+            },
+            "KycSessionCreateRequest": {
+                "properties": {
+                    "language": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Language",
+                        "description": "ISO 639-1 language code for Didit hosted UI."
+                    }
+                },
+                "type": "object",
+                "title": "KycSessionCreateRequest"
+            },
+            "KycSessionCreateResponse": {
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "title": "Session Id"
+                    },
+                    "session_token": {
+                        "type": "string",
+                        "title": "Session Token",
+                        "description": "12-character token for mobile SDK — not the API key."
+                    },
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "Didit hosted verification URL."
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Didit session status string."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "session_id",
+                    "session_token",
+                    "url",
+                    "status"
+                ],
+                "title": "KycSessionCreateResponse"
             },
             "UserUpdate": {
                 "properties": {

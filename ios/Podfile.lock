@@ -1,4 +1,5 @@
 PODS:
+  - DiditSDK/AutoDetection (4.0.8)
   - EXApplication (55.0.8):
     - ExpoModulesCore
   - EXConstants (55.0.7):
@@ -2301,6 +2302,29 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - SdkReactNative (4.0.8):
+    - DiditSDK/AutoDetection (= 4.0.8)
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - SDWebImage (5.21.7):
     - SDWebImage/Core (= 5.21.7)
   - SDWebImage/Core (5.21.7)
@@ -2315,6 +2339,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
+  - DiditSDK/AutoDetection (from `https://raw.githubusercontent.com/didit-protocol/sdk-ios/4.0.8/DiditSDK.podspec`)
   - EXApplication (from `../node_modules/expo-auth-session/node_modules/expo-application/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - Expo (from `../node_modules/expo`)
@@ -2424,6 +2449,7 @@ DEPENDENCIES:
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
+  - "SdkReactNative (from `../node_modules/@didit-protocol/sdk-react-native`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2437,6 +2463,8 @@ SPEC REPOS:
     - SDWebImageWebPCoder
 
 EXTERNAL SOURCES:
+  DiditSDK:
+    :podspec: https://raw.githubusercontent.com/didit-protocol/sdk-ios/4.0.8/DiditSDK.podspec
   EXApplication:
     :path: "../node_modules/expo-auth-session/node_modules/expo-application/ios"
   EXConstants:
@@ -2654,10 +2682,13 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-svg"
   RNWorklets:
     :path: "../node_modules/react-native-worklets"
+  SdkReactNative:
+    :path: "../node_modules/@didit-protocol/sdk-react-native"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  DiditSDK: 725e39eb8afdec880c9d6ea66e6e7dc874c96030
   EXApplication: 516af7c59786689fb652d45979494655fcf46534
   EXConstants: a16ad8db13865e97aaecf64bb92e8ad8e8ce1ae8
   Expo: 2332b1dbde7e998db81028b9e342853745f59e0e
@@ -2769,12 +2800,13 @@ SPEC CHECKSUMS:
   RNScreens: 62b74ab28af2fcde74afafd00d7500df4289bab4
   RNSVG: b5bd4454de003a99d3130a3c6a1b1c949c89d37d
   RNWorklets: 69360224ddca4bd2b93c7f673fa063ebc32ba9a7
+  SdkReactNative: 321462a2dce8e6f94e20318db88dff3f78b655c9
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: dd994d8c85dca5cc9b10f5df8c01f9ef1d0da191
 
-PODFILE CHECKSUM: 6ad91a926da01fbd9b199264b73ff4fac0a071a1
+PODFILE CHECKSUM: be267d9b52153296663cd31d72ff2c84526eda23
 
 COCOAPODS: 1.16.2

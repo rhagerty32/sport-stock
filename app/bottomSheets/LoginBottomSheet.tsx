@@ -2,6 +2,7 @@ import { useColors } from '@/components/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/useHaptics';
 import { buildHostedUIRegisterBody, fetchCurrentUser, registerUser } from '@/lib/auth-api';
+import { needsKycPrompt } from '@/lib/kyc-utils';
 import {
     confirmPassword,
     confirmSignUp,
@@ -47,7 +48,7 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const { signIn: authSignIn, setUser: authSetUser } = useAuthStore();
-    const { setLoginBottomSheetOpen } = useStockStore();
+    const { setLoginBottomSheetOpen, setKycBottomSheetOpen } = useStockStore();
 
     const [mode, setMode] = useState<LoginMode>('login');
     const [email, setEmail] = useState('');
@@ -100,6 +101,41 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
         resetForm();
     }, [setLoginBottomSheetOpen, resetForm]);
 
+    const finishAuth = useCallback(
+        async (
+            session: { idToken: string; sub: string; email?: string },
+            options?: {
+                isNewSignup?: boolean;
+                firstName?: string;
+                lastName?: string;
+            }
+        ) => {
+            authSignIn({
+                user: {
+                    id: session.sub,
+                    email: session.email,
+                    firstName: options?.firstName,
+                    lastName: options?.lastName,
+                },
+                idToken: session.idToken,
+            });
+            lightImpact();
+            closeModal();
+            try {
+                const user = await fetchCurrentUser(session.idToken);
+                authSetUser(user);
+                if (options?.isNewSignup || needsKycPrompt(user.kycStatus)) {
+                    setKycBottomSheetOpen(true);
+                }
+            } catch {
+                if (options?.isNewSignup) {
+                    setKycBottomSheetOpen(true);
+                }
+            }
+        },
+        [authSetUser, authSignIn, closeModal, lightImpact, setKycBottomSheetOpen]
+    );
+
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -126,13 +162,11 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
         try {
             const session = await cognitoSignIn(email.trim(), password);
             console.timeEnd(loginLabel);
-            authSignIn({
-                user: { id: session.sub, email: session.email ?? email.trim() },
+            await finishAuth({
                 idToken: session.idToken,
+                sub: session.sub,
+                email: session.email ?? email.trim(),
             });
-            lightImpact();
-            closeModal();
-            fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
         } catch (err: any) {
             console.timeEnd(loginLabel);
             setError(err?.message || 'Login failed');
@@ -147,12 +181,14 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
         try {
             const session = await signInWithCognitoHostedUI(provider);
 
+            let isNewSignup = false;
             let user;
             try {
                 user = await fetchCurrentUser(session.idToken);
             } catch {
                 try {
                     await registerUser(session.idToken, buildHostedUIRegisterBody(session));
+                    isNewSignup = true;
                 } catch {
                     // e.g. user already registered — load profile instead
                 }
@@ -168,12 +204,14 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
             if (session.refreshToken) {
                 await saveHostedUIRefreshToken(session.refreshToken);
             }
-            authSignIn({
-                user,
-                idToken: session.idToken,
-            });
-            lightImpact();
-            closeModal();
+            await finishAuth(
+                {
+                    idToken: session.idToken,
+                    sub: session.sub,
+                    email: user.email ?? session.email,
+                },
+                { isNewSignup, firstName: user.firstName, lastName: user.lastName }
+            );
         } catch (err: any) {
             setError(err?.message || 'Sign-in failed');
         } finally {
@@ -204,13 +242,18 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                     phone_number: 'N/A',
                     email: email.trim(),
                 });
-                authSignIn({
-                    user: { id: session.sub, email: email.trim(), firstName: firstName.trim(), lastName: lastName.trim() },
-                    idToken: session.idToken,
-                });
-                lightImpact();
-                closeModal();
-                fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
+                await finishAuth(
+                    {
+                        idToken: session.idToken,
+                        sub: session.sub,
+                        email: email.trim(),
+                    },
+                    {
+                        isNewSignup: true,
+                        firstName: firstName.trim(),
+                        lastName: lastName.trim(),
+                    }
+                );
             } else {
                 setMode('confirm');
                 setError(null);
@@ -265,13 +308,18 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                 phone_number: 'N/A',
                 email: email.trim(),
             });
-            authSignIn({
-                user: { id: session.sub, email: email.trim(), firstName: firstName.trim(), lastName: lastName.trim() },
-                idToken: session.idToken,
-            });
-            lightImpact();
-            closeModal();
-            fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
+            await finishAuth(
+                {
+                    idToken: session.idToken,
+                    sub: session.sub,
+                    email: email.trim(),
+                },
+                {
+                    isNewSignup: true,
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                }
+            );
         } catch (err: any) {
             if (isAlreadyConfirmedError(err)) {
                 try {
@@ -281,6 +329,7 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                         setLoading(false);
                         return;
                     }
+                    let isNewSignup = false;
                     try {
                         await registerUser(session.idToken, {
                             user_id: session.sub,
@@ -288,16 +337,22 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
                             phone_number: 'N/A',
                             email: email.trim(),
                         });
+                        isNewSignup = true;
                     } catch {
                         // User may already exist in backend; still log them in
                     }
-                    authSignIn({
-                        user: { id: session.sub, email: email.trim(), firstName: firstName.trim(), lastName: lastName.trim() },
-                        idToken: session.idToken,
-                    });
-                    lightImpact();
-                    closeModal();
-                    fetchCurrentUser(session.idToken).then(authSetUser).catch(() => {});
+                    await finishAuth(
+                        {
+                            idToken: session.idToken,
+                            sub: session.sub,
+                            email: email.trim(),
+                        },
+                        {
+                            isNewSignup,
+                            firstName: firstName.trim(),
+                            lastName: lastName.trim(),
+                        }
+                    );
                 } catch (signInErr: any) {
                     setError('Account is already confirmed. Please log in with your email and password.');
                 }

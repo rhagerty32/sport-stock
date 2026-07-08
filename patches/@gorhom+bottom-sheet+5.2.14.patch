@@ -1,0 +1,58 @@
+diff --git a/node_modules/@gorhom/bottom-sheet/src/hooks/useBoundingClientRect.ts b/node_modules/@gorhom/bottom-sheet/src/hooks/useBoundingClientRect.ts
+index ab0c3b0..6ee57a0 100644
+--- a/node_modules/@gorhom/bottom-sheet/src/hooks/useBoundingClientRect.ts
++++ b/node_modules/@gorhom/bottom-sheet/src/hooks/useBoundingClientRect.ts
+@@ -1,6 +1,5 @@
+-import { type RefObject, useLayoutEffect } from 'react';
++import { type RefObject } from 'react';
+ import type { View } from 'react-native';
+-import { isFabricInstalled } from '../utilities/isFabricInstalled';
+ 
+ export type BoundingClientRect = {
+   x: number;
+@@ -42,40 +41,10 @@ export type BoundingClientRect = {
+  * ```
+  */
+ export function useBoundingClientRect(
+-  ref: RefObject<View | null>,
+-  handler: (layout: BoundingClientRect) => void
++  _ref: RefObject<View | null>,
++  _handler: (layout: BoundingClientRect) => void
+ ) {
+-  if (!isFabricInstalled()) {
+-    return;
+-  }
+-
+-  // biome-ignore lint/correctness/useHookAtTopLevel: `isFabricInstalled` is a constant that will not change during the runtime
+-  useLayoutEffect(() => {
+-    if (!ref || !ref.current) {
+-      return;
+-    }
+-
+-    if (
+-      // @ts-expect-error 👉 https://github.com/facebook/react/commit/53b1f69ba
+-      ref.current.unstable_getBoundingClientRect !== null &&
+-      // @ts-expect-error 👉 https://github.com/facebook/react/commit/53b1f69ba
+-      typeof ref.current.unstable_getBoundingClientRect === 'function'
+-    ) {
+-      // @ts-expect-error https://github.com/facebook/react/commit/53b1f69ba
+-      const layout = ref.current.unstable_getBoundingClientRect();
+-      handler(layout);
+-      return;
+-    }
+-
+-    if (
+-      // @ts-expect-error once it `unstable_getBoundingClientRect` gets stable 🤞.
+-      ref.current.getBoundingClientRect !== null &&
+-      // @ts-expect-error once it `unstable_getBoundingClientRect` gets stable 🤞.
+-      typeof ref.current.getBoundingClientRect === 'function'
+-    ) {
+-      // @ts-expect-error once it `unstable_getBoundingClientRect` gets stable.
+-      const layout = ref.current.getBoundingClientRect();
+-      handler(layout);
+-    }
+-  });
++  // RN 0.83 Fabric refs (e.g. Animated.View) may not expose
++  // unstable_getBoundingClientRect. Handle/footer sizing uses onLayout instead.
++  return;
+ }

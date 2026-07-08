@@ -2,6 +2,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from '@/hooks/useLocation';
 import { isStateBlocked } from '@/lib/state-restrictions';
 import { fetchCurrentUser } from '@/lib/auth-api';
+import { isKycApproved, needsKycPrompt } from '@/lib/kyc-utils';
 import {
     decodeJwtPayload,
     getHostedUIRefreshToken,
@@ -20,6 +21,7 @@ import { PORTFOLIO_STALE_MS, fetchPortfolio, portfolioKeys } from '@/lib/portfol
 import { prefetchStockSheetPriceHistory } from '@/lib/stocks-api';
 import { fetchWallet, walletKeys } from '@/lib/wallet-api';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -33,6 +35,7 @@ import BlockedStateScreen from './BlockedStateScreen';
 import BuySellBottomSheet from './bottomSheets/BuySellBottomSheet';
 import LightDarkBottomSheet from './bottomSheets/LightDarkBottomSheet';
 import LoginBottomSheet from './bottomSheets/LoginBottomSheet';
+import KycBottomSheet from './bottomSheets/KycBottomSheet';
 import OnboardingBottomSheet from './bottomSheets/OnboardingBottomSheet';
 import PositionDetailBottomSheet from './bottomSheets/PositionDetailBottomSheet';
 import ProfileBottomSheet from './bottomSheets/ProfileBottomSheet';
@@ -62,6 +65,7 @@ export default function RootLayout() {
     const transactionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
     const positionDetailBottomSheetRef = useRef<BottomSheetModal>(null);
     const loginBottomSheetRef = useRef<BottomSheetModal>(null);
+    const kycBottomSheetRef = useRef<BottomSheetModal>(null);
     const {
         activeStockId,
         activeUserId,
@@ -72,6 +76,7 @@ export default function RootLayout() {
         transactionDetailBottomSheetOpen,
         positionDetailBottomSheetOpen,
         loginBottomSheetOpen,
+        kycBottomSheetOpen,
         setActiveStockId,
         setProfileBottomSheetOpen,
         setLightDarkBottomSheetOpen,
@@ -80,10 +85,13 @@ export default function RootLayout() {
         setTransactionDetailBottomSheetOpen,
         setPositionDetailBottomSheetOpen,
         setLoginBottomSheetOpen,
+        setKycBottomSheetOpen,
     } = useStockStore();
     const { onboardingCompleted, checkOnboardingStatus } = useSettingsStore();
     const authUserId = useAuthStore((s) => s.user?.id);
+    const authKycStatus = useAuthStore((s) => s.user?.kycStatus);
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const authSetUser = useAuthStore((s) => s.setUser);
 
     useEffect(() => {
         if (!isAuthenticated || !authUserId) return;
@@ -122,6 +130,7 @@ export default function RootLayout() {
         setTransactionDetailBottomSheetOpen(false);
         setPositionDetailBottomSheetOpen(false);
         setLoginBottomSheetOpen(false);
+        setKycBottomSheetOpen(false);
     }, [
         setActiveStockId,
         setProfileBottomSheetOpen,
@@ -131,6 +140,7 @@ export default function RootLayout() {
         setTransactionDetailBottomSheetOpen,
         setPositionDetailBottomSheetOpen,
         setLoginBottomSheetOpen,
+        setKycBottomSheetOpen,
     ]);
 
     // Safety: force-dismiss all sheets shortly after mount in case a backdrop is stuck (e.g. ref was set after state was restored)
@@ -146,6 +156,7 @@ export default function RootLayout() {
             transactionDetailBottomSheetRef.current?.dismiss();
             positionDetailBottomSheetRef.current?.dismiss();
             loginBottomSheetRef.current?.dismiss();
+            kycBottomSheetRef.current?.dismiss();
         }, 400);
         return () => clearTimeout(t);
     }, []);
@@ -247,6 +258,66 @@ export default function RootLayout() {
         }
     }, [loginBottomSheetOpen]);
 
+    useEffect(() => {
+        if (kycBottomSheetOpen) {
+            kycBottomSheetRef.current?.present();
+        } else {
+            kycBottomSheetRef.current?.dismiss();
+        }
+    }, [kycBottomSheetOpen]);
+
+    const showOnboardingIfEligible = useRef(async () => {
+        try {
+            const completed = await checkOnboardingStatus();
+            if (completed) return;
+            const { isAuthenticated: authed, user } = useAuthStore.getState();
+            if (authed && !isKycApproved(user?.kycStatus)) return;
+            setTimeout(() => {
+                onboardingBottomSheetRef.current?.present();
+            }, 400);
+        } catch {
+            const { isAuthenticated: authed, user } = useAuthStore.getState();
+            if (!authed || isKycApproved(user?.kycStatus)) {
+                setTimeout(() => {
+                    onboardingBottomSheetRef.current?.present();
+                }, 400);
+            }
+        }
+    });
+
+    const handleKycDeepLink = useRef(async (url: string) => {
+        const parsed = Linking.parse(url);
+        const path = parsed.path ?? '';
+        if (!path.includes('kyc/callback')) return;
+
+        const token = useAuthStore.getState().getToken();
+        if (!token) return;
+
+        try {
+            const user = await fetchCurrentUser(token);
+            authSetUser(user);
+            if (isKycApproved(user.kycStatus)) {
+                setKycBottomSheetOpen(false);
+                void showOnboardingIfEligible.current();
+            } else {
+                setKycBottomSheetOpen(true);
+            }
+        } catch {
+            // ignore — user can retry from KYC sheet
+        }
+    });
+
+    useEffect(() => {
+        const onUrl = ({ url }: { url: string }) => {
+            void handleKycDeepLink.current(url);
+        };
+        const sub = Linking.addEventListener('url', onUrl);
+        void Linking.getInitialURL().then((url) => {
+            if (url) void handleKycDeepLink.current(url);
+        });
+        return () => sub.remove();
+    }, [authSetUser, setKycBottomSheetOpen]);
+
     // Restore Cognito session on app load (supports both Cognito SDK and Hosted UI)
     // Wait for auth store to rehydrate from persistence before running restore
     useEffect(() => {
@@ -291,6 +362,9 @@ export default function RootLayout() {
                     user,
                     idToken: session.idToken,
                 });
+                if (needsKycPrompt(user.kycStatus)) {
+                    setKycBottomSheetOpen(true);
+                }
             } catch {
                 // Cognito not configured or no session
             }
@@ -322,22 +396,26 @@ export default function RootLayout() {
 
         loadIonicons();
 
-        // Check onboarding status and show onboarding if not completed
+        // Check onboarding status — skip for authenticated users until KYC is approved
         const checkAndShowOnboarding = async () => {
             try {
                 const completed = await checkOnboardingStatus();
                 if (!completed) {
-                    // Small delay to ensure the app is fully loaded
+                    if (useAuthStore.getState().isAuthenticated) {
+                        const status = useAuthStore.getState().user?.kycStatus;
+                        if (!isKycApproved(status)) return;
+                    }
                     setTimeout(() => {
                         onboardingBottomSheetRef.current?.present();
                     }, 500);
                 }
             } catch (error) {
                 console.error('Failed to check onboarding status:', error);
-                // Show onboarding by default if check fails
-                setTimeout(() => {
-                    onboardingBottomSheetRef.current?.present();
-                }, 500);
+                if (!useAuthStore.getState().isAuthenticated) {
+                    setTimeout(() => {
+                        onboardingBottomSheetRef.current?.present();
+                    }, 500);
+                }
             }
         };
 
@@ -348,14 +426,14 @@ export default function RootLayout() {
     const hasMounted = useRef(false);
     useEffect(() => {
         if (hasMounted.current && !onboardingCompleted) {
-            // Small delay to ensure smooth transition
+            if (isAuthenticated && !isKycApproved(authKycStatus)) return;
             const timer = setTimeout(() => {
                 onboardingBottomSheetRef.current?.present();
             }, 300);
             return () => clearTimeout(timer);
         }
         hasMounted.current = true;
-    }, [onboardingCompleted]);
+    }, [onboardingCompleted, isAuthenticated, authKycStatus]);
 
     useEffect(() => {
         // Suppress specific warnings and errors that are common in Expo development
@@ -447,6 +525,12 @@ export default function RootLayout() {
                         <TransactionDetailBottomSheet transactionDetailBottomSheetRef={transactionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
                         <PositionDetailBottomSheet positionDetailBottomSheetRef={positionDetailBottomSheetRef as React.RefObject<BottomSheetModal>} />
                         <LoginBottomSheet loginBottomSheetRef={loginBottomSheetRef as React.RefObject<BottomSheetModal>} />
+                        <KycBottomSheet
+                            kycBottomSheetRef={kycBottomSheetRef as React.RefObject<BottomSheetModal>}
+                            onApproved={() => {
+                                void showOnboardingIfEligible.current();
+                            }}
+                        />
 
                         <StatusBar style="auto" />
                     </BottomSheetModalProvider>

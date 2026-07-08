@@ -6,6 +6,11 @@ export const API_ENDPOINTS = {
     USERS_REGISTER: '/api/users/',
     USERS_ME: '/api/users/me',
 
+    // KYC (Didit)
+    KYC_SESSION: '/api/kyc/session',
+    /** Backend-only — listed for contract reference. */
+    WEBHOOKS_DIDIT: '/api/webhooks/didit',
+
     // Wallet
     WALLET: (userId: string) => `/api/wallet/${userId}`,
     WALLET_PURCHASE: '/api/wallet/purchase',

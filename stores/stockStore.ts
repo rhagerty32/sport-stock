@@ -24,6 +24,8 @@ type StockStore = {
     setWalletSystemBottomSheetOpen: (open: boolean) => void;
     loginBottomSheetOpen: boolean;
     setLoginBottomSheetOpen: (open: boolean) => void;
+    kycBottomSheetOpen: boolean;
+    setKycBottomSheetOpen: (open: boolean) => void;
     transactionDetailBottomSheetOpen: boolean;
     setTransactionDetailBottomSheetOpen: (open: boolean) => void;
     activeTransaction: Transaction | null;
@@ -65,6 +67,8 @@ export const useStockStore = create<StockStore>()(
             setWalletSystemBottomSheetOpen: (open) => set({ walletSystemBottomSheetOpen: open }),
             loginBottomSheetOpen: false,
             setLoginBottomSheetOpen: (open) => set({ loginBottomSheetOpen: open }),
+            kycBottomSheetOpen: false,
+            setKycBottomSheetOpen: (open) => set({ kycBottomSheetOpen: open }),
             transactionDetailBottomSheetOpen: false,
             setTransactionDetailBottomSheetOpen: (open) => set({ transactionDetailBottomSheetOpen: open }),
             activeTransaction: null,
