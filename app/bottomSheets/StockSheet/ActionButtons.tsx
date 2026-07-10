@@ -1,5 +1,6 @@
 import { useColors } from '@/components/utils';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useKycGate } from '@/hooks/useKycGate';
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Stock } from '@/types';
@@ -16,6 +17,7 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
     const requireAuth = useAuthStore((s) => s.requireAuth);
     const setLoginBottomSheetOpen = useStockStore((s) => s.setLoginBottomSheetOpen);
     const followTextOpacity = useSharedValue(1);
+    const { openKycIfNeeded } = useKycGate();
 
     const animatedTextStyle = useAnimatedStyle(() => {
         return {
@@ -27,10 +29,11 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
     const { setBuySellMode, setBuySellBottomSheetOpen } = useStockStore();
     const { removeFollow, addFollow, upsertFollowedStock, removeFollowedStockById } = useStockStore();
 
-    const handleBuy = () => {
+    const openTrade = (mode: 'buy' | 'sell') => {
         lightImpact();
         const ok = requireAuth(() => {
-            setBuySellMode('buy');
+            if (openKycIfNeeded()) return;
+            setBuySellMode(mode);
             setBuySellBottomSheetOpen(true);
         });
         if (!ok) {
@@ -41,19 +44,8 @@ export const ActionButtons = ({ userOwnsStock, userFollowsStock, stock }: { user
         }
     };
 
-    const handleSell = () => {
-        lightImpact();
-        const ok = requireAuth(() => {
-            setBuySellMode('sell');
-            setBuySellBottomSheetOpen(true);
-        });
-        if (!ok) {
-            Alert.alert('Log in to trade', 'Sign in to buy and sell teams on SportStock.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Log in', onPress: () => setLoginBottomSheetOpen(true) },
-            ]);
-        }
-    };
+    const handleBuy = () => openTrade('buy');
+    const handleSell = () => openTrade('sell');
 
     const handleFollow = (userFollowsStock: boolean, stock: Stock) => {
         lightImpact();

@@ -19,7 +19,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
-import {
+import BottomSheet, {
     BottomSheetBackdrop,
     BottomSheetModal,
     BottomSheetScrollView,
@@ -36,19 +36,36 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { FullWindowOverlay } from 'react-native-screens';
 
 type LoginMode = 'login' | 'signup' | 'forgot' | 'confirm' | 'forgot_confirm';
 
 type LoginBottomSheetProps = {
+    /** Kept for layout compatibility; login sheet is index-controlled. */
     loginBottomSheetRef: React.RefObject<BottomSheetModal>;
 };
 
-export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomSheetProps) {
+const LOGIN_SNAP_POINTS = ['90%'];
+
+function SheetHost({ children, visible }: { children: React.ReactNode; visible: boolean }) {
+    if (!visible) return null;
+    if (Platform.OS === 'ios') {
+        return (
+            <FullWindowOverlay>
+                <GestureHandlerRootView style={StyleSheet.absoluteFill}>{children}</GestureHandlerRootView>
+            </FullWindowOverlay>
+        );
+    }
+    return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">{children}</View>;
+}
+
+export default function LoginBottomSheet({ loginBottomSheetRef: _loginBottomSheetRef }: LoginBottomSheetProps) {
     const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact } = useHaptics();
     const { signIn: authSignIn, setUser: authSetUser } = useAuthStore();
-    const { setLoginBottomSheetOpen, setKycBottomSheetOpen } = useStockStore();
+    const { loginBottomSheetOpen, setLoginBottomSheetOpen, setKycBottomSheetOpen } = useStockStore();
 
     const [mode, setMode] = useState<LoginMode>('login');
     const [email, setEmail] = useState('');
@@ -700,28 +717,32 @@ export default function LoginBottomSheet({ loginBottomSheetRef }: LoginBottomShe
     );
 
     return (
-        <BottomSheetModal
-            ref={loginBottomSheetRef}
-            onDismiss={closeModal}
-            stackBehavior="push"
-            enableDynamicSizing
-            enablePanDownToClose
-            backdropComponent={renderBackdrop}
-            handleStyle={{ display: 'none' }}
-            enableOverDrag
-            style={{ borderRadius: 20 }}
-            backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
-            keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : undefined}
-            keyboardBlurBehavior="restore"
-        >
-            {Platform.OS === 'ios' ? (
-                <KeyboardAvoidingView behavior="padding" style={styles.keyboardView}>
-                    {content}
-                </KeyboardAvoidingView>
-            ) : (
-                content
-            )}
-        </BottomSheetModal>
+        <SheetHost visible={loginBottomSheetOpen}>
+            <BottomSheet
+                index={0}
+                onChange={(index) => {
+                    if (index < 0) closeModal();
+                }}
+                enableDynamicSizing={false}
+                snapPoints={LOGIN_SNAP_POINTS}
+                enablePanDownToClose
+                backdropComponent={renderBackdrop}
+                handleStyle={{ display: 'none' }}
+                enableOverDrag
+                style={{ borderRadius: 20 }}
+                backgroundStyle={{ borderRadius: 20, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
+                keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : undefined}
+                keyboardBlurBehavior="restore"
+            >
+                {Platform.OS === 'ios' ? (
+                    <KeyboardAvoidingView behavior="padding" style={styles.keyboardView}>
+                        {content}
+                    </KeyboardAvoidingView>
+                ) : (
+                    content
+                )}
+            </BottomSheet>
+        </SheetHost>
     );
 }
 

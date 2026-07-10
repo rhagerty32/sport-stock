@@ -23,6 +23,11 @@ export function useKycGate() {
         return me;
     }, [getToken, setUser]);
 
+    /**
+     * Opens the KYC sheet when verification is unfinished.
+     * Call before buy/sell (and similar gated actions). Returns true if the
+     * sheet was opened so the caller should abort the original action.
+     */
     const openKycIfNeeded = useCallback(
         (force = false) => {
             if (!isAuthenticated) return false;

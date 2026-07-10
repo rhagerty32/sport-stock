@@ -16,12 +16,16 @@ import { STOCK_SHEET_PRICE_HISTORY, usePriceHistory, useStock } from '@/lib/stoc
 import { usePortfolio } from '@/lib/portfolio-api';
 import { useStockStore } from '@/stores/stockStore';
 import { appendLivePricePoint, priceHistoryWithSteadyFallback } from '@/lib/price-history-period';
-import type { League, PriceHistory, Stock, TimePeriod } from '@/types';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
-import BuySellBottomSheet from '../BuySellBottomSheet';
+import type { PriceHistory, TimePeriod } from '@/types';
+import BottomSheet, {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { FullWindowOverlay } from 'react-native-screens';
 import { ActionButtons } from './ActionButtons';
 import { OddsSection } from './OddsSection';
 import { PredictionMarkets } from './PredictionMarkets';
@@ -29,18 +33,36 @@ import { formatCurrency, formatPercentage } from './utils';
 import { YourPosition } from './YourPosition';
 
 const EMPTY_PRICE_HISTORY: PriceHistory[] = [];
+const STOCK_SHEET_SNAP_POINTS = ['92%'];
 
 type StockBottomSheetProps = {
+    /** Kept for layout compatibility; stock sheet is index-controlled, not present()/dismiss(). */
     stockBottomSheetRef: React.RefObject<BottomSheetModal>;
 };
 
-export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomSheetProps) {
+/**
+ * NativeTabs (expo-router) renders in a separate iOS window, so BottomSheetModal
+ * portals often present behind the tabs (present() succeeds, UI never appears).
+ * Use a controlled BottomSheet inside FullWindowOverlay instead.
+ */
+function SheetHost({ children, visible }: { children: React.ReactNode; visible: boolean }) {
+    if (!visible) return null;
+    if (Platform.OS === 'ios') {
+        return (
+            <FullWindowOverlay>
+                <GestureHandlerRootView style={StyleSheet.absoluteFill}>{children}</GestureHandlerRootView>
+            </FullWindowOverlay>
+        );
+    }
+    return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">{children}</View>;
+}
+
+export default function StockBottomSheet({ stockBottomSheetRef: _stockBottomSheetRef }: StockBottomSheetProps) {
     const { activeStockId, activeStock, setActiveStockId, setActiveStock, removeFollow, isFollowing } = useStockStore();
     const { data: portfolio } = usePortfolio();
-    const buySellBottomSheetRef = useRef<BottomSheetModal>(null) as React.RefObject<BottomSheetModal>;
-    const { buySellBottomSheetOpen } = useStockStore();
     const { isDark } = useTheme();
     const Color = useColors();
+    const isOpen = activeStockId != null;
 
     const { data: fetchedStock } = useStock(activeStockId);
     /** Prefer store stock so league id is available before detail fetch finishes; skip invalid 0 from normalizer. */
@@ -73,14 +95,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         if (fetchedStock) setActiveStock(fetchedStock);
     }, [fetchedStock, setActiveStock]);
 
-    useEffect(() => {
-        if (buySellBottomSheetOpen) {
-            buySellBottomSheetRef.current?.present();
-        } else {
-            buySellBottomSheetRef.current?.dismiss();
-        }
-    }, [buySellBottomSheetOpen]);
-
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -98,28 +112,20 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     const oddsTeamName = useMemo(() => {
         if (!stock) return null;
         const fromSlug = inferCanonicalTeamNameFromStockId(stock.id ?? activeStockId);
-        if (fromSlug) return fromSlug;
-        return (getApiTeamName(stock.name) ?? stock.fullName) || null;
+        return fromSlug || getApiTeamName(stock.fullName || stock.name);
     }, [stock, activeStockId]);
 
-    const stockIdForInference = (fetchedStock ?? activeStock)?.id ?? activeStockId;
-    const slugSportKey = useMemo(() => inferSportKeyFromStockId(stockIdForInference), [stockIdForInference]);
+    const slugSportKey = useMemo(
+        () => inferSportKeyFromStockId(stock?.id ?? activeStockId),
+        [stock?.id, activeStockId]
+    );
+
     const leagueFallbackFromList = useMemo(() => {
-        if (!leaguesList.length) return null;
-
-        const rawLeagueId = (fetchedStock ?? activeStock)?.leagueID as string | number | undefined | null;
-        if (
-            rawLeagueId != null &&
-            rawLeagueId !== '' &&
-            !(typeof rawLeagueId === 'number' && rawLeagueId === 0)
-        ) {
-            const byId = leaguesList.find((l) => String(l.id) === String(rawLeagueId));
-            if (byId) return byId;
-        }
-
         if (!slugSportKey) return null;
+        // Prefer league from detail when available; otherwise match by sport key from list.
+        if (league) return null;
         return leaguesList.find((l) => getSportKey(l.name, l.sport) === slugSportKey) ?? null;
-    }, [leaguesList, slugSportKey, fetchedStock, activeStock]);
+    }, [leaguesList, slugSportKey, league]);
     const leagueForUi = league ?? leagueFallbackFromList;
     const leagueForPolymarket = useMemo(
         () => leagueWithPolymarketDefaults(leagueForUi, slugSportKey),
@@ -135,33 +141,13 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         : null;
     const userOwnsStock = !!userPosition;
 
-    // Check if user follows this stock
     const userFollowsStock = stock ? isFollowing(stock.id) : false;
 
-    // Remove from followed list if user owns the stock
     useEffect(() => {
         if (stock && userOwnsStock && userFollowsStock) {
             removeFollow(stock.id);
         }
     }, [stock, userOwnsStock, userFollowsStock, removeFollow]);
-
-    // Animated opacity for Follow/Unfollow text fade
-    const followTextOpacity = useSharedValue(1);
-
-    useEffect(() => {
-        // Fade out, then fade in when the text changes
-        followTextOpacity.value = withTiming(0, { duration: 150 }, () => {
-            followTextOpacity.value = withTiming(1, { duration: 150 });
-        });
-    }, [userFollowsStock]);
-
-    const presentWhenReady = useCallback(
-        (instance: BottomSheetModal | null) => {
-            // Only store the instance; RootLayout is responsible for calling present()/dismiss()
-            (stockBottomSheetRef as React.MutableRefObject<BottomSheetModal | null>).current = instance;
-        },
-        [stockBottomSheetRef]
-    );
 
     const effectiveStock = stock ?? activeStock ?? null;
     const hasStock = !!effectiveStock;
@@ -203,26 +189,31 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
         setSheetChartPeriod('ALL');
     }, [activeStockId]);
 
-    // Get team colors
     const primaryColor = effectiveStock?.color || Color.blue;
     const isDarkBackground = isDarkColor(primaryColor);
     const brightenedPrimaryColor = brightenColor(primaryColor);
 
-    const onSheetChange = useCallback((index: number) => {
-        if (index < 0 || !activeStockId || !__DEV__) return;
-        // Bottom sheet onChange runs as soon as the sheet opens — often before the price-history request finishes.
-        // Empty `data` here is normal; use the effect below for a post-load snapshot (or rely on prefetch in _layout).
-        console.log('[StockBottomSheet] sheet visible', {
-            stockId: activeStockId,
-            priceHistoryPending: priceHistoryQuery.isPending,
-            pointCountSoFar: stockPriceHistory.length,
-        });
-    }, [activeStockId, stockPriceHistory.length, priceHistoryQuery.isPending]);
+    const onSheetChange = useCallback(
+        (index: number) => {
+            if (__DEV__) {
+                // eslint-disable-next-line no-console
+                console.log('[StockBottomSheet] sheet change', {
+                    index,
+                    stockId: activeStockId,
+                });
+            }
+            if (index < 0) {
+                setActiveStockId(null);
+            }
+        },
+        [activeStockId, setActiveStockId]
+    );
 
     useEffect(() => {
         if (!__DEV__ || !activeStockId) return;
         if (priceHistoryQuery.dataUpdatedAt === 0) return;
         const n = Array.isArray(priceHistoryQuery.data) ? priceHistoryQuery.data.length : 0;
+        // eslint-disable-next-line no-console
         console.log('[StockBottomSheet] price history loaded', {
             stockId: activeStockId,
             pointCount: n,
@@ -232,7 +223,6 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
 
     useEffect(() => {
         if (!__DEV__ || !activeStockId || !effectiveStock) return;
-        const sk = sportKey;
         // eslint-disable-next-line no-console
         console.log('[StockBottomSheet] oddsPolymarketWiring', {
             stockId: activeStockId,
@@ -246,8 +236,8 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
             leagueLoaded: !!leagueForUi,
             leagueName: leagueForUi?.name,
             leagueSport: leagueForUi?.sport,
-            sportKey: sk,
-            showGameOddsSection: !!(effectiveStock && oddsTeamName && sk),
+            sportKey,
+            showGameOddsSection: !!(effectiveStock && oddsTeamName && sportKey),
             polymarketQueries: leagueForPolymarket
                 ? {
                       playoff: leagueForPolymarket.playoffQuery?.trim() || null,
@@ -277,116 +267,120 @@ export default function StockBottomSheet({ stockBottomSheetRef }: StockBottomShe
     ]);
 
     return (
-        <BottomSheetModal
-            ref={presentWhenReady}
-            onChange={onSheetChange}
-            onDismiss={() => setActiveStockId(null)}
-            enableDynamicSizing={true}
-            enablePanDownToClose={true}
-            backdropComponent={renderBackdrop}
-            handleStyle={{ display: 'none' }}
-            snapPoints={['92%']}
-            style={{ borderRadius: 25 }}
-            backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
-        >
-            <BottomSheetScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Guard: if no active stock, render empty content so the sheet stays mounted */}
-                {!activeStockId ? (
-                    <View />
-                ) : (loading && !hasStock) ? (
-                    <View style={{ minHeight: 400, padding: 48, alignItems: 'center', justifyContent: 'center' }}>
-                        <ActivityIndicator size="large" color={Color.green} />
-                        <Text style={[styles.leagueName, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
-                    </View>
-                ) : hasStock ? (
-                    <>
-                        {/* Header */}
-                        <View style={[styles.header, { backgroundColor: primaryColor }]}>
-                            <View style={styles.headerContent}>
-                                <Text style={styles.stockName}>{effectiveStock!.name}</Text>
-                                <View style={styles.headerBottomRow}>
-                                    <View style={styles.headerLeftGroup}>
-                                        <Text style={styles.leagueName}>{leagueForPolymarket?.name}</Text>
-                                        <Ticker ticker={effectiveStock!.ticker} color={effectiveStock!.secondaryColor} size="small" />
-                                    </View>
-                                    <View style={[styles.priceContainer, { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }]}>
-                                        <Text style={[styles.currentPrice, { color: Color.baseText }]}>{formatCurrency(currentPrice)}</Text>
+        <SheetHost visible={isOpen}>
+            <BottomSheet
+                index={0}
+                onChange={onSheetChange}
+                enableDynamicSizing={false}
+                enablePanDownToClose
+                backdropComponent={renderBackdrop}
+                handleStyle={{ display: 'none' }}
+                snapPoints={STOCK_SHEET_SNAP_POINTS}
+                style={{ borderRadius: 25 }}
+                backgroundStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' }}
+            >
+                <BottomSheetScrollView showsVerticalScrollIndicator={false}>
+                    {!activeStockId ? (
+                        <View />
+                    ) : loading && !hasStock ? (
+                        <View style={{ minHeight: 400, padding: 48, alignItems: 'center', justifyContent: 'center' }}>
+                            <ActivityIndicator size="large" color={Color.green} />
+                            <Text style={[styles.leagueName, { color: Color.subText, marginTop: 12 }]}>Loading…</Text>
+                        </View>
+                    ) : hasStock ? (
+                        <>
+                            <View style={[styles.header, { backgroundColor: primaryColor }]}>
+                                <View style={styles.headerContent}>
+                                    <Text style={styles.stockName}>{effectiveStock!.name}</Text>
+                                    <View style={styles.headerBottomRow}>
+                                        <View style={styles.headerLeftGroup}>
+                                            <Text style={styles.leagueName}>{leagueForPolymarket?.name}</Text>
+                                            <Ticker
+                                                ticker={effectiveStock!.ticker}
+                                                color={effectiveStock!.secondaryColor}
+                                                size="small"
+                                            />
+                                        </View>
+                                        <View
+                                            style={[
+                                                styles.priceContainer,
+                                                { backgroundColor: isDark ? '#1A1D21' : '#FFFFFF' },
+                                            ]}
+                                        >
+                                            <Text style={[styles.currentPrice, { color: Color.baseText }]}>
+                                                {formatCurrency(currentPrice)}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
                             </View>
-                        </View>
 
-                        {/* Price Performance */}
-                        <View style={styles.pricePerformance}>
-                            <Text style={[styles.priceChange, { color: priceChange >= 0 ? Color.green : Color.red }]}>
-                                {priceChange >= 0 ? '↑' : '↓'} {formatPercentage(priceChangePercentage)}
-                            </Text>
-                        </View>
-
-                        {/* Chart */}
-                        <View style={styles.chartContainer}>
-                            <Chart
-                                stockId={effectiveStock!.id}
-                                color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor}
-                                backgroundColor={isDark ? '#1A1D21' : '#FFFFFF'}
-                                priceData={chartPriceData}
-                                isInitialLoadPending={priceHistoryInitialPending}
-                                defaultTimePeriod="ALL"
-                                timePeriod={sheetChartPeriod}
-                                onTimePeriodChange={setSheetChartPeriod}
-                            />
-                            {stockPriceHistory.length === 0 && !priceHistoryInitialPending && (
-                                <Text style={[styles.chartNote, { color: Color.subText }]}>
-                                    No price history available yet for this stock.
+                            <View style={styles.pricePerformance}>
+                                <Text style={[styles.priceChange, { color: priceChange >= 0 ? Color.green : Color.red }]}>
+                                    {priceChange >= 0 ? '↑' : '↓'} {formatPercentage(priceChangePercentage)}
                                 </Text>
-                            )}
-                        </View>
-
-                        {/* Action Buttons */}
-                        <ActionButtons userOwnsStock={userOwnsStock} userFollowsStock={userFollowsStock} stock={effectiveStock!} />
-
-                        {headlinesEnabled &&
-                        teamHeadlineName &&
-                        sportKey &&
-                        (teamHeadlinesQuery.isLoading || (teamHeadlinesQuery.data?.length ?? 0) > 0) ? (
-                            <View style={styles.teamHeadlinesWrapper}>
-                                <SportsHeadlinesBanner
-                                    headlines={teamHeadlinesQuery.data ?? []}
-                                    loading={teamHeadlinesQuery.isLoading}
-                                />
                             </View>
-                        ) : null}
 
-                        {/* Position Details - Only show if user owns the stock */}
-                        {userOwnsStock && userPosition && (
-                            <YourPosition userPosition={userPosition} currentPrice={currentPrice} />
-                        )}
+                            <View style={styles.chartContainer}>
+                                <Chart
+                                    stockId={effectiveStock!.id}
+                                    color={isDarkBackground && isDark ? brightenedPrimaryColor : primaryColor}
+                                    backgroundColor={isDark ? '#1A1D21' : '#FFFFFF'}
+                                    priceData={chartPriceData}
+                                    isInitialLoadPending={priceHistoryInitialPending}
+                                    defaultTimePeriod="ALL"
+                                    timePeriod={sheetChartPeriod}
+                                    onTimePeriodChange={setSheetChartPeriod}
+                                />
+                                {stockPriceHistory.length === 0 && !priceHistoryInitialPending && (
+                                    <Text style={[styles.chartNote, { color: Color.subText }]}>
+                                        No price history available yet for this stock.
+                                    </Text>
+                                )}
+                            </View>
 
-                        {effectiveStock && oddsTeamName && sportKey && (
-                            <OddsSection apiTeamName={oddsTeamName} sportKey={sportKey} stock={effectiveStock} />
-                        )}
+                            <ActionButtons
+                                userOwnsStock={userOwnsStock}
+                                userFollowsStock={userFollowsStock}
+                                stock={effectiveStock!}
+                            />
 
-                        {effectiveStock && sportKey && (
-                            <PredictionMarkets stock={effectiveStock} sportKey={sportKey} />
-                        )}
+                            {headlinesEnabled &&
+                            teamHeadlineName &&
+                            sportKey &&
+                            (teamHeadlinesQuery.isLoading || (teamHeadlinesQuery.data?.length ?? 0) > 0) ? (
+                                <View style={styles.teamHeadlinesWrapper}>
+                                    <SportsHeadlinesBanner
+                                        headlines={teamHeadlinesQuery.data ?? []}
+                                        loading={teamHeadlinesQuery.isLoading}
+                                    />
+                                </View>
+                            ) : null}
 
-                        {/* Bottom Spacing */}
-                        <View style={styles.bottomSpacing} />
-                    </>
-                ) : null}
-            </BottomSheetScrollView>
-            <BuySellBottomSheet buySellBottomSheetRef={buySellBottomSheetRef} />
-        </BottomSheetModal>
+                            {userOwnsStock && userPosition && (
+                                <YourPosition userPosition={userPosition} currentPrice={currentPrice} />
+                            )}
+
+                            {effectiveStock && oddsTeamName && sportKey && (
+                                <OddsSection apiTeamName={oddsTeamName} sportKey={sportKey} stock={effectiveStock} />
+                            )}
+
+                            {effectiveStock && sportKey && (
+                                <PredictionMarkets stock={effectiveStock} sportKey={sportKey} />
+                            )}
+
+                            <View style={styles.bottomSpacing} />
+                        </>
+                    ) : null}
+                </BottomSheetScrollView>
+            </BottomSheet>
+        </SheetHost>
     );
 }
 
 const styles = StyleSheet.create({
-    scrollView: {
-        flex: 1,
-        borderRadius: 25,
-    },
     header: {
-        padding: 20
+        padding: 20,
     },
     headerContent: {
         flexDirection: 'column',
@@ -446,13 +440,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         textAlign: 'center',
     },
-    actionButtons: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        gap: 12,
-        marginBottom: 24,
-    },
     bottomSpacing: {
         height: 50,
-    }
+    },
 });

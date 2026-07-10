@@ -1,6 +1,7 @@
 import { useColors } from "@/components/utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useKycGate } from "@/hooks/useKycGate";
 import { usePortfolio } from "@/lib/portfolio-api";
 import { useStock } from "@/lib/stocks-api";
 import {
@@ -39,12 +40,15 @@ type BuySellBottomSheetProps = {
     buySellBottomSheetRef: React.RefObject<BottomSheetModal>;
 };
 
+const BUY_SELL_SNAP_POINTS = ["70%"];
+
 export default function BuySellBottomSheet({
     buySellBottomSheetRef,
 }: BuySellBottomSheetProps) {
     const Color = useColors();
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const user = useAuthStore((s) => s.user);
+    const { openKycIfNeeded, isApproved: kycApproved } = useKycGate();
     const {
         activeStockId,
         activeStock: storeStock,
@@ -130,7 +134,13 @@ export default function BuySellBottomSheet({
             hasStock: !!stock,
             stockPrice: stock?.price,
             orderMode,
+            kycApproved,
         });
+        if (!kycApproved) {
+            setBuySellBottomSheetOpen(false);
+            openKycIfNeeded(true);
+            return;
+        }
         if (!selectedAmount || !stock) {
             // eslint-disable-next-line no-console
             console.log("[BuySellBottomSheet] runTrade aborted due to invalid state");
@@ -192,6 +202,9 @@ export default function BuySellBottomSheet({
         removeFollow,
         createTransactionMutation,
         lightImpact,
+        kycApproved,
+        openKycIfNeeded,
+        setBuySellBottomSheetOpen,
     ]);
 
     const handleBuy = () => {
@@ -356,15 +369,40 @@ export default function BuySellBottomSheet({
                 </BottomSheetView>
             );
         }
+        if (!kycApproved) {
+            return (
+                <BottomSheetView style={styles.guardContainer}>
+                    <Text style={[styles.guardText, { color: Color.baseText }]}>
+                        Verify your identity
+                    </Text>
+                    <Text style={[styles.guardSubtext, { color: Color.subText }]}>
+                        Complete identity verification to buy and sell teams on SportStock.
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.guardButton, { backgroundColor: Color.green }]}
+                        onPress={() => {
+                            setBuySellBottomSheetOpen(false);
+                            openKycIfNeeded(true);
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.guardButtonText}>Continue verification</Text>
+                    </TouchableOpacity>
+                </BottomSheetView>
+            );
+        }
         return null; // main form is rendered below in the normal return
     };
 
-    // After all hooks: handle early-return cases
-    if (!activeStockId) {
-        return null;
-    }
-
-    const earlyContent = renderModalContent();
+    // After all hooks: keep the modal mounted so the root layout ref stays valid.
+    // Guard content when there is no active stock instead of returning null.
+    const earlyContent = !activeStockId ? (
+        <BottomSheetView style={styles.guardContainer}>
+            <View />
+        </BottomSheetView>
+    ) : (
+        renderModalContent()
+    );
     if (earlyContent) {
         return (
             <BottomSheetModal
@@ -374,7 +412,8 @@ export default function BuySellBottomSheet({
                     setSelectedAmount(null);
                 }}
                 stackBehavior="push"
-                enableDynamicSizing={true}
+                enableDynamicSizing={false}
+                snapPoints={BUY_SELL_SNAP_POINTS}
                 enablePanDownToClose={true}
                 backdropComponent={renderBackdrop}
                 handleStyle={{ display: "none" }}
@@ -395,7 +434,8 @@ export default function BuySellBottomSheet({
             ref={buySellBottomSheetRef}
             onDismiss={closeModal}
             stackBehavior="push"
-            enableDynamicSizing={true}
+            enableDynamicSizing={false}
+            snapPoints={BUY_SELL_SNAP_POINTS}
             enablePanDownToClose={true}
             backdropComponent={renderBackdrop}
             handleStyle={{ display: "none" }}

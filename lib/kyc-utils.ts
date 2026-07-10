@@ -24,26 +24,30 @@ export function needsKycPrompt(status?: string | null): boolean {
 }
 
 export function isKycPendingReview(status?: string | null): boolean {
-    return status === KYC_STATUS.IN_REVIEW || status === KYC_STATUS.AWAITING_USER;
+    return status === KYC_STATUS.IN_REVIEW;
 }
 
 export function isKycInProgress(status?: string | null): boolean {
     return (
         status === KYC_STATUS.IN_PROGRESS ||
         status === KYC_STATUS.NOT_STARTED ||
-        status === KYC_STATUS.RESUBMITTED
+        status === KYC_STATUS.AWAITING_USER ||
+        status === KYC_STATUS.RESUBMITTED ||
+        status === KYC_STATUS.ABANDONED
     );
 }
 
+/**
+ * True when the user should be offered a CTA to (re)start Didit.
+ * Includes incomplete mid-flow statuses (e.g. closed app during verification)
+ * so we can create a fresh session via POST /api/kyc/session.
+ * Excludes Approved and In Review (wait for webhook).
+ */
 export function canRetryKyc(status?: string | null): boolean {
     if (!status) return true;
-    return (
-        status === KYC_STATUS.DECLINED ||
-        status === KYC_STATUS.EXPIRED ||
-        status === KYC_STATUS.ABANDONED ||
-        status === KYC_STATUS.KYC_EXPIRED ||
-        status === KYC_STATUS.RESUBMITTED
-    );
+    if (isKycApproved(status)) return false;
+    if (status === KYC_STATUS.IN_REVIEW) return false;
+    return true;
 }
 
 export function kycStatusLabel(status?: string | null): string {

@@ -1176,7 +1176,7 @@ export default function OnboardingBottomSheet({ onboardingBottomSheetRef }: Onbo
             ref={onboardingBottomSheetRef}
             onDismiss={closeModal}
             stackBehavior="push"
-            enableDynamicSizing={true}
+            enableDynamicSizing={false}
             enablePanDownToClose={false}
             backdropComponent={renderBackdrop}
             handleStyle={{ display: 'none' }}

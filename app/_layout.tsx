@@ -2,7 +2,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from '@/hooks/useLocation';
 import { isStateBlocked } from '@/lib/state-restrictions';
 import { fetchCurrentUser } from '@/lib/auth-api';
-import { isKycApproved, needsKycPrompt } from '@/lib/kyc-utils';
+import { canRetryKyc, isKycApproved, needsKycPrompt } from '@/lib/kyc-utils';
 import {
     decodeJwtPayload,
     getHostedUIRefreshToken,
@@ -69,6 +69,7 @@ export default function RootLayout() {
     const {
         activeStockId,
         activeUserId,
+        buySellBottomSheetOpen,
         profileBottomSheetOpen,
         lightDarkBottomSheetOpen,
         purchaseFanCoinsBottomSheetOpen,
@@ -146,8 +147,9 @@ export default function RootLayout() {
     // Safety: force-dismiss all sheets shortly after mount in case a backdrop is stuck (e.g. ref was set after state was restored)
     useEffect(() => {
         const t = setTimeout(() => {
-            stockBottomSheetRef.current?.dismiss();
-            buySellBottomSheetRef.current?.dismiss();
+            if (!useStockStore.getState().buySellBottomSheetOpen) {
+                buySellBottomSheetRef.current?.dismiss();
+            }
             profileBottomSheetRef.current?.dismiss();
             lightDarkBottomSheetRef.current?.dismiss();
             purchaseFanCoinsBottomSheetRef.current?.dismiss();
@@ -155,8 +157,6 @@ export default function RootLayout() {
             onboardingBottomSheetRef.current?.dismiss();
             transactionDetailBottomSheetRef.current?.dismiss();
             positionDetailBottomSheetRef.current?.dismiss();
-            loginBottomSheetRef.current?.dismiss();
-            kycBottomSheetRef.current?.dismiss();
         }, 400);
         return () => clearTimeout(t);
     }, []);
@@ -182,23 +182,27 @@ export default function RootLayout() {
         }
     }, [locationLoading]);
 
+    // Stock sheet is a controlled BottomSheet (index) inside FullWindowOverlay —
+    // NativeTabs portals BottomSheetModal behind the tab window, so present() is a no-op visually.
     useEffect(() => {
         if (activeStockId) {
             void prefetchStockSheetPriceHistory(queryClient, activeStockId);
-            const timer = setTimeout(() => {
-                stockBottomSheetRef.current?.present();
-            }, 100);
-            return () => clearTimeout(timer);
-        } else {
-            stockBottomSheetRef.current?.dismiss();
         }
     }, [activeStockId]);
 
     useEffect(() => {
         if (activeUserId) {
-            stockBottomSheetRef.current?.dismiss(); // Close stock sheet when opening user sheet
+            setActiveStockId(null);
         }
-    }, [activeUserId]);
+    }, [activeUserId, setActiveStockId]);
+
+    useEffect(() => {
+        if (buySellBottomSheetOpen) {
+            buySellBottomSheetRef.current?.present();
+        } else {
+            buySellBottomSheetRef.current?.dismiss();
+        }
+    }, [buySellBottomSheetOpen]);
 
     useEffect(() => {
         if (profileBottomSheetOpen) {
@@ -250,21 +254,8 @@ export default function RootLayout() {
         }
     }, [positionDetailBottomSheetOpen]);
 
-    useEffect(() => {
-        if (loginBottomSheetOpen) {
-            loginBottomSheetRef.current?.present();
-        } else {
-            loginBottomSheetRef.current?.dismiss();
-        }
-    }, [loginBottomSheetOpen]);
-
-    useEffect(() => {
-        if (kycBottomSheetOpen) {
-            kycBottomSheetRef.current?.present();
-        } else {
-            kycBottomSheetRef.current?.dismiss();
-        }
-    }, [kycBottomSheetOpen]);
+    // Stock / Login / KYC sheets are index-controlled inside FullWindowOverlay
+    // (NativeTabs puts BottomSheetModal portals behind the tab window).
 
     const showOnboardingIfEligible = useRef(async () => {
         try {
@@ -284,6 +275,37 @@ export default function RootLayout() {
             }
         }
     });
+
+    // Re-check KYC from GET /api/users/me when returning to foreground so users who
+    // closed the app mid-Didit get re-prompted and can create a new session.
+    useEffect(() => {
+        const onAppStateChange = (status: AppStateStatus) => {
+            if (status !== 'active') return;
+
+            const { isAuthenticated: authed, getToken, setUser, user } = useAuthStore.getState();
+            if (!authed) return;
+
+            void (async () => {
+                try {
+                    const token = getToken();
+                    if (!token) return;
+                    const me = await fetchCurrentUser(token);
+                    setUser(me);
+                    if (canRetryKyc(me.kycStatus)) {
+                        // Incomplete / cancelled mid-flow — re-open so they can create a new session
+                        setKycBottomSheetOpen(true);
+                    } else if (isKycApproved(me.kycStatus) && needsKycPrompt(user?.kycStatus)) {
+                        setKycBottomSheetOpen(false);
+                        void showOnboardingIfEligible.current();
+                    }
+                } catch {
+                    // Keep last-known status; trade gates still enforce KYC
+                }
+            })();
+        };
+        const sub = AppState.addEventListener('change', onAppStateChange);
+        return () => sub.remove();
+    }, [setKycBottomSheetOpen]);
 
     const handleKycDeepLink = useRef(async (url: string) => {
         const parsed = Linking.parse(url);

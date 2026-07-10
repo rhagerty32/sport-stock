@@ -13,28 +13,60 @@ import {
 } from '@/lib/kyc-utils';
 import { useStockStore } from '@/stores/stockStore';
 import { Ionicons } from '@expo/vector-icons';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import BottomSheet, {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { FullWindowOverlay } from 'react-native-screens';
 
 type KycStep = 'consent' | 'loading' | 'status';
 
 type KycBottomSheetProps = {
+    /** Kept for layout compatibility; KYC sheet is index-controlled. */
     kycBottomSheetRef: React.RefObject<BottomSheetModal>;
     onApproved?: () => void;
 };
 
-export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBottomSheetProps) {
+const KYC_SNAP_POINTS = ['85%'];
+
+function SheetHost({ children, visible }: { children: React.ReactNode; visible: boolean }) {
+    if (!visible) return null;
+    if (Platform.OS === 'ios') {
+        return (
+            <FullWindowOverlay>
+                <GestureHandlerRootView style={StyleSheet.absoluteFill}>{children}</GestureHandlerRootView>
+            </FullWindowOverlay>
+        );
+    }
+    return <View style={StyleSheet.absoluteFill} pointerEvents="box-none">{children}</View>;
+}
+
+function initialStepForStatus(status?: string | null): KycStep {
+    if (isKycApproved(status) || isKycPendingReview(status)) return 'status';
+    // Incomplete / mid-flow (cancelled, abandoned, in progress) → show continue CTA
+    return 'consent';
+}
+
+export default function KycBottomSheet({
+    kycBottomSheetRef: _kycBottomSheetRef,
+    onApproved,
+}: KycBottomSheetProps) {
     const Color = useColors();
     const { isDark } = useTheme();
     const { lightImpact, success } = useHaptics();
     const { kycStatus, refreshKycStatus } = useKycGate();
+    const kycBottomSheetOpen = useStockStore((s) => s.kycBottomSheetOpen);
     const setKycBottomSheetOpen = useStockStore((s) => s.setKycBottomSheetOpen);
 
     const [step, setStep] = useState<KycStep>('consent');
@@ -46,17 +78,43 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
     const approved = isKycApproved(displayStatus);
 
     const resetState = useCallback(() => {
-        setStep(approved ? 'status' : 'consent');
+        setStep(initialStepForStatus(kycStatus));
         setError(null);
         setBusy(false);
         setLocalStatus(null);
-    }, [approved]);
+    }, [kycStatus]);
 
     useEffect(() => {
         if (approved) {
             setStep('status');
         }
     }, [approved]);
+
+    // On open: sync GET /api/users/me and route to the right step so cancelled
+    // mid-flow users always get a Continue CTA (creates a new Didit session).
+    useEffect(() => {
+        if (!kycBottomSheetOpen) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const me = await refreshKycStatus();
+                if (cancelled) return;
+                const next = me?.kycStatus ?? kycStatus;
+                setLocalStatus(null);
+                setError(null);
+                setStep(initialStepForStatus(next));
+            } catch {
+                if (!cancelled) {
+                    setStep(initialStepForStatus(kycStatus));
+                }
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+        // Only re-run when the sheet opens, not on every status tick
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kycBottomSheetOpen]);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -73,8 +131,7 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
 
     const closeModal = useCallback(() => {
         setKycBottomSheetOpen(false);
-        kycBottomSheetRef.current?.dismiss();
-    }, [kycBottomSheetRef, setKycBottomSheetOpen]);
+    }, [setKycBottomSheetOpen]);
 
     const handleApproved = useCallback(async () => {
         success();
@@ -114,8 +171,11 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
             }
 
             if (result.type === 'cancelled') {
-                setStep('consent');
-                await refreshKycStatus();
+                // User closed Didit mid-flow — refresh /me and keep Continue available
+                // so they can create a new session (backend handles incomplete sessions).
+                const me = await refreshKycStatus();
+                setLocalStatus(null);
+                setStep(initialStepForStatus(me?.kycStatus));
                 return;
             }
 
@@ -131,8 +191,9 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
     }, [handleApproved, lightImpact, refreshKycStatus]);
 
     const handleDismiss = useCallback(() => {
+        setKycBottomSheetOpen(false);
         resetState();
-    }, [resetState]);
+    }, [resetState, setKycBottomSheetOpen]);
 
     const titleStyle = [styles.title, { color: Color.baseText }];
     const bodyStyle = [styles.body, { color: Color.subText }];
@@ -144,20 +205,22 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
     const primaryTextStyle = { color: isDark ? '#111827' : '#FFFFFF' };
 
     return (
-        <BottomSheetModal
-            ref={kycBottomSheetRef}
-            onDismiss={handleDismiss}
-            stackBehavior="push"
-            enableDynamicSizing
-            enablePanDownToClose={approved}
-            backdropComponent={renderBackdrop}
-            snapPoints={['85%']}
-            backgroundStyle={{
-                borderRadius: 20,
-                backgroundColor: isDark ? '#1A1D21' : '#FFFFFF',
-            }}
-        >
-            <BottomSheetScrollView contentContainerStyle={styles.container}>
+        <SheetHost visible={kycBottomSheetOpen}>
+            <BottomSheet
+                index={0}
+                onChange={(index) => {
+                    if (index < 0) handleDismiss();
+                }}
+                enableDynamicSizing={false}
+                enablePanDownToClose
+                backdropComponent={renderBackdrop}
+                snapPoints={KYC_SNAP_POINTS}
+                backgroundStyle={{
+                    borderRadius: 20,
+                    backgroundColor: isDark ? '#1A1D21' : '#FFFFFF',
+                }}
+            >
+                <BottomSheetScrollView contentContainerStyle={styles.container}>
                 <View style={styles.iconRow}>
                     <View style={[styles.iconCircle, { backgroundColor: isDark ? '#242428' : '#F3F4F6' }]}>
                         <Ionicons
@@ -179,6 +242,11 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
                             government-issued ID and take a selfie. Didit processes your biometric data to confirm
                             your identity.
                         </Text>
+                        {isKycInProgress(displayStatus) && (
+                            <Text style={bodyStyle}>
+                                Your previous verification was not finished. Continue to start a new secure session.
+                            </Text>
+                        )}
                         <Text style={[bodyStyle, styles.consentNote]}>
                             By continuing, you consent to identity verification and agree that your information will
                             be processed according to our Privacy Policy.
@@ -193,7 +261,11 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
                             {busy ? (
                                 <ActivityIndicator color={primaryTextStyle.color} />
                             ) : (
-                                <Text style={[styles.primaryButtonText, primaryTextStyle]}>Continue to verification</Text>
+                                <Text style={[styles.primaryButtonText, primaryTextStyle]}>
+                                    {isKycInProgress(displayStatus)
+                                        ? 'Continue verification'
+                                        : 'Continue to verification'}
+                                </Text>
                             )}
                         </TouchableOpacity>
                     </>
@@ -238,7 +310,11 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
                                     <ActivityIndicator color={primaryTextStyle.color} />
                                 ) : (
                                     <Text style={[styles.primaryButtonText, primaryTextStyle]}>
-                                        {displayStatus ? 'Try again' : 'Start verification'}
+                                        {isKycInProgress(displayStatus)
+                                            ? 'Continue verification'
+                                            : displayStatus
+                                              ? 'Try again'
+                                              : 'Start verification'}
                                     </Text>
                                 )}
                             </TouchableOpacity>
@@ -262,7 +338,8 @@ export default function KycBottomSheet({ kycBottomSheetRef, onApproved }: KycBot
                     </>
                 )}
             </BottomSheetScrollView>
-        </BottomSheetModal>
+            </BottomSheet>
+        </SheetHost>
     );
 }
 

@@ -142,7 +142,7 @@ export default function PurchaseFanCoinsBottomSheet({ purchaseFanCoinsBottomShee
             ref={purchaseFanCoinsBottomSheetRef}
             onDismiss={closeModal}
             stackBehavior='push'
-            enableDynamicSizing={true}
+            enableDynamicSizing={false}
             enablePanDownToClose={true}
             backdropComponent={renderBackdrop}
             handleStyle={{ display: 'none' }}

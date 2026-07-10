@@ -164,7 +164,7 @@ export default function TransactionDetailBottomSheet({ transactionDetailBottomSh
                 setActiveTransaction(null);
                 setTransactionDetailBottomSheetOpen(false);
             }}
-            enableDynamicSizing={true}
+            enableDynamicSizing={false}
             enablePanDownToClose={true}
             backdropComponent={renderBackdrop}
             handleStyle={{ display: 'none' }}
