@@ -207,6 +207,7 @@ export default function ProfileScreen() {
                 { title: 'Contact Support', iconName: 'chatbubble-outline' },
                 { title: 'Terms of Service', iconName: 'document-text-outline' },
                 { title: 'Privacy Policy', iconName: 'shield-outline' },
+                { title: 'Promo Rules', iconName: 'ticket-outline' },
             ]
         },
     ];
@@ -607,6 +608,8 @@ export default function ProfileScreen() {
                                                 Linking.openURL('https://thesportstock.com/terms-of-service');
                                             } else if (item.title === 'Privacy Policy') {
                                                 Linking.openURL('https://thesportstock.com/privacy-policy');
+                                            } else if (item.title === 'Promo Rules') {
+                                                Linking.openURL('https://thesportstock.com/promo-rules');
                                             }
                                         }}
                                     >

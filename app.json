@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.thesportstock.app",
-      "buildNumber": "23",
+      "buildNumber": "24",
       "appleTeamId": "J22RD5YVQW"
     },
     "android": {
